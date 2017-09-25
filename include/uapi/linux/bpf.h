@@ -759,6 +759,12 @@ union bpf_attr {
  * 	Return
  * 		A 64-bit integer containing the current cgroup id based
  * 		on the cgroup within which the current task is running.
+ *
+ * int bpf_xdp_adjust_meta(xdp_md, delta)
+ *     Adjust the xdp_md.data_meta by delta
+ *     @xdp_md: pointer to xdp_md
+ *     @delta: An positive/negative integer to be added to xdp_md.data_meta
+ *     Return: 0 on success or negative on error
  */
 #define __BPF_FUNC_MAPPER(FN)		\
 	FN(unspec),			\
@@ -817,7 +823,7 @@ union bpf_attr {
 	FN(sock_map_update),		\
 	/* tbi is 'to be implemented */ 		\
 	/* when support is added to a function, remove the 'tbi' */ \
-	FN(xdp_adjust_meta), /* tbi*/   	\
+	FN(xdp_adjust_meta),             	\
 	FN(perf_event_read_value), /* tbi*/     \
 	FN(perf_prog_read_value), /* tbi*/      \
 	FN(getsockopt), /* tbi*/                \
@@ -978,7 +984,7 @@ struct __sk_buff {
 	__u32 data_end;
 	__u32 napi_id;
 
-	/* accessed by BPF_PROG_TYPE_sk_skb types */
+	/* Accessed by BPF_PROG_TYPE_sk_skb types from here to ... */
 	__u32 family;
 	__u32 remote_ip4;	/* Stored in network byte order */
 	__u32 local_ip4;	/* Stored in network byte order */
@@ -988,6 +994,8 @@ struct __sk_buff {
 	__u32 local_port;	/* stored in host byte order */
 
 	__bpf_md_ptr(struct bpf_flow_keys *, flow_keys);
+	/* ... here. */
+	__u32 data_meta;
 };
 
 struct bpf_tunnel_key {
@@ -1057,6 +1065,7 @@ enum xdp_action {
 struct xdp_md {
 	__u32 data;
 	__u32 data_end;
+	__u32 data_meta;
 };
 
 enum sk_action {
