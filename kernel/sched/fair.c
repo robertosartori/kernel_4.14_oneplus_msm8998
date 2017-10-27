@@ -12110,7 +12110,7 @@ void nohz_balance_enter_idle(int cpu)
 	}
 
 	/* Spare idle load balancing on CPUs that don't want to be disturbed: */
-	if (!is_housekeeping_cpu(cpu))
+	if (!housekeeping_cpu(cpu))
 		return;
 
 	/*
