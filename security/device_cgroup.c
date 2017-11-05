@@ -15,15 +15,6 @@
 #include <linux/rcupdate.h>
 #include <linux/mutex.h>
 
-#define ACC_MKNOD 1
-#define ACC_READ  2
-#define ACC_WRITE 4
-#define ACC_MASK (ACC_MKNOD | ACC_READ | ACC_WRITE)
-
-#define DEV_BLOCK 1
-#define DEV_CHAR  2
-#define DEV_ALL   4  /* this represents all devices */
-
 static DEFINE_MUTEX(devcgroup_mutex);
 
 enum devcg_behavior {
@@ -810,8 +801,8 @@ struct cgroup_subsys devices_cgrp_subsys = {
  *
  * returns 0 on success, -EPERM case the operation is not permitted
  */
-static int __devcgroup_check_permission(short type, u32 major, u32 minor,
-				        short access)
+int __devcgroup_check_permission(short type, u32 major, u32 minor,
+				short access)
 {
 	struct dev_cgroup *dev_cgroup;
 	bool rc;
@@ -832,38 +823,4 @@ static int __devcgroup_check_permission(short type, u32 major, u32 minor,
 		return -EPERM;
 
 	return 0;
-}
-
-int __devcgroup_inode_permission(struct inode *inode, int mask)
-{
-	short type, access = 0;
-
-	if (S_ISBLK(inode->i_mode))
-		type = DEV_BLOCK;
-	if (S_ISCHR(inode->i_mode))
-		type = DEV_CHAR;
-	if (mask & MAY_WRITE)
-		access |= ACC_WRITE;
-	if (mask & MAY_READ)
-		access |= ACC_READ;
-
-	return __devcgroup_check_permission(type, imajor(inode), iminor(inode),
-			access);
-}
-
-int devcgroup_inode_mknod(int mode, dev_t dev)
-{
-	short type;
-
-	if (!S_ISBLK(mode) && !S_ISCHR(mode))
-		return 0;
-
-	if (S_ISBLK(mode))
-		type = DEV_BLOCK;
-	else
-		type = DEV_CHAR;
-
-	return __devcgroup_check_permission(type, MAJOR(dev), MINOR(dev),
-			ACC_MKNOD);
-
 }
