@@ -3117,8 +3117,6 @@ static inline void cfs_rq_util_change(struct cfs_rq *cfs_rq)
 
 #ifdef CONFIG_SMP
 
-#define cap_scale(v, s) ((v)*(s) >> SCHED_CAPACITY_SHIFT)
-
 #ifdef CONFIG_FAIR_GROUP_SCHED
 /**
  * update_tg_load_avg - update the tg's load avg
