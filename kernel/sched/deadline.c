@@ -81,7 +81,7 @@ static inline int dl_bw_cpus(int i)
 #endif
 
 static inline
-void add_running_bw(u64 dl_bw, struct dl_rq *dl_rq)
+void __add_running_bw(u64 dl_bw, struct dl_rq *dl_rq)
 {
 	u64 old = dl_rq->running_bw;
 
@@ -92,7 +92,7 @@ void add_running_bw(u64 dl_bw, struct dl_rq *dl_rq)
 }
 
 static inline
-void sub_running_bw(u64 dl_bw, struct dl_rq *dl_rq)
+void __sub_running_bw(u64 dl_bw, struct dl_rq *dl_rq)
 {
 	u64 old = dl_rq->running_bw;
 
@@ -104,7 +104,7 @@ void sub_running_bw(u64 dl_bw, struct dl_rq *dl_rq)
 }
 
 static inline
-void add_rq_bw(u64 dl_bw, struct dl_rq *dl_rq)
+void __add_rq_bw(u64 dl_bw, struct dl_rq *dl_rq)
 {
 	u64 old = dl_rq->this_bw;
 
@@ -114,7 +114,7 @@ void add_rq_bw(u64 dl_bw, struct dl_rq *dl_rq)
 }
 
 static inline
-void sub_rq_bw(u64 dl_bw, struct dl_rq *dl_rq)
+void __sub_rq_bw(u64 dl_bw, struct dl_rq *dl_rq)
 {
 	u64 old = dl_rq->this_bw;
 
@@ -126,16 +126,46 @@ void sub_rq_bw(u64 dl_bw, struct dl_rq *dl_rq)
 	SCHED_WARN_ON(dl_rq->running_bw > dl_rq->this_bw);
 }
 
+static inline
+void add_rq_bw(struct sched_dl_entity *dl_se, struct dl_rq *dl_rq)
+{
+	if (!dl_entity_is_special(dl_se))
+		__add_rq_bw(dl_se->dl_bw, dl_rq);
+}
+
+static inline
+void sub_rq_bw(struct sched_dl_entity *dl_se, struct dl_rq *dl_rq)
+{
+	if (!dl_entity_is_special(dl_se))
+		__sub_rq_bw(dl_se->dl_bw, dl_rq);
+}
+
+static inline
+void add_running_bw(struct sched_dl_entity *dl_se, struct dl_rq *dl_rq)
+{
+	if (!dl_entity_is_special(dl_se))
+		__add_running_bw(dl_se->dl_bw, dl_rq);
+}
+
+static inline
+void sub_running_bw(struct sched_dl_entity *dl_se, struct dl_rq *dl_rq)
+{
+	if (!dl_entity_is_special(dl_se))
+		__sub_running_bw(dl_se->dl_bw, dl_rq);
+}
+
 void dl_change_utilization(struct task_struct *p, u64 new_bw)
 {
 	struct rq *rq;
+
+	BUG_ON(p->dl.flags & SCHED_FLAG_SUGOV);
 
 	if (task_on_rq_queued(p))
 		return;
 
 	rq = task_rq(p);
 	if (p->dl.dl_non_contending) {
-		sub_running_bw(p->dl.dl_bw, &rq->dl);
+		sub_running_bw(&p->dl, &rq->dl);
 		p->dl.dl_non_contending = 0;
 		/*
 		 * If the timer handler is currently running and the
@@ -147,8 +177,8 @@ void dl_change_utilization(struct task_struct *p, u64 new_bw)
 		if (hrtimer_try_to_cancel(&p->dl.inactive_timer) == 1)
 			put_task_struct(p);
 	}
-	sub_rq_bw(p->dl.dl_bw, &rq->dl);
-	add_rq_bw(new_bw, &rq->dl);
+	__sub_rq_bw(p->dl.dl_bw, &rq->dl);
+	__add_rq_bw(new_bw, &rq->dl);
 }
 
 /*
@@ -220,6 +250,9 @@ static void task_non_contending(struct task_struct *p)
 	if (dl_se->dl_runtime == 0)
 		return;
 
+	if (dl_entity_is_special(dl_se))
+		return;
+
 	WARN_ON(dl_se->dl_non_contending);
 
 	zerolag_time = dl_se->deadline -
@@ -238,12 +271,12 @@ static void task_non_contending(struct task_struct *p)
 	 */
 	if ((zerolag_time < 0) || hrtimer_active(&dl_se->inactive_timer)) {
 		if (dl_task(p))
-			sub_running_bw(dl_se->dl_bw, dl_rq);
+			sub_running_bw(dl_se, dl_rq);
 		if (!dl_task(p) || p->state == TASK_DEAD) {
 			struct dl_bw *dl_b = dl_bw_of(task_cpu(p));
 
 			if (p->state == TASK_DEAD)
-				sub_rq_bw(p->dl.dl_bw, &rq->dl);
+				sub_rq_bw(&p->dl, &rq->dl);
 			raw_spin_lock(&dl_b->lock);
 			__dl_clear(dl_b, p->dl.dl_bw, dl_bw_cpus(task_cpu(p)));
 			__dl_clear_params(p);
@@ -270,7 +303,7 @@ static void task_contending(struct sched_dl_entity *dl_se, int flags)
 		return;
 
 	if (flags & ENQUEUE_MIGRATED)
-		add_rq_bw(dl_se->dl_bw, dl_rq);
+		add_rq_bw(dl_se, dl_rq);
 
 	if (dl_se->dl_non_contending) {
 		dl_se->dl_non_contending = 0;
@@ -291,7 +324,7 @@ static void task_contending(struct sched_dl_entity *dl_se, int flags)
 		 * when the "inactive timer" fired).
 		 * So, add it back.
 		 */
-		add_running_bw(dl_se->dl_bw, dl_rq);
+		add_running_bw(dl_se, dl_rq);
 	}
 }
 
@@ -1148,6 +1181,9 @@ static void update_curr_dl(struct rq *rq)
 	curr->se.exec_start = rq_clock_task(rq);
 	cpuacct_charge(curr, delta_exec);
 
+	if (dl_entity_is_special(dl_se))
+		return;
+
 	if (unlikely(dl_se->flags & SCHED_FLAG_RECLAIM))
 		delta_exec = grub_reclaim(delta_exec, rq, &curr->dl);
 	dl_se->runtime -= delta_exec;
@@ -1204,8 +1240,8 @@ static enum hrtimer_restart inactive_task_timer(struct hrtimer *timer)
 		struct dl_bw *dl_b = dl_bw_of(task_cpu(p));
 
 		if (p->state == TASK_DEAD && dl_se->dl_non_contending) {
-			sub_running_bw(p->dl.dl_bw, dl_rq_of_se(&p->dl));
-			sub_rq_bw(p->dl.dl_bw, dl_rq_of_se(&p->dl));
+			sub_running_bw(&p->dl, dl_rq_of_se(&p->dl));
+			sub_rq_bw(&p->dl, dl_rq_of_se(&p->dl));
 			dl_se->dl_non_contending = 0;
 		}
 
@@ -1222,7 +1258,7 @@ static enum hrtimer_restart inactive_task_timer(struct hrtimer *timer)
 	sched_clock_tick();
 	update_rq_clock(rq);
 
-	sub_running_bw(dl_se->dl_bw, &rq->dl);
+	sub_running_bw(dl_se, &rq->dl);
 	dl_se->dl_non_contending = 0;
 unlock:
 	task_rq_unlock(rq, p, &rf);
@@ -1418,8 +1454,8 @@ static void enqueue_task_dl(struct rq *rq, struct task_struct *p, int flags)
 		dl_check_constrained_dl(&p->dl);
 
 	if (p->on_rq == TASK_ON_RQ_MIGRATING || flags & ENQUEUE_RESTORE) {
-		add_rq_bw(p->dl.dl_bw, &rq->dl);
-		add_running_bw(p->dl.dl_bw, &rq->dl);
+		add_rq_bw(&p->dl, &rq->dl);
+		add_running_bw(&p->dl, &rq->dl);
 	}
 
 	/*
@@ -1459,8 +1495,8 @@ static void dequeue_task_dl(struct rq *rq, struct task_struct *p, int flags)
 	__dequeue_task_dl(rq, p, flags);
 
 	if (p->on_rq == TASK_ON_RQ_MIGRATING || flags & DEQUEUE_SAVE) {
-		sub_running_bw(p->dl.dl_bw, &rq->dl);
-		sub_rq_bw(p->dl.dl_bw, &rq->dl);
+		sub_running_bw(&p->dl, &rq->dl);
+		sub_rq_bw(&p->dl, &rq->dl);
 	}
 
 	/*
@@ -1567,7 +1603,7 @@ static void migrate_task_rq_dl(struct task_struct *p)
 	 */
 	raw_spin_lock(&rq->lock);
 	if (p->dl.dl_non_contending) {
-		sub_running_bw(p->dl.dl_bw, &rq->dl);
+		sub_running_bw(&p->dl, &rq->dl);
 		p->dl.dl_non_contending = 0;
 		/*
 		 * If the timer handler is currently running and the
@@ -1579,7 +1615,7 @@ static void migrate_task_rq_dl(struct task_struct *p)
 		if (hrtimer_try_to_cancel(&p->dl.inactive_timer) == 1)
 			put_task_struct(p);
 	}
-	sub_rq_bw(p->dl.dl_bw, &rq->dl);
+	sub_rq_bw(&p->dl, &rq->dl);
 	raw_spin_unlock(&rq->lock);
 }
 
@@ -2027,13 +2063,11 @@ retry:
 	}
 
 	deactivate_task(rq, next_task, 0);
-	sub_running_bw(next_task->dl.dl_bw, &rq->dl);
-	sub_rq_bw(next_task->dl.dl_bw, &rq->dl);
-	next_task->on_rq = TASK_ON_RQ_MIGRATING;
+	sub_running_bw(&next_task->dl, &rq->dl);
+	sub_rq_bw(&next_task->dl, &rq->dl);
 	set_task_cpu(next_task, later_rq->cpu);
-	next_task->on_rq = TASK_ON_RQ_QUEUED;
-	add_rq_bw(next_task->dl.dl_bw, &later_rq->dl);
-	add_running_bw(next_task->dl.dl_bw, &later_rq->dl);
+	add_rq_bw(&next_task->dl, &later_rq->dl);
+	add_running_bw(&next_task->dl, &later_rq->dl);
 	activate_task(later_rq, next_task, 0);
 	ret = 1;
 
@@ -2121,13 +2155,11 @@ static void pull_dl_task(struct rq *this_rq)
 			resched = true;
 
 			deactivate_task(src_rq, p, 0);
-			sub_running_bw(p->dl.dl_bw, &src_rq->dl);
-			sub_rq_bw(p->dl.dl_bw, &src_rq->dl);
-			p->on_rq = TASK_ON_RQ_MIGRATING;
+			sub_running_bw(&p->dl, &src_rq->dl);
+			sub_rq_bw(&p->dl, &src_rq->dl);
 			set_task_cpu(p, this_cpu);
-			p->on_rq = TASK_ON_RQ_QUEUED;
-			add_rq_bw(p->dl.dl_bw, &this_rq->dl);
-			add_running_bw(p->dl.dl_bw, &this_rq->dl);
+			add_rq_bw(&p->dl, &this_rq->dl);
+			add_running_bw(&p->dl, &this_rq->dl);
 			activate_task(this_rq, p, 0);
 			dmin = p->dl.deadline;
 
@@ -2236,7 +2268,7 @@ static void switched_from_dl(struct rq *rq, struct task_struct *p)
 		task_non_contending(p);
 
 	if (!task_on_rq_queued(p))
-		sub_rq_bw(p->dl.dl_bw, &rq->dl);
+		sub_rq_bw(&p->dl, &rq->dl);
 
 	/*
 	 * We cannot use inactive_task_timer() to invoke sub_running_bw()
@@ -2268,7 +2300,7 @@ static void switched_to_dl(struct rq *rq, struct task_struct *p)
 
 	/* If p is not queued we will update its parameters at next wakeup. */
 	if (!task_on_rq_queued(p)) {
-		add_rq_bw(p->dl.dl_bw, &rq->dl);
+		add_rq_bw(&p->dl, &rq->dl);
 
 		return;
 	}
@@ -2451,6 +2483,9 @@ int sched_dl_overflow(struct task_struct *p, int policy,
 	u64 new_bw = dl_policy(policy) ? to_ratio(period, runtime) : 0;
 	int cpus, err = -1;
 
+	if (attr->sched_flags & SCHED_FLAG_SUGOV)
+		return 0;
+
 	/* !deadline task may carry old deadline bandwidth */
 	if (new_bw == p->dl.dl_bw && task_has_dl_policy(p))
 		return 0;
@@ -2537,6 +2572,10 @@ void __getparam_dl(struct task_struct *p, struct sched_attr *attr)
  */
 bool __checkparam_dl(const struct sched_attr *attr)
 {
+	/* special dl tasks don't actually use any parameter */
+	if (attr->sched_flags & SCHED_FLAG_SUGOV)
+		return true;
+
 	/* deadline != 0 */
 	if (attr->sched_deadline == 0)
 		return false;
