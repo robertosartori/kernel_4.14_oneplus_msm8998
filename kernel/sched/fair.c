@@ -11847,12 +11847,29 @@ static inline int find_new_ilb(void)
 	return nr_cpu_ids;
 }
 
+static inline void set_cpu_sd_state_busy(void)
+{
+	struct sched_domain *sd;
+	int cpu = smp_processor_id();
+
+	rcu_read_lock();
+	sd = rcu_dereference(per_cpu(sd_llc, cpu));
+
+	if (!sd || !sd->nohz_idle)
+		goto unlock;
+	sd->nohz_idle = 0;
+
+	atomic_inc(&sd->shared->nr_busy_cpus);
+unlock:
+	rcu_read_unlock();
+}
+
 /*
  * Kick a CPU to do the nohz balancing, if it is time for it. We pick the
  * nohz_load_balancer CPU (if there is one) otherwise fallback to any idle
  * CPU (if there is one).
  */
-static void nohz_balancer_kick(void)
+static void kick_ilb(void)
 {
 	unsigned int flags;
 	int ilb_cpu;
@@ -11867,6 +11884,7 @@ static void nohz_balancer_kick(void)
 	flags = atomic_fetch_or(NOHZ_KICK_MASK, nohz_flags(ilb_cpu));
 	if (flags & NOHZ_KICK_MASK)
 		return;
+
 	/*
 	 * Use smp_send_reschedule() instead of resched_cpu().
 	 * This way we generate a sched IPI on the target cpu which
@@ -11875,7 +11893,94 @@ static void nohz_balancer_kick(void)
 	 */
 	trace_sched_load_balance_nohz_kick(smp_processor_id(), ilb_cpu);
 	smp_send_reschedule(ilb_cpu);
-	return;
+}
+
+/*
+ * Current heuristic for kicking the idle load balancer in the presence
+ * of an idle cpu in the system.
+ *   - This rq has more than one task.
+ *   - This rq has at least one CFS task and the capacity of the CPU is
+ *     significantly reduced because of RT tasks or IRQs.
+ *   - At parent of LLC scheduler domain level, this cpu's scheduler group has
+ *     multiple busy cpu.
+ *   - For SD_ASYM_PACKING, if the lower numbered cpu's in the scheduler
+ *     domain span are idle.
+ */
+static void nohz_balancer_kick(struct rq *rq)
+{
+	unsigned long now = jiffies;
+	struct sched_domain_shared *sds;
+	struct sched_domain *sd;
+	int nr_busy, i, cpu = rq->cpu;
+	bool kick = false;
+
+	if (unlikely(rq->idle_balance))
+		return;
+
+	/*
+	 * We may be recently in ticked or tickless idle mode. At the first
+	 * busy tick after returning from idle, we will update the busy stats.
+	 */
+	set_cpu_sd_state_busy();
+	nohz_balance_exit_idle(cpu);
+
+	/*
+	 * None are in tickless mode and hence no need for NOHZ idle load
+	 * balancing.
+	 */
+	if (likely(!atomic_read(&nohz.nr_cpus)))
+		return;
+
+	if (time_before(now, nohz.next_balance))
+		return;
+
+	if (rq->nr_running >= 2) {
+		kick = true;
+		goto out;
+	}
+
+	rcu_read_lock();
+	sds = rcu_dereference(per_cpu(sd_llc_shared, cpu));
+	if (sds) {
+		/*
+		 * XXX: write a coherent comment on why we do this.
+		 * See also: http://lkml.kernel.org/r/20111202010832.602203411@sbsiddha-desk.sc.intel.com
+		 */
+		nr_busy = atomic_read(&sds->nr_busy_cpus);
+		if (nr_busy > 1) {
+			kick = true;
+			goto unlock;
+		}
+
+	}
+
+	sd = rcu_dereference(rq->sd);
+	if (sd) {
+		if ((rq->cfs.h_nr_running >= 1) &&
+				check_cpu_capacity(rq, sd)) {
+			kick = true;
+			goto unlock;
+		}
+	}
+
+	sd = rcu_dereference(per_cpu(sd_asym, cpu));
+	if (sd) {
+		for_each_cpu(i, sched_domain_span(sd)) {
+			if (i == cpu ||
+			    !cpumask_test_cpu(i, nohz.idle_cpus_mask))
+				continue;
+
+			if (sched_asym_prefer(i, cpu)) {
+				kick = true;
+				goto unlock;
+			}
+		}
+	}
+unlock:
+	rcu_read_unlock();
+out:
+	if (kick)
+		kick_ilb();
 }
 
 void nohz_balance_exit_idle(unsigned int cpu)
@@ -11893,23 +11998,6 @@ void nohz_balance_exit_idle(unsigned int cpu)
 
 		atomic_andnot(NOHZ_TICK_STOPPED, nohz_flags(cpu));
 	}
-}
-
-static inline void set_cpu_sd_state_busy(void)
-{
-	struct sched_domain *sd;
-	int cpu = smp_processor_id();
-
-	rcu_read_lock();
-	sd = rcu_dereference(per_cpu(sd_llc, cpu));
-
-	if (!sd || !sd->nohz_idle)
-		goto unlock;
-	sd->nohz_idle = 0;
-
-	atomic_inc(&sd->shared->nr_busy_cpus);
-unlock:
-	rcu_read_unlock();
 }
 
 void set_cpu_sd_state_idle(void)
@@ -11966,6 +12054,8 @@ void nohz_balance_enter_idle(int cpu)
 	atomic_inc(&nohz.nr_cpus);
 	atomic_or(NOHZ_TICK_STOPPED, nohz_flags(cpu));
 }
+#else
+static inline void nohz_balancer_kick(struct rq *rq) { }
 #endif
 
 static DEFINE_SPINLOCK(balancing);
@@ -12180,100 +12270,6 @@ static bool nohz_idle_balance(struct rq *this_rq, enum cpu_idle_type idle)
 
 	return true;
 }
-
-/*
- * Current heuristic for kicking the idle load balancer in the presence
- * of an idle cpu in the system.
- *   - This rq has more than one task.
- *   - This rq has at least one CFS task and the capacity of the CPU is
- *     significantly reduced because of RT tasks or IRQs.
- *   - At parent of LLC scheduler domain level, this cpu's scheduler group has
- *     multiple busy cpu.
- *   - For SD_ASYM_PACKING, if the lower numbered cpu's in the scheduler
- *     domain span are idle.
- */
-static inline bool nohz_kick_needed(struct rq *rq)
-{
-	unsigned long now = jiffies;
-	struct sched_domain_shared *sds;
-	struct sched_domain *sd;
-	int nr_busy, i, cpu = rq->cpu;
-	bool kick = false;
-	cpumask_t cpumask;
-
-	if (unlikely(rq->idle_balance))
-		return false;
-
-       /*
-	* We may be recently in ticked or tickless idle mode. At the first
-	* busy tick after returning from idle, we will update the busy stats.
-	*/
-	set_cpu_sd_state_busy();
-	nohz_balance_exit_idle(cpu);
-
-	/*
-	 * None are in tickless mode and hence no need for NOHZ idle load
-	 * balancing.
-	 */
-	cpumask_andnot(&cpumask, nohz.idle_cpus_mask, cpu_isolated_mask);
-	if (cpumask_empty(&cpumask))
-		return false;
-
-	if (time_before(now, nohz.next_balance))
-		return false;
-
-	/*
-	 * If energy aware is enabled, do idle load balance if runqueue has
-	 * at least 2 tasks and cpu is overutilized
-	 */
-	if (rq->nr_running >= 2 &&
-	    (!energy_aware() || cpu_overutilized(cpu)))
-		return true;
-
-	if (energy_aware())
-		return rq->misfit_task_load > 0;
-
-	rcu_read_lock();
-	sds = rcu_dereference(per_cpu(sd_llc_shared, cpu));
-	if (sds && !energy_aware()) {
-		/*
-		 * XXX: write a coherent comment on why we do this.
-		 * See also: http://lkml.kernel.org/r/20111202010832.602203411@sbsiddha-desk.sc.intel.com
-		 */
-		nr_busy = atomic_read(&sds->nr_busy_cpus);
-		if (nr_busy > 1) {
-			kick = true;
-			goto unlock;
-		}
-
-	}
-
-	sd = rcu_dereference(rq->sd);
-	if (sd) {
-		if ((rq->cfs.h_nr_running >= 1) &&
-				check_cpu_capacity(rq, sd)) {
-			kick = true;
-			goto unlock;
-		}
-	}
-
-	sd = rcu_dereference(per_cpu(sd_asym, cpu));
-	if (sd) {
-		for_each_cpu(i, sched_domain_span(sd)) {
-			if (i == cpu ||
-			    !cpumask_test_cpu(i, &cpumask))
-				continue;
-
-			if (sched_asym_prefer(i, cpu)) {
-				kick = true;
-				goto unlock;
-			}
-		}
-	}
-unlock:
-	rcu_read_unlock();
-	return kick;
-}
 #else
 static bool nohz_idle_balance(struct rq *this_rq, enum cpu_idle_type idle)
 {
@@ -12327,10 +12323,8 @@ void trigger_load_balance(struct rq *rq)
 
 	if (time_after_eq(jiffies, rq->next_balance))
 		raise_softirq(SCHED_SOFTIRQ);
-#ifdef CONFIG_NO_HZ_COMMON
-	if (nohz_kick_needed(rq))
-		nohz_balancer_kick();
-#endif
+
+	nohz_balancer_kick(rq);
 }
 
 static void rq_online_fair(struct rq *rq)
