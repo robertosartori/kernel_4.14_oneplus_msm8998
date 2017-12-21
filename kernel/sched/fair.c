@@ -11884,23 +11884,6 @@ static inline int find_new_ilb(void)
 	return nr_cpu_ids;
 }
 
-static inline void set_cpu_sd_state_busy(void)
-{
-	struct sched_domain *sd;
-	int cpu = smp_processor_id();
-
-	rcu_read_lock();
-	sd = rcu_dereference(per_cpu(sd_llc, cpu));
-
-	if (!sd || !sd->nohz_idle)
-		goto unlock;
-	sd->nohz_idle = 0;
-
-	atomic_inc(&sd->shared->nr_busy_cpus);
-unlock:
-	rcu_read_unlock();
-}
-
 /*
  * Kick a CPU to do the nohz balancing, if it is time for it. We pick the
  * nohz_load_balancer CPU (if there is one) otherwise fallback to any idle
@@ -11957,8 +11940,7 @@ static void nohz_balancer_kick(struct rq *rq)
 	 * We may be recently in ticked or tickless idle mode. At the first
 	 * busy tick after returning from idle, we will update the busy stats.
 	 */
-	set_cpu_sd_state_busy();
-	nohz_balance_exit_idle(cpu);
+	nohz_balance_exit_idle(rq);
 
 	/*
 	 * None are in tickless mode and hence no need for NOHZ idle load
@@ -12022,27 +12004,39 @@ out:
 		kick_ilb(flags);
 }
 
-void nohz_balance_exit_idle(unsigned int cpu)
-{
-	unsigned int flags = atomic_read(nohz_flags(cpu));
-
-	if (unlikely(flags & NOHZ_TICK_STOPPED)) {
-		/*
-		 * Completely isolated CPUs don't ever set, so we must test.
-		 */
-		if (likely(cpumask_test_cpu(cpu, nohz.idle_cpus_mask))) {
-			cpumask_clear_cpu(cpu, nohz.idle_cpus_mask);
-			atomic_dec(&nohz.nr_cpus);
-		}
-
-		atomic_andnot(NOHZ_TICK_STOPPED, nohz_flags(cpu));
-	}
-}
-
-void set_cpu_sd_state_idle(void)
+static void set_cpu_sd_state_busy(int cpu)
 {
 	struct sched_domain *sd;
-	int cpu = smp_processor_id();
+
+	rcu_read_lock();
+	sd = rcu_dereference(per_cpu(sd_llc, cpu));
+
+	if (!sd || !sd->nohz_idle)
+		goto unlock;
+	sd->nohz_idle = 0;
+
+	atomic_inc(&sd->shared->nr_busy_cpus);
+unlock:
+	rcu_read_unlock();
+}
+
+void nohz_balance_exit_idle(struct rq *rq)
+{
+	SCHED_WARN_ON(rq != this_rq());
+
+	if (likely(!rq->nohz_tick_stopped))
+		return;
+
+	rq->nohz_tick_stopped = 0;
+	cpumask_clear_cpu(rq->cpu, nohz.idle_cpus_mask);
+	atomic_dec(&nohz.nr_cpus);
+
+	set_cpu_sd_state_busy(rq->cpu);
+}
+
+static void set_cpu_sd_state_idle(int cpu)
+{
+	struct sched_domain *sd;
 
 	rcu_read_lock();
 	sd = rcu_dereference(per_cpu(sd_llc, cpu));
@@ -12062,6 +12056,10 @@ unlock:
  */
 void nohz_balance_enter_idle(int cpu)
 {
+	struct rq *rq = cpu_rq(cpu);
+
+	SCHED_WARN_ON(cpu != smp_processor_id());
+
 	if (!cpu_active(cpu)) {	
 		/*
 		 * A CPU can be paused while it is idle with it's tick
@@ -12080,18 +12078,21 @@ void nohz_balance_enter_idle(int cpu)
 	if (!is_housekeeping_cpu(cpu))
 		return;
 
-	if (atomic_read(nohz_flags(cpu)) & NOHZ_TICK_STOPPED)
+	if (rq->nohz_tick_stopped)
 		return;
 
 	/*
 	 * If we're a completely isolated CPU, we don't play.
 	 */
-	if (on_null_domain(cpu_rq(cpu)) || cpu_isolated(cpu))
+	if (on_null_domain(rq) || cpu_isolated(cpu))
 		return;
+
+	rq->nohz_tick_stopped = 1;
 
 	cpumask_set_cpu(cpu, nohz.idle_cpus_mask);
 	atomic_inc(&nohz.nr_cpus);
-	atomic_or(NOHZ_TICK_STOPPED, nohz_flags(cpu));
+
+	set_cpu_sd_state_idle(cpu);
 }
 #else
 static inline void nohz_balancer_kick(struct rq *rq) { }
