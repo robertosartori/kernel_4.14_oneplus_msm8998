@@ -11854,6 +11854,7 @@ static inline int find_new_ilb(void)
  */
 static void nohz_balancer_kick(void)
 {
+	unsigned int flags;
 	int ilb_cpu;
 
 	nohz.next_balance++;
@@ -11863,7 +11864,8 @@ static void nohz_balancer_kick(void)
 	if (ilb_cpu >= nr_cpu_ids)
 		return;
 
-	if (test_and_set_bit(NOHZ_BALANCE_KICK, nohz_flags(ilb_cpu)))
+	flags = atomic_fetch_or(NOHZ_BALANCE_KICK, nohz_flags(ilb_cpu));
+	if (flags & NOHZ_BALANCE_KICK)
 		return;
 	/*
 	 * Use smp_send_reschedule() instead of resched_cpu().
@@ -11878,7 +11880,9 @@ static void nohz_balancer_kick(void)
 
 void nohz_balance_exit_idle(unsigned int cpu)
 {
-	if (unlikely(test_bit(NOHZ_TICK_STOPPED, nohz_flags(cpu)))) {
+	unsigned int flags = atomic_read(nohz_flags(cpu));
+
+	if (unlikely(flags & NOHZ_TICK_STOPPED)) {
 		/*
 		 * Completely isolated CPUs don't ever set, so we must test.
 		 */
@@ -11886,7 +11890,8 @@ void nohz_balance_exit_idle(unsigned int cpu)
 			cpumask_clear_cpu(cpu, nohz.idle_cpus_mask);
 			atomic_dec(&nohz.nr_cpus);
 		}
-		clear_bit(NOHZ_TICK_STOPPED, nohz_flags(cpu));
+
+		atomic_andnot(NOHZ_TICK_STOPPED, nohz_flags(cpu));
 	}
 }
 
@@ -11948,7 +11953,7 @@ void nohz_balance_enter_idle(int cpu)
 	if (!is_housekeeping_cpu(cpu))
 		return;
 
-	if (test_bit(NOHZ_TICK_STOPPED, nohz_flags(cpu)))
+	if (atomic_read(nohz_flags(cpu)) & NOHZ_TICK_STOPPED)
 		return;
 
 	/*
@@ -11959,7 +11964,7 @@ void nohz_balance_enter_idle(int cpu)
 
 	cpumask_set_cpu(cpu, nohz.idle_cpus_mask);
 	atomic_inc(&nohz.nr_cpus);
-	set_bit(NOHZ_TICK_STOPPED, nohz_flags(cpu));
+	atomic_or(NOHZ_TICK_STOPPED, nohz_flags(cpu));
 }
 #endif
 
@@ -12111,8 +12116,10 @@ static void nohz_idle_balance(struct rq *this_rq, enum cpu_idle_type idle)
 	int update_next_balance = 0;
 	cpumask_t cpus;
 
-	if (idle != CPU_IDLE ||
-	    !test_bit(NOHZ_BALANCE_KICK, nohz_flags(this_cpu)))
+	if (!(atomic_read(nohz_flags(this_cpu)) & NOHZ_BALANCE_KICK))
+		return;
+
+	if (idle != CPU_IDLE)
 		goto end;
 
 	cpumask_andnot(&cpus, nohz.idle_cpus_mask, cpu_isolated_mask);
@@ -12160,7 +12167,7 @@ static void nohz_idle_balance(struct rq *this_rq, enum cpu_idle_type idle)
 	if (likely(update_next_balance))
 		nohz.next_balance = next_balance;
 end:
-	clear_bit(NOHZ_BALANCE_KICK, nohz_flags(this_cpu));
+	atomic_andnot(NOHZ_BALANCE_KICK, nohz_flags(this_cpu));
 }
 
 /*
