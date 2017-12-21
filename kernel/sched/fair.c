@@ -11864,8 +11864,8 @@ static void nohz_balancer_kick(void)
 	if (ilb_cpu >= nr_cpu_ids)
 		return;
 
-	flags = atomic_fetch_or(NOHZ_BALANCE_KICK, nohz_flags(ilb_cpu));
-	if (flags & NOHZ_BALANCE_KICK)
+	flags = atomic_fetch_or(NOHZ_KICK_MASK, nohz_flags(ilb_cpu));
+	if (flags & NOHZ_KICK_MASK)
 		return;
 	/*
 	 * Use smp_send_reschedule() instead of resched_cpu().
@@ -12003,8 +12003,6 @@ static void rebalance_domains(struct rq *rq, enum cpu_idle_type idle)
 	int need_serialize, need_decay = 0;
 	u64 max_cost = 0;
 
-	update_blocked_averages(cpu);
-
 	rcu_read_lock();
 	for_each_domain(cpu, sd) {
 		/*
@@ -12106,21 +12104,28 @@ out:
  * In CONFIG_NO_HZ_COMMON case, the idle balance kickee will do the
  * rebalancing for all the cpus for whom scheduler ticks are stopped.
  */
-static void nohz_idle_balance(struct rq *this_rq, enum cpu_idle_type idle)
+static bool nohz_idle_balance(struct rq *this_rq, enum cpu_idle_type idle)
 {
-	int this_cpu = this_rq->cpu;
-	struct rq *rq;
-	int balance_cpu;
 	/* Earliest time when we have to do rebalance again */
 	unsigned long next_balance = jiffies + 60*HZ;
 	int update_next_balance = 0;
 	cpumask_t cpus;
+	int this_cpu = this_rq->cpu;
+	unsigned int flags;
+	int balance_cpu;
+	struct rq *rq;
 
-	if (!(atomic_read(nohz_flags(this_cpu)) & NOHZ_BALANCE_KICK))
-		return;
+	if (!(atomic_read(nohz_flags(this_cpu)) & NOHZ_KICK_MASK))
+		return false;
 
-	if (idle != CPU_IDLE)
-		goto end;
+	if (idle != CPU_IDLE) {
+		atomic_andnot(NOHZ_KICK_MASK, nohz_flags(this_cpu));
+		return false;
+	}
+
+	flags = atomic_fetch_andnot(NOHZ_KICK_MASK, nohz_flags(this_cpu));
+
+	SCHED_WARN_ON((flags & NOHZ_KICK_MASK) == NOHZ_BALANCE_KICK);
 
 	cpumask_andnot(&cpus, nohz.idle_cpus_mask, cpu_isolated_mask);
 
@@ -12150,7 +12155,9 @@ static void nohz_idle_balance(struct rq *this_rq, enum cpu_idle_type idle)
 			cpu_load_update_idle(rq);
 			rq_unlock_irq(rq, &rf);
 
-			rebalance_domains(rq, CPU_IDLE);
+			update_blocked_averages(rq->cpu);
+			if (flags & NOHZ_BALANCE_KICK)
+				rebalance_domains(rq, CPU_IDLE);
 		}
 
 		if (time_after(next_balance, rq->next_balance)) {
@@ -12159,6 +12166,10 @@ static void nohz_idle_balance(struct rq *this_rq, enum cpu_idle_type idle)
 		}
 	}
 
+	update_blocked_averages(this_cpu);
+	if (flags & NOHZ_BALANCE_KICK)
+		rebalance_domains(this_rq, CPU_IDLE);
+
 	/*
 	 * next_balance will be updated only when there is a need.
 	 * When the CPU is attached to null domain for ex, it will not be
@@ -12166,8 +12177,8 @@ static void nohz_idle_balance(struct rq *this_rq, enum cpu_idle_type idle)
 	 */
 	if (likely(update_next_balance))
 		nohz.next_balance = next_balance;
-end:
-	atomic_andnot(NOHZ_BALANCE_KICK, nohz_flags(this_cpu));
+
+	return true;
 }
 
 /*
@@ -12264,7 +12275,10 @@ unlock:
 	return kick;
 }
 #else
-static void nohz_idle_balance(struct rq *this_rq, enum cpu_idle_type idle) { }
+static bool nohz_idle_balance(struct rq *this_rq, enum cpu_idle_type idle)
+{
+	return false;
+}
 #endif
 
 /*
@@ -12292,7 +12306,11 @@ static __latent_entropy void run_rebalance_domains(struct softirq_action *h)
 	 * load balance only within the local sched_domain hierarchy
 	 * and abort nohz_idle_balance altogether if we pull some load.
 	 */
-	nohz_idle_balance(this_rq, idle);
+	if (nohz_idle_balance(this_rq, idle))
+		return;
+
+	/* normal load balance */
+	update_blocked_averages(this_rq->cpu);
 	rebalance_domains(this_rq, idle);
 }
 
