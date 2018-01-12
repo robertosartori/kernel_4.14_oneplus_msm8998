@@ -197,6 +197,7 @@ union bpf_attr {
 					 * BPF_F_NUMA_NODE is set).
 					 */
 		__u32		prog_ifindex;	/* ifindex of netdev to prep for */
+		__u32	map_ifindex;	/* ifindex of netdev to create on */
 	};
 
 	struct { /* anonymous struct used by BPF_MAP_*_ELEM commands */
