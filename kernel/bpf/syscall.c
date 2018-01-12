@@ -1130,7 +1130,7 @@ static bool bpf_prog_can_attach(struct bpf_prog *prog,
 				enum bpf_prog_type *attach_type,
 				struct net_device *netdev)
 {
-	struct bpf_dev_offload *offload = prog->aux->offload;
+	struct bpf_prog_offload *offload = prog->aux->offload;
 
 	if (prog->type != *attach_type)
 		return false;
