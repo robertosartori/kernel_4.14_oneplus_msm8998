@@ -9,6 +9,7 @@
  */
 
 #define SCHED_CPUFREQ_IOWAIT	(1U << 0)
+#define SCHED_CPUFREQ_MIGRATION	(1U << 1)
 
 /* WALT flags */
 #define SCHED_CPUFREQ_INTERCLUSTER_MIG (1U << 3)
