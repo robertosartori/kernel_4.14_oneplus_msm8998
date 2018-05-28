@@ -7482,6 +7482,7 @@ T:	git git://gitorious.org/linux-kconfig/linux-kconfig
 S:	Maintained
 F:	Documentation/kbuild/kconfig-language.txt
 F:	scripts/kconfig/
+F:	scripts/Kconfig.include
 
 KDUMP
 M:	Dave Young <dyoung@redhat.com>
