@@ -214,9 +214,6 @@ void menu_add_option(int token, char *arg)
 		else if (sym_defconfig_list != current_entry->sym)
 			zconf_error("trying to redefine defconfig symbol");
 		break;
-	case T_OPT_ENV:
-		prop_add_env(arg);
-		break;
 	case T_OPT_ALLNOCONFIG_Y:
 		current_entry->sym->flags |= SYMBOL_ALLNOCONFIG_Y;
 		break;
