@@ -733,6 +733,11 @@ union bpf_attr {
  *		the shared data.
  *	Return
  *		Pointer to the local storage area.
+ *
+ * u64 bpf_get_current_cgroup_id(void)
+ * 	Return
+ * 		A 64-bit integer containing the current cgroup id based
+ * 		on the cgroup within which the current task is running.
  */
 #define __BPF_FUNC_MAPPER(FN)		\
 	FN(unspec),			\
@@ -817,7 +822,7 @@ union bpf_attr {
 	FN(rc_repeat), /* tbi*/                 \
 	FN(rc_keydown), /* tbi*/                \
 	FN(skb_cgroup_id), /* tbi*/             \
-	FN(get_current_cgroup_id), /* tbi*/     \
+	FN(get_current_cgroup_id),              \
 	FN(get_local_storage),                  \
 	FN(sk_select_reuseport), /* tbi*/       \
 	FN(skb_ancestor_cgroup_id), /* tbi*/    \
