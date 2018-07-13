@@ -96,7 +96,7 @@ static int compute_effective_progs(struct cgroup *cgrp,
 				  enum bpf_attach_type type,
 				  struct bpf_prog_array __rcu **array)
 {
-	struct bpf_prog_array __rcu *progs;
+	struct bpf_prog_array *progs;
 	struct bpf_prog_list *pl;
 	struct cgroup *p = cgrp;
 	int cnt = 0;
@@ -127,7 +127,7 @@ static int compute_effective_progs(struct cgroup *cgrp,
 		}
 	} while ((p = cgroup_parent(p)));
 
-	*array = progs;
+	rcu_assign_pointer(*array, progs);
 	return 0;
 }
 
