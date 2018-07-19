@@ -980,6 +980,7 @@ struct rq {
 	struct sched_avg	avg_rt;
 	struct sched_avg	avg_dl;
 #if defined(CONFIG_IRQ_TIME_ACCOUNTING) || defined(CONFIG_PARAVIRT_TIME_ACCOUNTING)
+#define HAVE_SCHED_AVG_IRQ
 	struct sched_avg	avg_irq;
 #endif
 #ifdef CONFIG_SCHED_THERMAL_PRESSURE
@@ -3289,11 +3290,22 @@ static inline unsigned long cpu_util_rt(struct rq *rq)
 {
 	return READ_ONCE(rq->avg_rt.util_avg);
 }
+#endif
 
-#if defined(CONFIG_IRQ_TIME_ACCOUNTING) || defined(CONFIG_PARAVIRT_TIME_ACCOUNTING)
+#ifdef HAVE_SCHED_AVG_IRQ
 static inline unsigned long cpu_util_irq(struct rq *rq)
 {
 	return rq->avg_irq.util_avg;
+}
+
+static inline
+unsigned long scale_irq_capacity(unsigned long util, unsigned long irq, unsigned long max)
+{
+	util *= (max - irq);
+	util /= max;
+
+	return util;
+
 }
 #else
 static inline unsigned long cpu_util_irq(struct rq *rq)
@@ -3301,7 +3313,11 @@ static inline unsigned long cpu_util_irq(struct rq *rq)
 	return 0;
 }
 
-#endif
+static inline
+unsigned long scale_irq_capacity(unsigned long util, unsigned long irq, unsigned long max)
+{
+	return util;
+}
 #endif
 
 static inline void set_preferred_cluster(struct related_thread_group *grp) { }
