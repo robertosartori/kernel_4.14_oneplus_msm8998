@@ -49,7 +49,7 @@ static int sched_domain_debug_one(struct sched_domain *sd, int cpu, int level,
 		printk(KERN_ERR "ERROR: domain->span does not contain "
 				"CPU%d\n", cpu);
 	}
-	if (!cpumask_test_cpu(cpu, sched_group_span(group))) {
+	if (group && !cpumask_test_cpu(cpu, sched_group_span(group))) {
 		printk(KERN_ERR "ERROR: domain->groups does not contain"
 				" CPU%d\n", cpu);
 	}
