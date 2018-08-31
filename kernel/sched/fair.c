@@ -9719,6 +9719,7 @@ static void update_blocked_averages(int cpu)
 {
 	struct rq *rq = cpu_rq(cpu);
 	struct cfs_rq *cfs_rq;
+	const struct sched_class *curr_class;
 	struct rq_flags rf;
 	unsigned long thermal_pressure;
 	bool done = true;
@@ -9752,8 +9753,9 @@ static void update_blocked_averages(int cpu)
 
 	thermal_pressure = arch_scale_thermal_pressure(cpu_of(rq));
 
-	update_rt_rq_load_avg(rq_clock_pelt(rq), rq, 0);
-	update_dl_rq_load_avg(rq_clock_pelt(rq), rq, 0);
+	curr_class = rq->curr->sched_class;
+	update_rt_rq_load_avg(rq_clock_pelt(rq), rq, curr_class == &rt_sched_class);
+	update_dl_rq_load_avg(rq_clock_pelt(rq), rq, curr_class == &dl_sched_class);
 	update_thermal_load_avg(rq_clock_thermal(rq), rq, thermal_pressure);
 	update_irq_load_avg(rq, 0);
 	/* Don't need periodic decay once load/util_avg are null */
@@ -9819,13 +9821,16 @@ static inline void update_blocked_averages(int cpu)
 {
 	struct rq *rq = cpu_rq(cpu);
 	struct cfs_rq *cfs_rq = &rq->cfs;
+	const struct sched_class *curr_class;
 	struct rq_flags rf;
 
 	rq_lock_irqsave(rq, &rf);
 	update_rq_clock(rq);
 	update_cfs_rq_load_avg(cfs_rq_clock_pelt(cfs_rq), cfs_rq);
-	update_rt_rq_load_avg(rq_clock_pelt(rq), rq, 0);
-	update_dl_rq_load_avg(rq_clock_pelt(rq), rq, 0);
+
+	curr_class = rq->curr->sched_class;
+	update_rt_rq_load_avg(rq_clock_pelt(rq), rq, curr_class == &rt_sched_class);
+	update_dl_rq_load_avg(rq_clock_pelt(rq), rq, curr_class == &dl_sched_class);
 	update_irq_load_avg(rq, 0);
 #ifdef CONFIG_NO_HZ_COMMON
 	rq->last_blocked_load_update_tick = jiffies;
