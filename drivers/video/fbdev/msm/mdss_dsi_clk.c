@@ -172,6 +172,20 @@ static int dsi_link_hs_clk_set_rate(
 	if (ctrl->panel_data.panel_info.cont_splash_enabled)
 		return 0;
 
+	/*
+	 * MSM8998 on common clk framework requires the mmcc clocks
+	 * to get fully reconfigured after suspend due to an unknown
+	 * bug.
+	 * This hack will be fully removed as soon as the bug on this
+	 * SoC will get solved.
+	 */
+	if (ctrl->platform_clk_reconf_hack) {
+		rc = clk_set_rate(link_hs_clks->byte_clk,
+					link_hs_clks->byte_clk_rate / 2);
+		rc = clk_set_rate(link_hs_clks->pixel_clk,
+					link_hs_clks->pix_clk_rate / 2);
+	}
+
 	rc = clk_set_rate(link_hs_clks->byte_clk, link_hs_clks->byte_clk_rate);
 	if (rc) {
 		pr_err("clk_set_rate failed for byte_clk rc = %d\n", rc);
