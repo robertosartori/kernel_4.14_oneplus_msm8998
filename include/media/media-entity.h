@@ -261,6 +261,7 @@ enum media_entity_type {
  */
 struct media_entity {
 	struct media_gobj graph_obj;	/* must be first field in struct */
+	u32 id;
 	const char *name;
 	enum media_entity_type obj_type;
 	u32 function;
@@ -336,7 +337,7 @@ struct media_intf_devnode {
  */
 static inline u32 media_entity_id(struct media_entity *entity)
 {
-	return entity->graph_obj.id;
+	return entity->id;
 }
 
 /**
