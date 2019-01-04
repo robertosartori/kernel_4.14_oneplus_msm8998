@@ -972,6 +972,41 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	}
 }
 
+int mdss_dsi_panel_set_hbm_mode(struct mdss_dsi_ctrl_pdata *ctrl, int level)
+{
+	struct dsi_panel_cmds *hbm_on_cmds,*hbm_off_cmds;
+
+	mutex_lock(&ctrl->panel_mode_lock);
+	if (!ctrl->is_panel_on){
+		mutex_unlock(&ctrl->panel_mode_lock);
+		return 0;
+	}
+	hbm_on_cmds = &ctrl->hbm_on_cmds;
+	hbm_off_cmds = &ctrl->hbm_off_cmds;
+	if (level){
+		if (hbm_on_cmds->cmd_cnt){
+			mdss_dsi_panel_cmds_send(ctrl, hbm_on_cmds, CMD_REQ_COMMIT);
+			pr_err("HBM Mode On.\n");
+		} else{
+			pr_err("This Panel not support HBM Mode On.");
+		}
+	} else{
+		if (hbm_off_cmds->cmd_cnt){
+			mdss_dsi_panel_cmds_send(ctrl, hbm_off_cmds, CMD_REQ_COMMIT);
+			pr_err("HBM Mode Off.\n");
+		} else{
+			pr_err("This Panel not support HBM Mode Off.");
+		}
+	}
+	mutex_unlock(&ctrl->panel_mode_lock);
+	return 0;
+}
+
+int mdss_dsi_panel_get_hbm_mode(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+    return ctrl->hbm_mode;
+}
+
 int mdss_dsi_panel_set_srgb_mode(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 {
 	struct dsi_panel_cmds *srgb_on_cmds;
@@ -3365,6 +3400,12 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->adaption_mode_off_cmds,
 		"qcom,mdss-dsi-panel-adaption-mode-off-command",
 		"qcom,mdss-dsi-adaption-mode-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->hbm_on_cmds,
+		"qcom,mdss-dsi-panel-hbm-on-command",
+		"qcom,mdss-dsi-hbm-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->hbm_off_cmds,
+		"qcom,mdss-dsi-panel-hbm-off-command",
+		"qcom,mdss-dsi-hbm-command-state");
 
 	if (pinfo->is_dba_panel) {
 		bridge_chip_name = of_get_property(np,
