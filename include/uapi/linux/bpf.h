@@ -870,8 +870,8 @@ union bpf_attr {
 	FN(msg_push_data), /* tbi*/             \
 	FN(msg_pop_data), /* tbi*/              \
 	FN(rc_pointer_rel), /* tbi*/            \
-	FN(spin_lock), /* tbi*/                 \
-	FN(spin_unlock), /* tbi*/               \
+	FN(spin_lock),                          \
+	FN(spin_unlock),                        \
 	FN(sk_fullsock), /* tbi*/               \
 	FN(tcp_sock), /* tbi*/                  \
 	FN(skb_ecn_set_ce), /* tbi*/            \
@@ -1276,6 +1276,10 @@ struct bpf_line_info {
 	__u32	file_name_off;
 	__u32	line_off;
 	__u32	line_col;
+};
+
+struct bpf_spin_lock {
+	__u32	val;
 };
 
 #endif /* _UAPI__LINUX_BPF_H__ */
