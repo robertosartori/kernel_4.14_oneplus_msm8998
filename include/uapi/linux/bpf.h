@@ -137,6 +137,7 @@ enum bpf_prog_type {
 	BPF_PROG_TYPE_RAW_TRACEPOINT,
 	BPF_PROG_TYPE_CGROUP_SOCK_ADDR,
 	BPF_PROG_TYPE_FLOW_DISSECTOR,
+	BPF_PROG_TYPE_CGROUP_SYSCTL,
 };
 
 enum bpf_attach_type {
@@ -157,6 +158,7 @@ enum bpf_attach_type {
 	BPF_CGROUP_UDP4_SENDMSG,
 	BPF_CGROUP_UDP6_SENDMSG,
 	BPF_FLOW_DISSECTOR,
+	BPF_CGROUP_SYSCTL,
 	__MAX_BPF_ATTACH_TYPE
 };
 
@@ -1150,6 +1152,12 @@ struct bpf_flow_keys {
 			__u32	ipv6_dst[4];	/* in6_addr; network order */
 		};
 	};
+};
+
+struct bpf_sysctl {
+	__u32	write;		/* Sysctl is being read (= 0) or written (= 1).
+				 * Allows 1,2,4-byte read, but no write.
+				 */
 };
 
 #endif /* _UAPI__LINUX_BPF_H__ */
