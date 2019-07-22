@@ -3146,6 +3146,9 @@ extern int ext4_mpage_readpages(struct address_space *mapping,
 				struct list_head *pages, struct page *page,
 				unsigned nr_pages);
 
+extern int __init ext4_init_post_read_processing(void);
+extern void ext4_exit_post_read_processing(void);
+
 /* symlink.c */
 extern const struct inode_operations ext4_encrypted_symlink_inode_operations;
 extern const struct inode_operations ext4_symlink_inode_operations;
