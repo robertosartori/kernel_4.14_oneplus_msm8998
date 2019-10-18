@@ -123,6 +123,8 @@ static ssize_t features_show(struct f2fs_attr *a,
 	if (f2fs_sb_has_verity(sb))
 		len += snprintf(buf + len, PAGE_SIZE - len, "%s%s",
 				len ? ", " : "", "verity");
+	len += snprintf(buf + len, PAGE_SIZE - len, "%s%s",
+				len ? ", " : "", "pin_file");
 	len += snprintf(buf + len, PAGE_SIZE - len, "\n");
 	return len;
 }

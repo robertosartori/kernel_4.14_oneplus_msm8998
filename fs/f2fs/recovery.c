@@ -655,7 +655,7 @@ next:
 		f2fs_put_page(page, 1);
 	}
 	if (!err)
-		allocate_new_segments(sbi);
+		allocate_new_segments(sbi, NO_CHECK_TYPE);
 	return err;
 }
 
