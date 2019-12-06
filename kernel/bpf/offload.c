@@ -211,12 +211,12 @@ int bpf_prog_offload_info_fill(struct bpf_prog_info *info,
 	};
 	struct inode *ns_inode;
 	struct path ns_path;
-	void *res;
+	int res;
 	res = ns_get_path_cb(&ns_path, bpf_prog_offload_info_fill_ns, &args);
-	if (IS_ERR(res)) {
+	if (res) {
 		if (!info->ifindex)
 			return -ENODEV;
-		return PTR_ERR(res);
+		return res;
 	}
 	ns_inode = ns_path.dentry->d_inode;
 	info->netns_dev = new_encode_dev(ns_inode->i_sb->s_dev);
@@ -368,12 +368,12 @@ int bpf_map_offload_info_fill(struct bpf_map_info *info, struct bpf_map *map)
 	};
 	struct inode *ns_inode;
 	struct path ns_path;
-	void *res;
+	int res;
 	res = ns_get_path_cb(&ns_path, bpf_map_offload_info_fill_ns, &args);
-	if (IS_ERR(res)) {
+	if (res) {
 		if (!info->ifindex)
 			return -ENODEV;
-		return PTR_ERR(res);
+		return res;
 	}
 	ns_inode = ns_path.dentry->d_inode;
 	info->netns_dev = new_encode_dev(ns_inode->i_sb->s_dev);
