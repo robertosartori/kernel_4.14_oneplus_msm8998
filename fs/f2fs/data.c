@@ -1524,7 +1524,7 @@ out:
  * This function was originally taken from fs/mpage.c, and customized for f2fs.
  * Major change was from block_size == page_size in f2fs by default.
  */
-static int f2fs_mpage_readpages(struct address_space *mapping,
+int f2fs_mpage_readpages(struct address_space *mapping,
 			struct list_head *pages, struct page *page,
 			unsigned nr_pages)
 {
