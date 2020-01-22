@@ -70,6 +70,8 @@
 #include "ebitmap.h"
 #include "audit.h"
 
+int selinux_android_netlink_route;
+
 /* Policy capability names */
 char *selinux_policycap_names[__POLICYDB_CAPABILITY_MAX] = {
 	"network_peer_controls",
@@ -2009,6 +2011,9 @@ static void security_load_policycaps(void)
 					  POLICYDB_CAPABILITY_EXTSOCKCLASS);
 	selinux_policycap_alwaysnetwork = ebitmap_get_bit(&policydb.policycaps,
 						  POLICYDB_CAPABILITY_ALWAYSNETWORK);
+
+       selinux_android_netlink_route = policydb.android_netlink_route;
+
 	selinux_policycap_cgroupseclabel =
 		ebitmap_get_bit(&policydb.policycaps,
 				POLICYDB_CAPABILITY_CGROUPSECLABEL);
@@ -2026,6 +2031,7 @@ static void security_load_policycaps(void)
 			pr_info("SELinux:  unknown policy capability %u\n",
 				i);
 	}
+       selinux_nlmsg_init();
 }
 
 static int security_preserve_bools(struct policydb *p);
