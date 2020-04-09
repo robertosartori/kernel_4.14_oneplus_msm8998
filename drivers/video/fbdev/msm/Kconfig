@@ -178,4 +178,11 @@ config MDSS_BROKEN_BOOTLOADER_HANDOFF
 	bootloader.
 	In this case, the continuos splash logo feature will not work.
 
+config FLICKER_FREE
+	bool "Enable flicker free driver"
+	depends on FB_MSM_MDSS
+	---help---
+	The flicker free provides flicker free function without change
+	panel hardware brightness to avoid PWM flicker on OLED devices.
+
 endif
