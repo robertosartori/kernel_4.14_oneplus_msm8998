@@ -134,7 +134,7 @@ CONFIG_LEAK_DETECTION := n
 
 ifeq ($(CONFIG_DEBUG_FS), y)
        CONFIG_WLAN_DEBUGFS := n
-       CONFIG_WLAN_POWER_DEBUGFS := n
+       CONFIG_WLAN_POWER_DEBUG := n
 endif
 
 # other features
