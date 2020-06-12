@@ -46,6 +46,7 @@
 
 #include "ion.h"
 #include "ion_secure_util.h"
+#include "compat_ion.h"
 
 static struct ion_device *internal_dev;
 
@@ -1201,7 +1202,11 @@ static const struct file_operations ion_fops = {
 	.owner          = THIS_MODULE,
 	.unlocked_ioctl = ion_ioctl,
 #ifdef CONFIG_COMPAT
+#ifdef CONFIG_ION_LEGACY
+	.compat_ioctl	= compat_ion_ioctl,
+#else
 	.compat_ioctl	= ion_ioctl,
+#endif
 #endif
 };
 
