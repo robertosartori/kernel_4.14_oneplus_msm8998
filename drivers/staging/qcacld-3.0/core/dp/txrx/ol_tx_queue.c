@@ -1754,7 +1754,7 @@ void ol_txrx_vdev_unpause(struct cdp_vdev *pvdev, uint32_t reason)
 			vdev->ll_pause.is_q_paused = false;
 			vdev->ll_pause.q_unpause_cnt++;
 			qdf_spin_unlock_bh(&vdev->ll_pause.mutex);
-			ol_tx_vdev_ll_pause_queue_send((unsigned long) vdev);
+			ol_tx_vdev_ll_pause_queue_send(vdev);
 		} else {
 			qdf_spin_unlock_bh(&vdev->ll_pause.mutex);
 		}
