@@ -87,6 +87,8 @@ struct in_addr {
 };
 #endif
 
+typedef uint32_t in_addr_t;
+
 #define IP_TOS		1
 #define IP_TTL		2
 #define IP_HDRINCL	3
