@@ -1,4 +1,5 @@
-/* Copyright (c) 2008-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1357,7 +1358,7 @@ kgsl_sharedmem_find(struct kgsl_process_private *private, uint64_t gpuaddr)
 	if (!private)
 		return NULL;
 
-	if (!kgsl_mmu_gpuaddr_in_range(private->pagetable, gpuaddr))
+	if (!kgsl_mmu_gpuaddr_in_range(private->pagetable, gpuaddr, 0))
 		return NULL;
 
 	spin_lock(&private->mem_lock);
@@ -2281,14 +2282,6 @@ long kgsl_ioctl_cmdstream_freememontimestamp_ctxtid(
 	return ret;
 }
 
-static inline int _check_region(unsigned long start, unsigned long size,
-				uint64_t len)
-{
-	uint64_t end = ((uint64_t) start) + size;
-
-	return (end > len);
-}
-
 static int check_vma_flags(struct vm_area_struct *vma,
 		unsigned int flags)
 {
@@ -2303,23 +2296,27 @@ static int check_vma_flags(struct vm_area_struct *vma,
 	return -EFAULT;
 }
 
-static int check_vma(struct vm_area_struct *vma, struct file *vmfile,
-		struct kgsl_memdesc *memdesc)
+static int check_vma(unsigned long hostptr, u64 size)
 {
-	if (vma == NULL || vma->vm_file != vmfile)
-		return -EINVAL;
+	struct vm_area_struct *vma;
+	unsigned long cur = hostptr;
 
-	/* userspace may not know the size, in which case use the whole vma */
-	if (memdesc->size == 0)
-		memdesc->size = vma->vm_end - vma->vm_start;
-	/* range checking */
-	if (vma->vm_start != memdesc->useraddr ||
-		(memdesc->useraddr + memdesc->size) != vma->vm_end)
-		return -EINVAL;
-	return check_vma_flags(vma, memdesc->flags);
+	while (cur < (hostptr + size)) {
+		vma = find_vma(current->mm, cur);
+		if (!vma)
+			return false;
+
+		/* Don't remap memory that we already own */
+		if (vma->vm_file && vma->vm_file->f_op == &kgsl_fops)
+			return false;
+
+		cur = vma->vm_end;
+	}
+
+	return true;
 }
 
-static int memdesc_sg_virt(struct kgsl_memdesc *memdesc, struct file *vmfile)
+static int memdesc_sg_virt(struct kgsl_memdesc *memdesc)
 {
 	int ret = 0;
 	long npages = 0, i;
@@ -2342,18 +2339,16 @@ static int memdesc_sg_virt(struct kgsl_memdesc *memdesc, struct file *vmfile)
 	}
 
 	down_read(&current->mm->mmap_sem);
-	/* If we have vmfile, make sure we map the correct vma and map it all */
-	if (vmfile != NULL)
-		ret = check_vma(find_vma(current->mm, memdesc->useraddr),
-				vmfile, memdesc);
-
-	if (ret == 0) {
-		npages = get_user_pages(memdesc->useraddr,
-					sglen, write, pages, NULL);
-		ret = (npages < 0) ? (int)npages : 0;
+	if (!check_vma(memdesc->useraddr, memdesc->size)) {
+		up_read(&current->mm->mmap_sem);
+		ret = -EFAULT;
+		goto out;
 	}
+
+	npages = get_user_pages(memdesc->useraddr, sglen, write, pages, NULL);
 	up_read(&current->mm->mmap_sem);
 
+	ret = (npages < 0) ? (int)npages : 0;
 	if (ret)
 		goto out;
 
@@ -2364,6 +2359,15 @@ static int memdesc_sg_virt(struct kgsl_memdesc *memdesc, struct file *vmfile)
 
 	ret = sg_alloc_table_from_pages(memdesc->sgt, pages, npages,
 					0, memdesc->size, GFP_KERNEL);
+
+	if (ret)
+		goto out;
+
+	ret = kgsl_cache_range_op(memdesc, 0, memdesc->size,
+			KGSL_CACHE_OP_FLUSH);
+
+	if (ret)
+		sg_free_table(memdesc->sgt);
 out:
 	if (ret) {
 		for (i = 0; i < npages; i++)
@@ -2404,7 +2408,7 @@ static int kgsl_setup_anon_useraddr(struct kgsl_pagetable *pagetable,
 		entry->memdesc.gpuaddr = (uint64_t)  entry->memdesc.useraddr;
 	}
 
-	return memdesc_sg_virt(&entry->memdesc, NULL);
+	return memdesc_sg_virt(&entry->memdesc);
 }
 
 #ifdef CONFIG_DMA_SHARED_BUFFER
@@ -2471,10 +2475,27 @@ static int kgsl_setup_dmabuf_useraddr(struct kgsl_device *device,
 			return -EFAULT;
 		}
 
-		/* Look for the fd that matches this the vma file */
+		/* Look for the fd that matches this vma file */
 		fd = iterate_fd(current->files, 0, match_file, vma->vm_file);
-		if (fd != 0)
+		if (fd) {
 			dmabuf = dma_buf_get(fd - 1);
+			if (IS_ERR(dmabuf)) {
+				up_read(&current->mm->mmap_sem);
+				return PTR_ERR(dmabuf);
+			}
+			/*
+			 * It is possible that the fd obtained from iterate_fd
+			 * was closed before passing the fd to dma_buf_get().
+			 * Hence dmabuf returned by dma_buf_get() could be
+			 * different from vma->vm_file->private_data. Return
+			 * failure if this happens.
+			 */
+			if (dmabuf != vma->vm_file->private_data) {
+				dma_buf_put(dmabuf);
+				up_read(&current->mm->mmap_sem);
+				return -EBADF;
+			}
+		}
 	}
 
 	if (IS_ERR_OR_NULL(dmabuf)) {
