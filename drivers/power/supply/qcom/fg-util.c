@@ -702,7 +702,11 @@ static inline bool is_sec_access(struct fg_dev *fg, int addr)
 	if (fg->version != GEN3_FG)
 		return false;
 
+#ifdef CONFIG_ARCH_MSM8998
+	return ((addr & 0x00FF) > 0xD0);
+#else
 	return ((addr & 0x00FF) > 0xB8);
+#endif
 }
 
 int fg_write(struct fg_dev *fg, int addr, u8 *val, int len)
