@@ -55,8 +55,10 @@ dtb-$(CONFIG_MACH_SONY_LILAC)		+= msm8998-v2-yoshino-lilac-sde_generic.dtb
 dtb-$(CONFIG_MACH_SONY_LILAC)		+= msm8998-v2.1-yoshino-lilac-sde_generic.dtb
 dtb-$(CONFIG_MACH_SONY_MAPLE)		+= msm8998-v2-yoshino-maple-sde_generic.dtb
 dtb-$(CONFIG_MACH_SONY_MAPLE)		+= msm8998-v2.1-yoshino-maple-sde_generic.dtb
-dtb-$(CONFIG_MACH_SONY_POPLAR)		+= msm8998-v2-yoshino-poplar-sde_generic.dtb
-dtb-$(CONFIG_MACH_SONY_POPLAR)		+= msm8998-v2.1-yoshino-poplar-sde_generic.dtb
+dtb-$(CONFIG_ARCH_MSM8998) += cheeseburger-v2.1-dvt1.dtb
+dtb-$(CONFIG_ARCH_MSM8998) += cheeseburger-v2.1-pvt.dtb
+dtb-$(CONFIG_ARCH_MSM8998) += cheeseburger-v2.1-pvt1.dtb
+dtb-$(CONFIG_ARCH_MSM8998) += cheeseburger-v2.1-backup.dtb
 
 # MSM8996 - SDE
 dtb-$(CONFIG_MACH_SONY_DORA)		+= msm8996-v3.0-pmi8996-tone-dora-sde_generic.dtb
