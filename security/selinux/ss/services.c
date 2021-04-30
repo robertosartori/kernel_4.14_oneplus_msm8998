@@ -71,6 +71,7 @@
 #include "audit.h"
 
 int selinux_android_netlink_route;
+int selinux_android_netlink_getneigh;
 
 /* Policy capability names */
 char *selinux_policycap_names[__POLICYDB_CAPABILITY_MAX] = {
@@ -2013,7 +2014,7 @@ static void security_load_policycaps(void)
 						  POLICYDB_CAPABILITY_ALWAYSNETWORK);
 
        selinux_android_netlink_route = policydb.android_netlink_route;
-
+	selinux_android_netlink_getneigh = policydb.android_netlink_getneigh;
 	selinux_policycap_cgroupseclabel =
 		ebitmap_get_bit(&policydb.policycaps,
 				POLICYDB_CAPABILITY_CGROUPSECLABEL);
