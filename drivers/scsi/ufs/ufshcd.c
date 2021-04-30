@@ -445,17 +445,6 @@ static struct ufs_dev_fix ufs_fixups[] = {
 	UFS_FIX(UFS_VENDOR_SKHYNIX, "hC8HL1",
 		UFS_DEVICE_QUIRK_HS_G1_TO_HS_G3_SWITCH),
 
-#if defined(UFS_TARGET_SONY_PLATFORM) || 1
-	UFS_FIX(UFS_VENDOR_SKHYNIX, UFS_ANY_MODEL,
-		UFS_DEVICE_QUIRK_EXTEND_SYNC_LENGTH),
-	UFS_FIX_REVISION(UFS_VENDOR_SKHYNIX, UFS_MODEL_HYNIX_32GB,
-		UFS_REVISION_HYNIX, UFS_DEVICE_QUIRK_NO_PURGE),
-	UFS_FIX_REVISION(UFS_VENDOR_SKHYNIX, UFS_MODEL_HYNIX_64GB,
-		UFS_REVISION_HYNIX, UFS_DEVICE_QUIRK_NO_PURGE),
-	UFS_FIX_REVISION(UFS_VENDOR_SAMSUNG, UFS_MODEL_SAMSUNG_64GB,
-		UFS_REVISION_SAMSUNG, UFS_DEVICE_QUIRK_NO_PURGE),
-#endif
-
 	END_FIX
 };
 
@@ -8407,14 +8396,6 @@ static void ufs_fixup_device_setup(struct ufs_hba *hba,
 				   struct ufs_dev_desc *dev_desc)
 {
 	struct ufs_dev_fix *f;
-
-	dev_info(hba->dev, "%s : vid=%04x, model=%s, spec ver=%04x , "
-		"fw ver=%s\n", __func__, hba->dev_info.w_manufacturer_id,
-		 dev_desc->model, hba->dev_info.w_spec_version,
-		 dev_desc->fw_revision);
-
-	if (hba->dev_info.w_spec_version < UFS_PURGE_SPEC_VER)
-	    hba->dev_info.quirks |= UFS_DEVICE_QUIRK_NO_PURGE;
 
 	for (f = ufs_fixups; f->quirk; f++) {
 		if ((f->w_manufacturer_id == dev_desc->wmanufacturerid ||
