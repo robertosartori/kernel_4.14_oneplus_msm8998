@@ -980,3 +980,9 @@
 	pinctrl-0 = <&uart_console_active>;
 	status = "okay";
 };
+
+&soc {
+	restart@10ac000 {
+		qcom,force-warm-reboot;
+	};
+};
