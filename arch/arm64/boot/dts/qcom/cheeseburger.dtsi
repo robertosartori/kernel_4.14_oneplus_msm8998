@@ -12,6 +12,9 @@
 
 #include "pxlw-iris-settings.dtsi"
 
+/* Include thermal */
+#include "msm8998-oneplus-common-thermal.dtsi"
+
 /* Disable SMP2P Remote Debug for production */
 #include "msm-rdbg-disable.dtsi"
 
@@ -855,6 +858,7 @@
 
 /* External Thermistors */
 &pm8998_vadc {
+	#thermal-sensor-cells = <1>;
 	chan@4e {
 		label = "ufs_therm";
 		reg = <0x4e>;
