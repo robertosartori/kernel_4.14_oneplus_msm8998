@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, 2016-2017 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, 2016-2017, 2020,  The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -21,7 +21,6 @@
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
 #include <linux/usb/usbpd.h>
-//#include <linux/switch.h>
 
 #include "mdss_hdmi_util.h"
 #include "mdss_hdmi_edid.h"
@@ -549,8 +548,8 @@ static inline char *mdss_dp_aux_transaction_to_string(u32 transaction)
 
 struct mdss_dp_drv_pdata {
 	/* device driver */
-	int (*on) (struct mdss_panel_data *pdata);
-	int (*off) (struct mdss_panel_data *pdata);
+	int (*on)(struct mdss_panel_data *pdata);
+	int (*off)(struct mdss_panel_data *pdata);
 	struct platform_device *pdev;
 	struct platform_device *ext_pdev;
 
@@ -636,12 +635,14 @@ struct mdss_dp_drv_pdata {
 	struct completion aux_comp;
 	struct completion idle_comp;
 	struct completion video_comp;
+	struct completion audio_comp;
 	struct completion notification_comp;
 	struct mutex aux_mutex;
 	struct mutex train_mutex;
 	struct mutex attention_lock;
 	struct mutex hdcp_mutex;
 	bool cable_connected;
+	bool audio_en;
 	u32 s3d_mode;
 	u32 aux_cmd_busy;
 	u32 aux_cmd_i2c;
@@ -674,7 +675,7 @@ struct mdss_dp_drv_pdata {
 	struct workqueue_struct *workq;
 	struct delayed_work hdcp_cb_work;
 	spinlock_t lock;
-	//struct switch_dev sdev;
+	/* struct switch_dev sdev; BALDEV */
 	struct kobject *kobj;
 	u32 max_pclk_khz;
 	u32 vic;
@@ -682,7 +683,8 @@ struct mdss_dp_drv_pdata {
 	u16 dpcd_version;
 	int fb_node;
 	int hdcp_status;
-
+	void *audio_data;
+	bool hpd_notify_state;
 	struct dpcd_test_request test_data;
 	struct dpcd_sink_count sink_count;
 	struct dpcd_sink_count prev_sink_count;

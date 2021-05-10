@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -154,7 +154,6 @@ int mdss_mdp_wfd_setup(struct mdss_mdp_wfd *wfd,
 	struct mdss_mdp_writeback *wb = NULL;
 	struct mdss_mdp_format_params *fmt = NULL;
 	int ret = 0;
-	int mixer_type = MDSS_MDP_MIXER_TYPE_INTF;
 	u32 width, height, max_mixer_width;
 
 	if (!ctl)
@@ -220,16 +219,12 @@ int mdss_mdp_wfd_setup(struct mdss_mdp_wfd *wfd,
 		ctl->csc_type = MDSS_MDP_CSC_RGB2RGB;
 	}
 
-	if (ctl->mdata->wfd_mode == MDSS_MDP_WFD_INTF_NO_DSPP)
-		mixer_type = MDSS_MDP_MIXER_TYPE_INTF_NO_DSPP;
-
-	if ((ctl->mdata->wfd_mode == MDSS_MDP_WFD_INTERFACE) ||
-	    (ctl->mdata->wfd_mode == MDSS_MDP_WFD_INTF_NO_DSPP)) {
+	if (ctl->mdata->wfd_mode == MDSS_MDP_WFD_INTERFACE) {
 		ctl->mixer_left = mdss_mdp_mixer_alloc(ctl,
-			mixer_type, (width > max_mixer_width), 0);
+			MDSS_MDP_MIXER_TYPE_INTF, (width > max_mixer_width), 0);
 		if (width > max_mixer_width) {
 			ctl->mixer_right = mdss_mdp_mixer_alloc(ctl,
-				mixer_type, true, 0);
+				MDSS_MDP_MIXER_TYPE_INTF, true, 0);
 			ctl->mfd->split_mode = MDP_DUAL_LM_SINGLE_DISPLAY;
 			width = width / 2;
 		} else {
@@ -257,7 +252,7 @@ int mdss_mdp_wfd_setup(struct mdss_mdp_wfd *wfd,
 		goto wfd_setup_error;
 	}
 
-	if (ctl->mixer_left->type != MDSS_MDP_MIXER_TYPE_WRITEBACK ||
+	if (ctl->mixer_left->type == MDSS_MDP_MIXER_TYPE_INTF ||
 			ctl->mdata->wfd_mode == MDSS_MDP_WFD_DEDICATED) {
 		ctl->opmode = MDSS_MDP_CTL_OP_WFD_MODE;
 	} else {
@@ -360,10 +355,8 @@ struct mdss_mdp_wb_data *mdss_mdp_wfd_add_data(
 	}
 
 	wfd_data = kzalloc(sizeof(struct mdss_mdp_wb_data), GFP_KERNEL);
-	if (!wfd_data) {
-		pr_err("fail to allocate wfd data\n");
+	if (!wfd_data)
 		return ERR_PTR(-ENOMEM);
-	}
 
 	wfd_data->layer = *layer;
 	ret = mdss_mdp_wb_import_data(wfd->device, wfd_data);
@@ -393,7 +386,6 @@ void mdss_mdp_wfd_remove_data(struct mdss_mdp_wfd *wfd,
 	kfree(wfd_data);
 }
 
-/* TODO: Check validation for MSM8976 NO DSPP mixer!!! */
 static int mdss_mdp_wfd_validate_out_configuration(struct mdss_mdp_wfd *wfd,
 	struct mdp_output_layer *layer)
 {

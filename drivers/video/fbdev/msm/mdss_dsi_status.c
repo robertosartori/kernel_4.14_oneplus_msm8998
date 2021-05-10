@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -213,7 +213,8 @@ static int fb_event_callback(struct notifier_block *self,
 	return 0;
 }
 
-static int param_dsi_status_disable(const char *val, const struct kernel_param *kp)
+static int param_dsi_status_disable(const char *val,
+		const struct kernel_param *kp)
 {
 	int ret = 0;
 	int int_val;
