@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2016, 2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -31,7 +31,7 @@
 
 static inline const char *mdss_mdp_pipetype2str(u32 ptype)
 {
-	static const char *strings[] = {
+	static const char const *strings[] = {
 #define PIPE_TYPE(t) [MDSS_MDP_PIPE_TYPE_ ## t] = __stringify(t)
 		PIPE_TYPE(VIG),
 		PIPE_TYPE(RGB),
@@ -48,7 +48,7 @@ static inline const char *mdss_mdp_pipetype2str(u32 ptype)
 
 static inline const char *mdss_mdp_format2str(u32 format)
 {
-	static const char *strings[] = {
+	static const char const *strings[] = {
 #define FORMAT_NAME(f) [MDP_ ## f] = __stringify(f)
 		FORMAT_NAME(RGB_565),
 		FORMAT_NAME(BGR_565),

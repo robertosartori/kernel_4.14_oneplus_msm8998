@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2015, 2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -24,7 +24,6 @@
 #include <linux/types.h>
 #include <linux/version.h>
 #include <linux/extcon.h>
-#include <linux/module.h>
 
 #include "mdss_panel.h"
 #include "mdss_wb.h"
@@ -105,6 +104,7 @@ static const unsigned int mdss_wb_disp_supported_cable[] = {
 static int mdss_wb_dev_init(struct mdss_wb_ctrl *wb_ctrl)
 {
 	int rc = 0;
+
 	if (!wb_ctrl) {
 		pr_err("%s: no driver data\n", __func__);
 		return -ENODEV;
@@ -199,6 +199,7 @@ error_no_mem:
 static int mdss_wb_remove(struct platform_device *pdev)
 {
 	struct mdss_wb_ctrl *wb_ctrl = platform_get_drvdata(pdev);
+
 	if (!wb_ctrl) {
 		pr_err("%s: no driver data\n", __func__);
 		return -ENODEV;
@@ -226,6 +227,7 @@ static struct platform_driver mdss_wb_driver = {
 static int __init mdss_wb_driver_init(void)
 {
 	int rc = 0;
+
 	rc = platform_driver_register(&mdss_wb_driver);
 	return rc;
 }

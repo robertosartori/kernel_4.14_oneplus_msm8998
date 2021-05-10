@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2018, 2020, The Linux Foundation. All rights reserved.
  * Copyright (C) 1994 Martin Schaller
  *
  * 2001 - Documented with DocBook
@@ -326,10 +326,8 @@ static int __compat_atomic_commit(struct fb_info *info, unsigned int cmd,
 	if (commit32.commit_v1.output_layer) {
 		int buffer_size = sizeof(struct mdp_output_layer);
 		output_layer = kzalloc(buffer_size, GFP_KERNEL);
-		if (!output_layer) {
-			pr_err("fail to allocate output layer\n");
+		if (!output_layer)
 			return -ENOMEM;
-		}
 		ret = copy_from_user(output_layer,
 				compat_ptr(commit32.commit_v1.output_layer),
 				buffer_size);
@@ -2834,7 +2832,6 @@ static int __pp_compat_alloc(struct msmfb_mdp_pp32 __user *pp32,
 					uint32_t op)
 {
 	uint32_t alloc_size = 0, lut_type, pgc_size = 0;
-	struct mdp_lut_cfg_data *lut_data;
 
 	alloc_size = sizeof(struct msmfb_mdp_pp);
 	switch (op) {
@@ -2856,25 +2853,25 @@ static int __pp_compat_alloc(struct msmfb_mdp_pp32 __user *pp32,
 				return -ENOMEM;
 			if (clear_user(*pp, alloc_size))
 				return -EFAULT;
-			lut_data = &(*pp)->data.lut_cfg_data;
 			if (put_user((struct mdp_ar_gc_lut_data *)
 				((unsigned long) *pp +
 				sizeof(struct msmfb_mdp_pp)),
-				&(lut_data->data.pgc_lut_data.r_data)) ||
+			&(*pp)->data.lut_cfg_data.data.pgc_lut_data.r_data) ||
 				put_user((struct mdp_ar_gc_lut_data *)
 					((unsigned long) *pp +
 					sizeof(struct msmfb_mdp_pp) +
 					pgc_size),
-				&(lut_data->data.pgc_lut_data.g_data)) ||
+			&(*pp)->data.lut_cfg_data.data.pgc_lut_data.g_data) ||
 				put_user((struct mdp_ar_gc_lut_data *)
 					((unsigned long) *pp +
 					sizeof(struct msmfb_mdp_pp) +
 					(2 * pgc_size)),
-				&(lut_data->data.pgc_lut_data.b_data)) ||
+			&(*pp)->data.lut_cfg_data.data.pgc_lut_data.b_data) ||
 				put_user((void *)((unsigned long) *pp +
 					sizeof(struct msmfb_mdp_pp) +
 					(3 * pgc_size)),
-				&(lut_data->data.pgc_lut_data.cfg_payload)))
+					&(*pp)->data.lut_cfg_data.data.
+						pgc_lut_data.cfg_payload))
 				return -EFAULT;
 			break;
 		case mdp_lut_igc:
@@ -2887,10 +2884,10 @@ static int __pp_compat_alloc(struct msmfb_mdp_pp32 __user *pp32,
 			}
 			if (clear_user(*pp, alloc_size))
 				return -EFAULT;
-			lut_data = &(*pp)->data.lut_cfg_data;
 			if (put_user((void *)((unsigned long)(*pp) +
 					sizeof(struct msmfb_mdp_pp)),
-				&(lut_data->data.igc_lut_data.cfg_payload)))
+					&(*pp)->data.lut_cfg_data.data.
+						igc_lut_data.cfg_payload))
 				return -EFAULT;
 			break;
 		case mdp_lut_hist:
@@ -2903,10 +2900,10 @@ static int __pp_compat_alloc(struct msmfb_mdp_pp32 __user *pp32,
 			}
 			if (clear_user(*pp, alloc_size))
 				return -EFAULT;
-			lut_data = &(*pp)->data.lut_cfg_data;
 			if (put_user((void *)((unsigned long)(*pp) +
 					sizeof(struct msmfb_mdp_pp)),
-				&(lut_data->data.hist_lut_data.cfg_payload)))
+					&(*pp)->data.lut_cfg_data.data.
+						hist_lut_data.cfg_payload))
 				return -EFAULT;
 			break;
 		default:

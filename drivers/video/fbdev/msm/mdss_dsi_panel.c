@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -17,7 +17,7 @@
 #include <linux/gpio.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
-#ifndef CONFIG_BACKLIGHT_QCOM_WLED
+#ifndef CONFIG_BACKLIGHT_QCOM_SPMI_WLED
 #include <linux/leds.h>
 #else
 #include <linux/backlight.h>
@@ -34,7 +34,7 @@
 #define DEFAULT_MDP_TRANSFER_TIME 14000
 
 #define VSYNC_DELAY msecs_to_jiffies(17)
-#ifndef CONFIG_BACKLIGHT_QCOM_WLED
+#ifndef CONFIG_BACKLIGHT_QCOM_SPMI_WLED
 DEFINE_LED_TRIGGER(bl_led_trigger);
 #endif
 
@@ -82,7 +82,7 @@ static void mdss_dsi_panel_bklt_pwm(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	if (level == 0) {
 		if (ctrl->pwm_enabled) {
 			ret = pwm_config(ctrl->pwm_bl, 0,
-					ctrl->pwm_period * NSEC_PER_USEC);
+				ctrl->pwm_period * NSEC_PER_USEC);
 			if (ret)
 				pr_err("%s: pwm_config() failed err=%d.\n",
 						__func__, ret);
@@ -338,7 +338,7 @@ int mdss_dsi_bl_gpio_ctrl(struct mdss_panel_data *pdata, int enable)
 
 		if (ctrl_pdata->bklt_en_gpio_invert)
 			val = 0;
-		 else
+		else
 			val = 1;
 
 		rc = gpio_direction_output(ctrl_pdata->bklt_en_gpio, val);
@@ -356,7 +356,7 @@ int mdss_dsi_bl_gpio_ctrl(struct mdss_panel_data *pdata, int enable)
 		 */
 		if (ctrl_pdata->bklt_en_gpio_invert)
 			val = 1;
-		 else
+		else
 			val = 0;
 
 		rc = gpio_direction_output(ctrl_pdata->bklt_en_gpio, val);
@@ -444,7 +444,8 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 				gpio_set_value((ctrl_pdata->rst_gpio),
 					pdata->panel_info.rst_seq[i]);
 				if (pdata->panel_info.rst_seq[++i])
-					usleep_range(pinfo->rst_seq[i] * 1000, pinfo->rst_seq[i] * 1000);
+					usleep_range(pinfo->rst_seq[i] * 1000,
+						pinfo->rst_seq[i] * 1000);
 			}
 
 			if (gpio_is_valid(ctrl_pdata->avdd_en_gpio)) {
@@ -884,7 +885,7 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 
 	switch (ctrl_pdata->bklt_ctrl) {
 	case BL_WLED:
-#ifndef CONFIG_BACKLIGHT_QCOM_WLED
+#ifndef CONFIG_BACKLIGHT_QCOM_SPMI_WLED
 		led_trigger_event(bl_led_trigger, bl_level);
 #else
 		backlight_device_set_brightness(ctrl_pdata->raw_bd, bl_level);
@@ -1812,17 +1813,13 @@ static bool mdss_dsi_cmp_panel_reg_v2(struct mdss_dsi_ctrl_pdata *ctrl)
 	for (i = 0; i < ctrl->status_cmds.cmd_cnt; i++)
 		len += lenp[i];
 
-	for (i = 0; i < len; i++) {
-		pr_debug("[%i] return:0x%x status:0x%x\n",
-			i, (unsigned int)ctrl->return_buf[i],
-			(unsigned int)ctrl->status_value[j + i]);
-		MDSS_XLOG(ctrl->ndx, ctrl->return_buf[i],
-			ctrl->status_value[j + i]);
-		j += len;
-	}
-
 	for (j = 0; j < ctrl->groups; ++j) {
 		for (i = 0; i < len; ++i) {
+			pr_debug("[%i] return:0x%x status:0x%x\n",
+				i, ctrl->return_buf[i],
+				(unsigned int)ctrl->status_value[group + i]);
+			MDSS_XLOG(ctrl->ndx, ctrl->return_buf[i],
+					ctrl->status_value[group + i]);
 			if (ctrl->return_buf[i] !=
 				ctrl->status_value[group + i])
 				break;
@@ -2264,10 +2261,8 @@ static void mdss_dsi_parse_panel_horizintal_line_idle(struct device_node *np,
 	cnt = len / sizeof(u32);
 
 	kp = kzalloc(sizeof(*kp) * (cnt / 3), GFP_KERNEL);
-	if (kp == NULL) {
-		pr_err("%s: No memory\n", __func__);
+	if (kp == NULL)
 		return;
-	}
 
 	ctrl->line_idle = kp;
 	for (i = 0; i < cnt; i += 3) {
@@ -2333,14 +2328,15 @@ static void mdss_dsi_parse_dfps_config(struct device_node *pan_node,
 			struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	const char *data;
-	bool dynamic_fps;
+	bool dynamic_fps, dynamic_bitclk;
 	struct mdss_panel_info *pinfo = &(ctrl_pdata->panel_data.panel_info);
+	int rc = 0;
 
 	dynamic_fps = of_property_read_bool(pan_node,
 			"qcom,mdss-dsi-pan-enable-dynamic-fps");
 
 	if (!dynamic_fps)
-		return;
+		goto dynamic_bitclk;
 
 	pinfo->dynamic_fps = true;
 	data = of_get_property(pan_node, "qcom,mdss-dsi-pan-fps-update", NULL);
@@ -2370,9 +2366,35 @@ static void mdss_dsi_parse_dfps_config(struct device_node *pan_node,
 	pinfo->new_fps = pinfo->mipi.frame_rate;
 	pinfo->current_fps = pinfo->mipi.frame_rate;
 
+dynamic_bitclk:
+	dynamic_bitclk = of_property_read_bool(pan_node,
+			"qcom,mdss-dsi-pan-enable-dynamic-bitclk");
+	if (!dynamic_bitclk)
+		return;
+
+	of_find_property(pan_node, "qcom,mdss-dsi-dynamic-bitclk_freq",
+		&pinfo->supp_bitclk_len);
+	pinfo->supp_bitclk_len = pinfo->supp_bitclk_len/sizeof(u32);
+	if (pinfo->supp_bitclk_len < 1)
+		return;
+
+	pinfo->supp_bitclks = kzalloc((sizeof(u32) * pinfo->supp_bitclk_len),
+		GFP_KERNEL);
+	if (!pinfo->supp_bitclks)
+		return;
+
+	rc = of_property_read_u32_array(pan_node,
+		"qcom,mdss-dsi-dynamic-bitclk_freq", pinfo->supp_bitclks,
+		pinfo->supp_bitclk_len);
+	if (rc) {
+		pr_err("Error from dynamic bitclk freq u64 array read\n");
+		return;
+	}
+	pinfo->dynamic_bitclk = true;
 	return;
 }
 
+#ifdef CONFIG_BACKLIGHT_QCOM_SPMI_WLED
 static int dsi_panel_wled_register(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	int rc = 0;
@@ -2386,6 +2408,7 @@ static int dsi_panel_wled_register(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	ctrl_pdata->raw_bd = bd;
 	return rc;
 }
+#endif
 
 int mdss_panel_parse_bl_settings(struct device_node *np,
 			struct mdss_dsi_ctrl_pdata *ctrl_pdata)
@@ -2398,12 +2421,12 @@ int mdss_panel_parse_bl_settings(struct device_node *np,
 	data = of_get_property(np, "qcom,mdss-dsi-bl-pmic-control-type", NULL);
 	if (data) {
 		if (!strcmp(data, "bl_ctrl_wled")) {
-#ifndef CONFIG_BACKLIGHT_QCOM_WLED
+#ifndef CONFIG_BACKLIGHT_QCOM_SPMI_WLED
 			led_trigger_register_simple("bkl-trigger",
 				&bl_led_trigger);
 #else
 			rc = dsi_panel_wled_register(ctrl_pdata);
-			if(rc)
+			if (rc)
 				return rc;
 #endif
 			pr_debug("%s: SUCCESS-> WLED TRIGGER register\n",
@@ -2492,6 +2515,9 @@ int mdss_dsi_panel_timing_switch(struct mdss_dsi_ctrl_pdata *ctrl,
 	for (i = 0; i < ARRAY_SIZE(pt->phy_timing_8996); i++)
 		pinfo->mipi.dsi_phy_db.timing_8996[i] = pt->phy_timing_8996[i];
 
+	for (i = 0; i < ARRAY_SIZE(pt->phy_timing_12nm); i++)
+		pinfo->mipi.dsi_phy_db.timing_12nm[i] = pt->phy_timing_12nm[i];
+
 	ctrl->on_cmds = pt->on_cmds;
 	ctrl->post_panel_on_cmds = pt->post_panel_on_cmds;
 
@@ -2503,7 +2529,7 @@ int mdss_dsi_panel_timing_switch(struct mdss_dsi_ctrl_pdata *ctrl,
 	return 0;
 }
 
-#ifndef CONFIG_BACKLIGHT_QCOM_WLED
+#ifndef CONFIG_BACKLIGHT_QCOM_SPMI_WLED
 void mdss_dsi_unregister_bl_settings(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	if (ctrl_pdata->bklt_ctrl == BL_WLED)
@@ -2605,6 +2631,18 @@ static int mdss_dsi_panel_timing_from_dt(struct device_node *np,
 			pt->phy_timing_8996[i] = data[i];
 		phy_timings_present = true;
 	}
+
+	data = of_get_property(np,
+		"qcom,mdss-dsi-panel-timings-phy-12nm", &len);
+	if ((!data) || (len != 8)) {
+		pr_debug("%s:%d, Unable to read 12nm Phy lane timing settings",
+		       __func__, __LINE__);
+	} else {
+		for (i = 0; i < len; i++)
+			pt->phy_timing_12nm[i] = data[i];
+		phy_timings_present = true;
+	}
+
 	if (!phy_timings_present) {
 		pr_err("%s: phy timing settings not present\n", __func__);
 		return -EINVAL;

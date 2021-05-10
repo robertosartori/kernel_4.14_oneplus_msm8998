@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -942,21 +942,22 @@ static int mdss_mdp_put_img(struct mdss_mdp_img_data *data, bool rotator,
 	} else if (!IS_ERR_OR_NULL(data->srcp_dma_buf)) {
 		pr_debug("ion hdl=%pK buf=0x%pa\n", data->srcp_dma_buf,
 							&data->addr);
-
-		if (data->mapped) {
-			domain = mdss_smmu_get_domain_type(data->flags,
-				rotator);
-			data->mapped = false;
-		}
-		if (!data->skip_detach) {
-			dma_buf_unmap_attachment(data->srcp_attachment,
-				data->srcp_table,
-				mdss_smmu_dma_data_direction(dir));
-			dma_buf_detach(data->srcp_dma_buf,
-					data->srcp_attachment);
-			dma_buf_put(data->srcp_dma_buf);
-			data->srcp_dma_buf = NULL;
-		}
+			if (data->mapped) {
+				domain = mdss_smmu_get_domain_type(data->flags,
+					rotator);
+				data->mapped = false;
+			}
+			if (!data->skip_detach) {
+				data->srcp_attachment->dma_map_attrs
+						 |= DMA_ATTR_SKIP_CPU_SYNC;
+				dma_buf_unmap_attachment(data->srcp_attachment,
+					data->srcp_table,
+					mdss_smmu_dma_data_direction(dir));
+				dma_buf_detach(data->srcp_dma_buf,
+						data->srcp_attachment);
+				dma_buf_put(data->srcp_dma_buf);
+				data->srcp_dma_buf = NULL;
+			}
 	} else if ((data->flags & MDP_SECURE_DISPLAY_OVERLAY_SESSION) ||
 			(data->flags & MDP_SECURE_CAMERA_OVERLAY_SESSION)) {
 		/*
@@ -1147,7 +1148,7 @@ static int mdss_mdp_map_buffer(struct mdss_mdp_img_data *data, bool rotator,
 			ret = mdss_smmu_map_dma_buf(data->srcp_dma_buf,
 					data->srcp_table, domain,
 					&data->addr, &data->len, dir);
-			if (IS_ERR_VALUE((unsigned long)ret)) {
+			if (IS_ERR_VALUE((unsigned long) ret)) {
 				pr_err("smmu map dma buf failed: (%d)\n", ret);
 				goto err_unmap;
 			}
@@ -1183,6 +1184,7 @@ static int mdss_mdp_map_buffer(struct mdss_mdp_img_data *data, bool rotator,
 	return ret;
 
 err_unmap:
+	data->srcp_attachment->dma_map_attrs |= DMA_ATTR_SKIP_CPU_SYNC;
 	dma_buf_unmap_attachment(data->srcp_attachment, data->srcp_table,
 		mdss_smmu_dma_data_direction(dir));
 	dma_buf_detach(data->srcp_dma_buf, data->srcp_attachment);

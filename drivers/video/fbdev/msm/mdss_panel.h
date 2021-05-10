@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -54,7 +54,10 @@ struct panel_id {
 #define MIPI_CMD_PANEL		9	/* MIPI */
 #define WRITEBACK_PANEL		10	/* Wifi display */
 #define LVDS_PANEL		11	/* LVDS */
-#define DP_PANEL		12	/* LVDS */
+#define EDP_PANEL		12	/* EDP */
+#define SPI_PANEL               13	/* SPI */
+#define RGB_PANEL               14	/* RGB */
+#define DP_PANEL		15	/* DP */
 
 #define DSC_PPS_LEN		128
 #define INTF_EVENT_STR(x)	#x
@@ -64,7 +67,7 @@ struct panel_id {
 
 static inline const char *mdss_panel2str(u32 panel)
 {
-	static const char *names[] = {
+	static const char const *names[] = {
 #define PANEL_NAME(n) [n ## _PANEL] = __stringify(n)
 		PANEL_NAME(MIPI_VIDEO),
 		PANEL_NAME(MIPI_CMD),
@@ -104,6 +107,8 @@ enum {
 	MDSS_PANEL_INTF_DSI,
 	MDSS_PANEL_INTF_EDP,
 	MDSS_PANEL_INTF_HDMI,
+	MDSS_PANEL_INTF_SPI,
+	MDSS_PANEL_INTF_RGB,
 };
 
 enum {
@@ -185,6 +190,7 @@ struct mdss_panel_cfg {
 
 #define MDP_INTF_DSI_CMD_FIFO_UNDERFLOW		0x0001
 #define MDP_INTF_DSI_VIDEO_FIFO_OVERFLOW	0x0002
+#define MDP_INTF_DSI_PANEL_DEAD			0x0003
 
 
 enum {
@@ -308,9 +314,7 @@ enum mdss_intf_events {
 	MDSS_EVENT_DSI_TIMING_DB_CTRL,
 	MDSS_EVENT_AVR_MODE,
 	MDSS_EVENT_REGISTER_CLAMP_HANDLER,
-#ifdef CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL
-	MDSS_EVENT_DISP_ON,
-#endif	/* CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL */
+	MDSS_EVENT_DSI_DYNAMIC_BITCLK,
 	MDSS_EVENT_MAX,
 };
 
@@ -395,6 +399,7 @@ struct lcd_panel_info {
 	u32 h_active_low;
 	u32 v_back_porch;
 	u32 v_front_porch;
+	u32 v_front_porch_fixed;
 	u32 v_pulse_width;
 	u32 v_active_low;
 	u32 border_clr;
@@ -425,6 +430,7 @@ struct mdss_dsi_phy_ctrl {
 	bool reg_ldo_mode;
 
 	char timing_8996[40];/* 8996, 8 * 5 */
+	char timing_12nm[14]; /* 12nm PHY */
 	char regulator_len;
 	char strength_len;
 	char lanecfg_len;
@@ -539,13 +545,13 @@ struct mipi_panel_info {
 	u32  post_init_delay;
 	u32  num_of_sublinks;
 	u32  lanes_per_sublink;
-#ifdef CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL
-	int input_fpks;
-	bool switch_mode_pending;
-#endif
 };
 
 struct edp_panel_info {
+	char frame_rate;	/* fps */
+};
+
+struct spi_panel_info {
 	char frame_rate;	/* fps */
 };
 
@@ -811,12 +817,17 @@ struct mdss_panel_info {
 	int pwm_lpg_chan;
 	int pwm_period;
 	bool dynamic_fps;
+	bool dynamic_bitclk;
+	u32 *supp_bitclks;
+	u32 supp_bitclk_len;
 	bool ulps_feature_enabled;
 	bool ulps_suspend_enabled;
 	bool panel_ack_disabled;
 	bool esd_check_enabled;
 	bool allow_phy_power_off;
 	char dfps_update;
+	/* new requested bitclk before it is updated in hw */
+	int new_clk_rate;
 	/* new requested fps before it is updated in hw */
 	int new_fps;
 	/* stores initial fps after boot */
@@ -912,6 +923,7 @@ struct mdss_panel_info {
 	struct mipi_panel_info mipi;
 	struct lvds_panel_info lvds;
 	struct edp_panel_info edp;
+	struct spi_panel_info spi;
 
 	bool is_dba_panel;
 
@@ -935,17 +947,6 @@ struct mdss_panel_info {
 
 	/* esc clk recommended for the panel */
 	u32 esc_clk_rate_hz;
-
-#ifdef CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL
-	const char *panel_id_name;
-	int dsi_master;
-	int disp_on_in_hs;
-	int wait_time_before_on_cmd;
-
-	/* physical size in mm */
-	__u32 width;
-	__u32 height;
-#endif
 };
 
 struct mdss_panel_timing {
@@ -987,21 +988,6 @@ struct mdss_panel_data {
 	void (*set_backlight) (struct mdss_panel_data *pdata, u32 bl_level);
 	int (*apply_display_setting)(struct mdss_panel_data *pdata, u32 mode);
 	unsigned char *mmss_cc_base;
-
-#ifdef CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL
-	struct platform_device *panel_pdev;
-
-	int (*intf_ready) (struct mdss_panel_data *pdata);
-	void (*crash_counter_reset) (void);
-	void (*blackscreen_off) (struct mdss_panel_data *pdata);
-	void (*blackscreen_det) (struct mdss_panel_data *pdata);
-	void (*fff_time_update) (struct mdss_panel_data *pdata);
-
-	int (*detect) (struct mdss_panel_data *pdata);
-	int (*update_panel) (struct mdss_panel_data *pdata);
-
-	bool resume_started;
-#endif
 
 	/**
 	 * event_handler() - callback handler for MDP core events
@@ -1061,8 +1047,14 @@ static inline u32 mdss_panel_get_framerate(struct mdss_panel_info *panel_info)
 	case MIPI_CMD_PANEL:
 		frame_rate = panel_info->mipi.frame_rate;
 		break;
+	case EDP_PANEL:
+		frame_rate = panel_info->edp.frame_rate;
+		break;
 	case WRITEBACK_PANEL:
 		frame_rate = DEFAULT_FRAME_RATE;
+		break;
+	case SPI_PANEL:
+		frame_rate = panel_info->spi.frame_rate;
 		break;
 	case DTV_PANEL:
 	case DP_PANEL:
@@ -1091,6 +1083,23 @@ static inline u32 mdss_panel_get_framerate(struct mdss_panel_info *panel_info)
 		break;
 	}
 	return frame_rate;
+}
+
+/*
+ * mdss_panel_get_vtotal_fixed() - return panel device tree vertical height
+ * @pinfo:	Pointer to panel info containing all panel information
+ *
+ * Returns the total height as defined in panel device tree including any
+ * blanking regions which are not visible to user but used to calculate
+ * panel clock.
+ */
+static inline int mdss_panel_get_vtotal_fixed(struct mdss_panel_info *pinfo)
+{
+	return pinfo->yres + pinfo->lcdc.v_back_porch +
+			pinfo->lcdc.v_front_porch_fixed +
+			pinfo->lcdc.v_pulse_width+
+			pinfo->lcdc.border_top +
+			pinfo->lcdc.border_bottom;
 }
 
 /*
@@ -1328,17 +1337,6 @@ struct mdss_panel_cfg *mdss_panel_intf_type(int intf_val);
  */
 bool mdss_is_ready(void);
 int mdss_rect_cmp(struct mdss_rect *rect1, struct mdss_rect *rect2);
-
-struct msm_fb_data_type;
-#if defined(CONFIG_DEBUG_FS) && defined(CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL)
-void mipi_dsi_panel_create_debugfs(struct msm_fb_data_type *mfd);
-bool mdss_dsi_panel_flip_ud(void);
-#else
-static inline void mipi_dsi_panel_create_debugfs(struct msm_fb_data_type *mfd)
-{
-	/* empty */
-}
-#endif
 
 /**
  * mdss_panel_override_te_params() - overrides TE params to enable SW TE

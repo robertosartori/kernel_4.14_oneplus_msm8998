@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -27,8 +27,8 @@
 #include <linux/msm-bus.h>
 #include <linux/file.h>
 #include <linux/dma-direction.h>
-#include <linux/dma-buf.h>
 #include <soc/qcom/cx_ipeak.h>
+#include <linux/dma-buf.h>
 
 #include "mdss_panel.h"
 
@@ -47,8 +47,7 @@ enum mdss_mdp_clk_type {
 	MDSS_CLK_MDP_VSYNC,
 	MDSS_CLK_MNOC_AHB,
 	MDSS_CLK_THROTTLE_AXI,
-	MDSS_CLK_MDP_TBU,
-	MDSS_CLK_MDP_TBU_RT,
+	MDSS_CLK_BIMC,
 	MDSS_MAX_CLK
 };
 
@@ -171,7 +170,6 @@ enum mdss_hw_quirk {
 	MDSS_QUIRK_MMSS_GDSC_COLLAPSE,
 	MDSS_QUIRK_MDP_CLK_SET_RATE,
 	MDSS_QUIRK_HDR_SUPPORT_ENABLED,
-	MDSS_QUIRK_MIN_BUS_VOTE,
 	MDSS_QUIRK_MAX,
 };
 
@@ -514,6 +512,7 @@ struct mdss_data_type {
 	u32 min_prefill_lines; /* this changes within different chipsets */
 	u32 props;
 
+	bool twm_en;
 	int handoff_pending;
 	bool idle_pc;
 	struct mdss_perf_tune perf_tune;

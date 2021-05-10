@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2017, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -865,10 +865,10 @@ void mdss_dp_setup_tr_unit(struct dss_io_data *ctrl_io, u8 link_rate,
 	struct dp_vc_tu_mapping_table tu_calc_table;
 
 	for (; tu_entry != tu_table + ARRAY_SIZE(tu_table); ++tu_entry) {
-		if ((tu_entry->vic == res) &&
-			(tu_entry->lanes == ln_cnt) &&
-			(tu_entry->lrate == link_rate))
-		break;
+		if ((tu_entry->vic == res) && (tu_entry->lanes == ln_cnt)
+			&& (tu_entry->lrate == link_rate)) {
+			break;
+		}
 	}
 
 	if (tu_entry == tu_table + ARRAY_SIZE(tu_table)) {
