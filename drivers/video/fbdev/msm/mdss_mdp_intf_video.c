@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -376,11 +376,11 @@ static int mdss_mdp_video_intf_recovery(void *data, int event)
 	}
 
 	/*
-	 * Currently, only intf_fifo_overflow is
+	 * Currently, intf_fifo_underflow is not
 	 * supported for recovery sequence for video
 	 * mode DSI interface
 	 */
-	if (event != MDP_INTF_DSI_VIDEO_FIFO_OVERFLOW) {
+	if (event == MDP_INTF_DSI_CMD_FIFO_UNDERFLOW) {
 		pr_warn("%s: unsupported recovery event:%d\n",
 					__func__, event);
 		return -EPERM;
@@ -389,6 +389,11 @@ static int mdss_mdp_video_intf_recovery(void *data, int event)
 	ctx = ctl->intf_ctx[MASTER_CTX];
 	pr_debug("%s: ctl num = %d, event = %d\n",
 				__func__, ctl->num, event);
+
+	if (event == MDP_INTF_DSI_PANEL_DEAD) {
+		mdss_fb_report_panel_dead(ctx->ctl->mfd);
+		return 0;
+	}
 
 	pinfo = &ctl->panel_data->panel_info;
 	clk_rate = ((ctl->intf_type == MDSS_INTF_DSI) ?
@@ -570,7 +575,6 @@ static void mdss_mdp_video_avr_ctrl_setup(struct mdss_mdp_video_ctx *ctx,
 	pr_debug("intf:%d avr_mode:%x avr_ctrl:%x\n",
 		ctx->intf_num, avr_mode, avr_ctrl);
 }
-
 static int mdss_mdp_video_timegen_setup(struct mdss_mdp_ctl *ctl,
 					struct intf_timing_params *p,
 					struct mdss_mdp_video_ctx *ctx)
@@ -674,6 +678,9 @@ static int mdss_mdp_video_timegen_setup(struct mdss_mdp_ctl *ctl,
 	mdp_video_write(ctx, MDSS_MDP_REG_INTF_HSYNC_SKEW, p->hsync_skew);
 	mdp_video_write(ctx, MDSS_MDP_REG_INTF_POLARITY_CTL, polarity_ctl);
 	mdp_video_write(ctx, MDSS_MDP_REG_INTF_FRAME_LINE_COUNT_EN, 0x3);
+	if (mdata->pan_cfg.pan_intf == MDSS_PANEL_INTF_RGB)
+		mdp_video_write(ctx, MDSS_MDP_REG_INTF_RGB_INTF_CTRL, 0x1);
+
 	MDSS_XLOG(hsync_period, vsync_period);
 
 	/*
@@ -1101,7 +1108,7 @@ static int mdss_mdp_video_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 
 	intfs_num = ctl->intf_num - MDSS_MDP_INTF0;
 	ret = mdss_mdp_video_intfs_stop(ctl, ctl->panel_data, intfs_num);
-	if (IS_ERR_VALUE((unsigned long)ret)) {
+	if (IS_ERR_VALUE((unsigned long) ret)) {
 		pr_err("unable to stop video interface: %d\n", ret);
 		return ret;
 	}
@@ -1120,6 +1127,7 @@ static void mdss_mdp_video_vsync_intr_done(void *arg)
 	struct mdss_mdp_video_ctx *ctx = ctl->intf_ctx[MASTER_CTX];
 	struct mdss_mdp_vsync_handler *tmp;
 	ktime_t vsync_time;
+	u32 ctl_flush_bits = 0;
 
 	if (!ctx) {
 		pr_err("invalid ctx\n");
@@ -1129,10 +1137,13 @@ static void mdss_mdp_video_vsync_intr_done(void *arg)
 	vsync_time = ktime_get();
 	ctl->vsync_cnt++;
 
-	MDSS_XLOG(ctl->num, ctl->vsync_cnt, ctl->vsync_cnt);
+	ctl_flush_bits = mdss_mdp_ctl_read(ctl, MDSS_MDP_REG_CTL_FLUSH);
 
-	pr_debug("intr ctl=%d vsync cnt=%u vsync_time=%d\n",
-		 ctl->num, ctl->vsync_cnt, (int)ktime_to_ms(vsync_time));
+	MDSS_XLOG(ctl->num, ctl->vsync_cnt, ctl_flush_bits);
+
+	pr_debug("intr ctl=%d vsync cnt=%u vsync_time=%d ctl_flush=%d\n",
+		 ctl->num, ctl->vsync_cnt, (int)ktime_to_ms(vsync_time),
+		 ctl_flush_bits);
 
 	ctx->polling_en = false;
 	complete_all(&ctx->vsync_comp);
@@ -1228,7 +1239,7 @@ static int mdss_mdp_video_wait4comp(struct mdss_mdp_ctl *ctl, void *arg)
 		if (rc == 0) {
 			pr_warn("vsync wait timeout %d, fallback to poll mode\n",
 					ctl->num);
-			ctx->polling_en = true;
+			ctx->polling_en++;
 			rc = mdss_mdp_video_pollwait(ctl);
 		} else {
 			rc = 0;
@@ -1618,7 +1629,7 @@ exit_dfps:
 			/* Disable interface timing double buffer */
 			rc = mdss_mdp_ctl_intf_event(ctl,
 				MDSS_EVENT_DSI_TIMING_DB_CTRL,
-				(void *) (unsigned long) 0,
+				NULL,
 				CTL_INTF_EVENT_FLAG_DEFAULT);
 		} else {
 			pr_err("intf %d panel, unknown FPS mode\n",
@@ -1723,21 +1734,6 @@ static int mdss_mdp_video_display(struct mdss_mdp_ctl *ctl, void *arg)
 				usecs_to_jiffies(VSYNC_TIMEOUT_US));
 		WARN(rc == 0, "timeout (%d) enabling timegen on ctl=%d\n",
 				rc, ctl->num);
-
-		if (ctl->mfd) {
-			struct mdss_panel_data *pdata;
-			pdata = dev_get_platdata(&ctl->mfd->pdev->dev);
-			if (!pdata) {
-				pr_err("no panel connected\n");
-				spin_unlock(&ctx->vsync_lock);
-				return -ENODEV;
-			}
-
-#ifdef CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL
-			if (pdata->intf_ready)
-				pdata->intf_ready(pdata);
-#endif
-		}
 
 		ctx->timegen_en = true;
 		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_ON, NULL,
@@ -1916,7 +1912,7 @@ static void mdss_mdp_fetch_start_config(struct mdss_mdp_video_ctx *ctx,
 
 	mdata = ctl->mdata;
 
-	pinfo->prg_fet = mdss_mdp_get_prefetch_lines(pinfo);
+	pinfo->prg_fet = mdss_mdp_get_prefetch_lines(pinfo, true);
 	if (!pinfo->prg_fet) {
 		pr_debug("programmable fetch is not needed/supported\n");
 
@@ -1935,7 +1931,7 @@ static void mdss_mdp_fetch_start_config(struct mdss_mdp_video_ctx *ctx,
 	 * Fetch should always be outside the active lines. If the fetching
 	 * is programmed within active region, hardware behavior is unknown.
 	 */
-	v_total = mdss_panel_get_vtotal(pinfo);
+	v_total = mdss_panel_get_vtotal_fixed(pinfo);
 	h_total = mdss_panel_get_htotal(pinfo, true);
 
 	fetch_start = (v_total - pinfo->prg_fet) * h_total + 1;
@@ -2473,10 +2469,21 @@ static int mdss_mdp_video_early_wake_up(struct mdss_mdp_ctl *ctl)
 	 * lot of latency rendering the input events useless in preventing the
 	 * idle time out.
 	 */
-	if (ctl->mfd->idle_state == MDSS_FB_IDLE_TIMER_RUNNING) {
-		if (ctl->mfd->idle_time)
+	if ((ctl->mfd->idle_state == MDSS_FB_IDLE_TIMER_RUNNING) ||
+				(ctl->mfd->idle_state == MDSS_FB_IDLE)) {
+		/*
+		 * Modify the idle time so that an idle fallback can be
+		 * triggered for those cases, where we have no update
+		 * despite of a touch event and idle time is 0.
+		 */
+		if (!ctl->mfd->idle_time) {
+			ctl->mfd->idle_time = 70;
+			schedule_delayed_work(&ctl->mfd->idle_notify_work,
+							msecs_to_jiffies(200));
+		} else {
 			mod_delayed_work(system_wq, &ctl->mfd->idle_notify_work,
 					 msecs_to_jiffies(ctl->mfd->idle_time));
+		}
 		pr_debug("Delayed idle time\n");
 	} else {
 		pr_debug("Nothing to done for this state (%d)\n",
@@ -2546,7 +2553,7 @@ int mdss_mdp_video_start(struct mdss_mdp_ctl *ctl)
 
 	intfs_num = ctl->intf_num - MDSS_MDP_INTF0;
 	ret = mdss_mdp_video_intfs_setup(ctl, ctl->panel_data, intfs_num);
-	if (IS_ERR_VALUE((unsigned long)ret)) {
+	if (IS_ERR_VALUE((unsigned long) ret)) {
 		pr_err("unable to set video interface: %d\n", ret);
 		return ret;
 	}

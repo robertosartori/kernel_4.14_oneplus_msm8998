@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013, 2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -57,10 +57,8 @@ int msm_dsi_io_init(struct platform_device *pdev, struct dss_module_power *mp)
 	if (!dsi_io_private) {
 		dsi_io_private = kzalloc(sizeof(struct msm_dsi_io_private),
 					GFP_KERNEL);
-		if (!dsi_io_private) {
-			pr_err("fail to alloc dsi io private data structure\n");
+		if (!dsi_io_private)
 			return -ENOMEM;
-		}
 	}
 
 	rc = msm_dsi_clk_init(pdev);
@@ -187,6 +185,7 @@ int msm_dsi_clk_set_rate(unsigned long esc_rate,
 			unsigned long pixel_rate)
 {
 	int rc;
+
 	rc = clk_set_rate(dsi_io_private->dsi_clk, dsi_rate);
 	if (rc) {
 		pr_err("dsi_esc_clk - clk_set_rate failed =%d\n", rc);
@@ -283,7 +282,7 @@ static int msm_dsi_phy_calibration(unsigned char *ctrl_base)
 	MIPI_OUTP(ctrl_base + DSI_DSIPHY_CAL_HW_CFG4, 0x01);
 	MIPI_OUTP(ctrl_base + DSI_DSIPHY_CAL_HW_CFG0, 0x01);
 	MIPI_OUTP(ctrl_base + DSI_DSIPHY_CAL_HW_TRIGGER, 0x01);
-	usleep_range(5000, 5000); /*per DSI controller spec*/
+	usleep_range(5000, 5100); /*per DSI controller spec*/
 	MIPI_OUTP(ctrl_base + DSI_DSIPHY_CAL_HW_TRIGGER, 0x00);
 
 	cal_busy = MIPI_INP(ctrl_base + DSI_DSIPHY_REGULATOR_CAL_STATUS0);
@@ -291,7 +290,7 @@ static int msm_dsi_phy_calibration(unsigned char *ctrl_base)
 		i++;
 		if (i > term_cnt) {
 			ret = -EINVAL;
-			pr_err("msm_dsi_phy_calibration error\n");
+			pr_err("%s error\n", __func__);
 			break;
 		}
 		cal_busy = MIPI_INP(ctrl_base +
@@ -309,7 +308,9 @@ static void msm_dsi_phy_lane_init(unsigned char *ctrl_base,
 	/*CFG0, CFG1, CFG2, TEST_DATAPATH, TEST_STR0, TEST_STR1*/
 	for (ln = 0; ln < 5; ln++) {
 		unsigned char *off = ctrl_base + 0x0300 + (ln * 0x40);
+
 		index = ln * 6;
+
 		MIPI_OUTP(off, pd->lanecfg[index]);
 		MIPI_OUTP(off + 4, pd->lanecfg[index + 1]);
 		MIPI_OUTP(off + 8, pd->lanecfg[index + 2]);
@@ -317,18 +318,19 @@ static void msm_dsi_phy_lane_init(unsigned char *ctrl_base,
 		MIPI_OUTP(off + 20, pd->lanecfg[index + 4]);
 		MIPI_OUTP(off + 24, pd->lanecfg[index + 5]);
 	}
-	wmb();
+	wmb(); /* ensure write is finished before progressing */
 }
 
 static void msm_dsi_phy_timing_init(unsigned char *ctrl_base,
 			struct mdss_dsi_phy_ctrl *pd)
 {
 	int i, off = DSI_DSIPHY_TIMING_CTRL_0;
+
 	for (i = 0; i < 12; i++) {
 		MIPI_OUTP(ctrl_base + off, pd->timing[i]);
 		off += 4;
 	}
-	wmb();
+	wmb(); /* ensure write is finished before progressing */
 }
 
 static void msm_dsi_phy_bist_init(unsigned char *ctrl_base,
@@ -338,7 +340,7 @@ static void msm_dsi_phy_bist_init(unsigned char *ctrl_base,
 	MIPI_OUTP(ctrl_base + DSI_DSIPHY_BIST_CTRL1, pd->bistctrl[1]);
 	MIPI_OUTP(ctrl_base + DSI_DSIPHY_BIST_CTRL0, pd->bistctrl[0]);
 	MIPI_OUTP(ctrl_base + DSI_DSIPHY_BIST_CTRL4, 0);
-	wmb();
+	wmb(); /* ensure write is finished before progressing */
 }
 
 int msm_dsi_phy_init(unsigned char *ctrl_base,
@@ -370,11 +372,11 @@ void msm_dsi_phy_sw_reset(unsigned char *ctrl_base)
 	/* start phy sw reset */
 	MIPI_OUTP(ctrl_base + DSI_PHY_SW_RESET, 0x0001);
 	udelay(1000); /*per DSI controller spec*/
-	wmb();
+	wmb(); /* ensure write is finished before progressing */
 	/* end phy sw reset */
 	MIPI_OUTP(ctrl_base + DSI_PHY_SW_RESET, 0x0000);
 	udelay(100); /*per DSI controller spec*/
-	wmb();
+	wmb(); /* ensure write is finished before progressing */
 }
 
 void msm_dsi_phy_off(unsigned char *ctrl_base)

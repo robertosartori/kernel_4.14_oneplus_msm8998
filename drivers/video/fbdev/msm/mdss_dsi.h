@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -19,14 +19,13 @@
 #include <linux/irqreturn.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/gpio.h>
-#ifdef CONFIG_BACKLIGHT_QCOM_WLED
+#ifdef CONFIG_BACKLIGHT_QCOM_SPMI_WLED
 #include <linux/backlight.h>
 #endif
 
 #include "mdss_panel.h"
 #include "mdss_dsi_cmd.h"
 #include "mdss_dsi_clk.h"
-#include "mdss_fb.h"
 
 #define MMSS_SERDES_BASE_PHY 0x04f01000 /* mmss (De)Serializer CFG */
 
@@ -61,7 +60,7 @@
 #define MDSS_DSI_HW_REV_104             0x10040000      /* 8996   */
 #define MDSS_DSI_HW_REV_104_1           0x10040001      /* 8996   */
 #define MDSS_DSI_HW_REV_104_2           0x10040002      /* 8937   */
-#define MDSS_DSI_HW_REV_200		0x20000000	/* cobalt */
+#define MDSS_DSI_HW_REV_200		0x20000000	/* 8998 */
 #define MDSS_DSI_HW_REV_201		0x20010000	/* 660 */
 
 #define MDSS_DSI_HW_REV_STEP_0		0x0
@@ -225,7 +224,6 @@ enum dsi_pm_type {
 #define DSI_CMD_TRIGGER_SW		0x04
 #define DSI_CMD_TRIGGER_SW_SEOF		0x05	/* cmd dma only */
 #define DSI_CMD_TRIGGER_SW_TE		0x06
-#define DSI_CMD_TRIGGER_OVER_RANG	0x07
 
 #define DSI_VIDEO_TERM  BIT(16)
 #define DSI_MDP_TERM    BIT(8)
@@ -281,8 +279,6 @@ struct dsi_shared_data {
 	struct clk *ahb_clk;
 	struct clk *axi_clk;
 	struct clk *mmss_misc_ahb_clk;
-	struct clk *tbu_clk;
-	struct clk *tbu_rt_clk;
 
 	/* Other shared clocks */
 	struct clk *ext_byte0_clk;
@@ -364,21 +360,18 @@ struct dsi_panel_timing {
 	struct mdss_panel_timing timing;
 	uint32_t phy_timing[12];
 	uint32_t phy_timing_8996[40];
+	uint32_t phy_timing_12nm[8];
 	/* DSI_CLKOUT_TIMING_CTRL */
 	char t_clk_post;
 	char t_clk_pre;
 	struct dsi_panel_cmds on_cmds;
 	struct dsi_panel_cmds post_panel_on_cmds;
 	struct dsi_panel_cmds switch_cmds;
-#ifdef CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL
-	struct dsi_panel_cmds einit_cmds;
-	struct dsi_panel_cmds init_cmds;
-#endif
 };
 
 struct dsi_kickoff_action {
 	struct list_head act_entry;
-	void (*action) (void *);
+	void (*action)(void *);
 	void *data;
 };
 
@@ -386,10 +379,6 @@ struct dsi_pinctrl_res {
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *gpio_state_active;
 	struct pinctrl_state *gpio_state_suspend;
-#ifdef CONFIG_FBDEV_SOMC_PANEL_INCELL
-	struct pinctrl_state *touch_state_active;
-	struct pinctrl_state *touch_state_suspend;
-#endif
 };
 
 struct panel_horizontal_idle {
@@ -431,15 +420,15 @@ struct dsi_err_container {
 
 struct mdss_dsi_ctrl_pdata {
 	int ndx;	/* panel_num */
-	int (*on) (struct mdss_panel_data *pdata);
+	int (*on)(struct mdss_panel_data *pdata);
 	int (*post_panel_on)(struct mdss_panel_data *pdata);
-	int (*off) (struct mdss_panel_data *pdata);
-	int (*low_power_config) (struct mdss_panel_data *pdata, int enable);
+	int (*off)(struct mdss_panel_data *pdata);
+	int (*low_power_config)(struct mdss_panel_data *pdata, int enable);
 	int (*set_col_page_addr)(struct mdss_panel_data *pdata, bool force);
-	int (*check_status) (struct mdss_dsi_ctrl_pdata *pdata);
-	int (*check_read_status) (struct mdss_dsi_ctrl_pdata *pdata);
+	int (*check_status)(struct mdss_dsi_ctrl_pdata *pdata);
+	int (*check_read_status)(struct mdss_dsi_ctrl_pdata *pdata);
 	int (*cmdlist_commit)(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
-	void (*switch_mode) (struct mdss_panel_data *pdata, int mode);
+	void (*switch_mode)(struct mdss_panel_data *pdata, int mode);
 	struct mdss_panel_data panel_data;
 	unsigned char *ctrl_base;
 	struct dss_io_data ctrl_io;
@@ -494,7 +483,7 @@ struct mdss_dsi_ctrl_pdata {
 	struct mdss_rect roi;
 	struct mdss_dsi_dual_pu_roi dual_roi;
 	struct pwm_device *pwm_bl;
-#ifdef CONFIG_BACKLIGHT_QCOM_WLED
+#ifdef CONFIG_BACKLIGHT_QCOM_SPMI_WLED
 	struct backlight_device *raw_bd;
 #endif
 	u32 pclk_rate;
@@ -505,9 +494,6 @@ struct mdss_dsi_ctrl_pdata {
 	bool refresh_clk_rate; /* flag to recalculate clk_rate */
 	struct dss_module_power panel_power_data;
 	struct dss_module_power power_data[DSI_MAX_PM]; /* for 8x10 */
-#ifdef CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL
-	struct mdss_panel_specific_pdata *spec_pdata;
-#endif
 	u32 dsi_irq_mask;
 	struct mdss_hw *dsi_hw;
 	struct mdss_intf_recovery *recovery;
@@ -612,8 +598,6 @@ struct mdss_dsi_ctrl_pdata {
 	bool update_phy_timing; /* flag to recalculate PHY timings */
 
 	bool phy_power_off;
-
-	bool platform_clk_reconf_hack; /* MSM8998 link clocks hack */
 };
 
 struct dsi_status_data {
@@ -656,8 +640,8 @@ void disable_esd_thread(void);
 void mdss_dsi_irq_handler_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 
 void mdss_dsi_set_tx_power_mode(int mode, struct mdss_panel_data *pdata);
-int mdss_dsi_clk_div_config(struct mdss_panel_info *panel_info,
-			    int frame_rate);
+u64 mdss_dsi_calc_bitclk(struct mdss_panel_info *panel_info, int frame_rate);
+u32 mdss_dsi_get_pclk_rate(struct mdss_panel_info *panel_info, u64 clk_rate);
 int mdss_dsi_clk_refresh(struct mdss_panel_data *pdata, bool update_phy);
 int mdss_dsi_link_clk_init(struct platform_device *pdev,
 		      struct mdss_dsi_ctrl_pdata *ctrl_pdata);
@@ -673,15 +657,19 @@ void mdss_dsi_shadow_clk_deinit(struct device *dev,
 			struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 int mdss_dsi_pre_clkoff_cb(void *priv,
 			   enum mdss_dsi_clk_type clk_type,
+			   enum mdss_dsi_lclk_type l_type,
 			   enum mdss_dsi_clk_state new_state);
 int mdss_dsi_post_clkoff_cb(void *priv,
 			    enum mdss_dsi_clk_type clk_type,
+			    enum mdss_dsi_lclk_type l_type,
 			    enum mdss_dsi_clk_state curr_state);
 int mdss_dsi_post_clkon_cb(void *priv,
 			   enum mdss_dsi_clk_type clk_type,
+			   enum mdss_dsi_lclk_type l_type,
 			   enum mdss_dsi_clk_state curr_state);
 int mdss_dsi_pre_clkon_cb(void *priv,
 			  enum mdss_dsi_clk_type clk_type,
+			  enum mdss_dsi_lclk_type l_type,
 			  enum mdss_dsi_clk_state new_state);
 int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable);
 void mdss_dsi_phy_disable(struct mdss_dsi_ctrl_pdata *ctrl);
@@ -721,7 +709,7 @@ int mdss_panel_get_dst_fmt(u32 bpp, char mipi_mode, u32 pixel_packing,
 
 int mdss_dsi_register_recovery_handler(struct mdss_dsi_ctrl_pdata *ctrl,
 		struct mdss_intf_recovery *recovery);
-#ifndef CONFIG_BACKLIGHT_QCOM_WLED
+#ifndef CONFIG_BACKLIGHT_QCOM_SPMI_WLED
 void mdss_dsi_unregister_bl_settings(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 #endif
 void mdss_dsi_panel_dsc_pps_send(struct mdss_dsi_ctrl_pdata *ctrl,
@@ -738,6 +726,11 @@ int mdss_dsi_phy_pll_reset_status(struct mdss_dsi_ctrl_pdata *ctrl);
 int mdss_dsi_check_panel_status(struct mdss_dsi_ctrl_pdata *ctrl, void *arg);
 
 void mdss_dsi_debug_bus_init(struct mdss_dsi_data *sdata);
+int mdss_dsi_get_dt_vreg_data(struct device *dev,
+	struct device_node *of_node, struct dss_module_power *mp,
+	enum dsi_pm_type module);
+void mdss_dsi_put_dt_vreg_data(struct device *dev,
+	struct dss_module_power *module_power);
 
 static inline const char *__mdss_dsi_pm_name(enum dsi_pm_type module)
 {
@@ -982,7 +975,4 @@ static inline enum dsi_physical_lane_id mdss_dsi_logical_to_physical_lane(
 	return i;
 }
 
-#ifdef CONFIG_FB_MSM_MDSS_SPECIFIC_PANEL
-#include "somc_panel/somc_panel_exts.h"
-#endif
 #endif /* MDSS_DSI_H */

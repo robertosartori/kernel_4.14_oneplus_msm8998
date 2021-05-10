@@ -857,7 +857,7 @@ void dp_extract_edid_detailed_timing_description(struct edp_edid *edid,
 
 
 /*
- * EDID structure can be found in VESA standart here:
+ * EDID structure can be found in VESA standard here:
  * http://read.pudn.com/downloads110/ebook/456020/E-EDID%20Standard.pdf
  *
  * following table contains default edid
@@ -2472,7 +2472,7 @@ static int dp_start_link_train_1(struct mdss_dp_drv_pdata *ep)
 	old_v_level = ep->v_level;
 	while (1) {
 		usleep_time = ep->dpcd.training_read_interval;
-		usleep_range(usleep_time, usleep_time);
+		usleep_range(usleep_time, usleep_time + 50);
 
 		ret = mdss_dp_aux_link_status_read(ep, 6);
 		if (ret == -ENODEV)
@@ -2527,7 +2527,7 @@ static int dp_start_link_train_2(struct mdss_dp_drv_pdata *ep)
 
 	do  {
 		usleep_time = ep->dpcd.training_read_interval;
-		usleep_range(usleep_time, usleep_time);
+		usleep_range(usleep_time, usleep_time + 50);
 
 		ret = mdss_dp_aux_link_status_read(ep, 6);
 		if (ret == -ENODEV)
@@ -2583,7 +2583,7 @@ static void dp_clear_training_pattern(struct mdss_dp_drv_pdata *ep)
 	pr_debug("Entered++\n");
 	dp_train_pattern_set_write(ep, 0);
 	usleep_time = ep->dpcd.training_read_interval;
-	usleep_range(usleep_time, usleep_time);
+	usleep_range(usleep_time, usleep_time + 50);
 }
 
 int mdss_dp_link_train(struct mdss_dp_drv_pdata *dp)
@@ -2606,8 +2606,8 @@ int mdss_dp_link_train(struct mdss_dp_drv_pdata *dp)
 	if (ret < 0) {
 		if ((ret == -EAGAIN) && !dp_link_rate_down_shift(dp)) {
 			pr_debug("retry with lower rate\n");
-			dp_clear_training_pattern(dp);
-			return -EAGAIN;
+			ret = -EINVAL;
+			goto clear;
 		} else {
 			pr_err("Training 1 failed\n");
 			ret = -EINVAL;
@@ -2625,8 +2625,8 @@ int mdss_dp_link_train(struct mdss_dp_drv_pdata *dp)
 	if (ret < 0) {
 		if ((ret == -EAGAIN) && !dp_link_rate_down_shift(dp)) {
 			pr_debug("retry with lower rate\n");
-			dp_clear_training_pattern(dp);
-			return -EAGAIN;
+			ret = -EINVAL;
+			goto clear;
 		} else {
 			pr_err("Training 2 failed\n");
 			ret = -EINVAL;

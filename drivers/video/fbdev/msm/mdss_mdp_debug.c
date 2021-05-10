@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1817,20 +1817,20 @@ static void __print_buf(struct seq_file *s, struct mdss_mdp_data *buf,
 {
 	char tmpbuf[20];
 	int i;
-	const char *buf_stat_stmap[] = {
+	const char const *buf_stat_stmap[] = {
 		[MDP_BUF_STATE_UNUSED]  = "UNUSED ",
 		[MDP_BUF_STATE_READY]   = "READY  ",
 		[MDP_BUF_STATE_ACTIVE]  = "ACTIVE ",
 		[MDP_BUF_STATE_CLEANUP] = "CLEANUP",
 	};
-	const char *domain_stmap[] = {
+	const char const *domain_stmap[] = {
 		[MDSS_IOMMU_DOMAIN_UNSECURE]     = "mdp_unsecure",
 		[MDSS_IOMMU_DOMAIN_ROT_UNSECURE] = "rot_unsecure",
 		[MDSS_IOMMU_DOMAIN_SECURE]       = "mdp_secure",
 		[MDSS_IOMMU_DOMAIN_ROT_SECURE]   = "rot_secure",
 		[MDSS_IOMMU_MAX_DOMAIN]          = "undefined",
 	};
-	const char *dma_data_dir_stmap[] = {
+	const char const *dma_data_dir_stmap[] = {
 		[DMA_BIDIRECTIONAL] = "read/write",
 		[DMA_TO_DEVICE]     = "read",
 		[DMA_FROM_DEVICE]   = "read/write",
@@ -1879,7 +1879,7 @@ static void __dump_pipe(struct seq_file *s, struct mdss_mdp_pipe *pipe,
 			pipe->mixer_stage, pipe->alpha,
 			pipe->transp, pipe->blend_op);
 	if (pipe->multirect.max_rects > 1) {
-		const char *fmodes[] = {
+		const char const *fmodes[] = {
 			[MDSS_MDP_PIPE_MULTIRECT_PARALLEL]	= "parallel",
 			[MDSS_MDP_PIPE_MULTIRECT_SERIAL]	= "serial",
 			[MDSS_MDP_PIPE_MULTIRECT_NONE]		= "single",
@@ -1941,9 +1941,7 @@ static void __dump_mixer(struct seq_file *s, struct mdss_mdp_mixer *mixer,
 		return;
 
 	seq_printf(s, "\n%s Mixer #%d  res=%dx%d roi[%d, %d, %d, %d] %s\n",
-		mixer->type != MDSS_MDP_MIXER_TYPE_WRITEBACK ?
-		(mixer->type != MDSS_MDP_MIXER_TYPE_INTF ?
-		 "Intf without DSPP" : "Intf") : "Writeback",
+		mixer->type == MDSS_MDP_MIXER_TYPE_INTF ? "Intf" : "Writeback",
 		mixer->num, mixer->width, mixer->height,
 		mixer->roi.x, mixer->roi.y, mixer->roi.w, mixer->roi.h,
 		mixer->cursor_enabled ? "w/cursor" : "");
@@ -2220,7 +2218,7 @@ static void __stats_ctl_dump(struct mdss_mdp_ctl *ctl, struct seq_file *s)
 		seq_printf(s, "vsync: %08u \tunderrun: %08u\n",
 				ctl->vsync_cnt, ctl->underrun_cnt);
 		if (ctl->mfd) {
-			seq_printf(s, "user_bl: %08llu \tmod_bl: %08u\n",
+			seq_printf(s, "user_bl: %08u \tmod_bl: %08u\n",
 				ctl->mfd->bl_level, ctl->mfd->bl_level_scaled);
 		}
 	} else {

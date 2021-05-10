@@ -13,10 +13,6 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/spi/spi.h>
-#include <linux/of_gpio.h>
-#include <linux/gpio.h>
-#include <linux/qpnp/pin.h>
-#include <linux/delay.h>
 
 #include "mdss_spi_client.h"
 
@@ -63,14 +59,27 @@ int mdss_spi_read_data(u8 reg_addr, u8 *data, u8 len)
 	spi_message_add_tail(&t[0], &m);
 	spi_message_add_tail(&t[1], &m);
 	rc = spi_sync(mdss_spi_client, &m);
+	if (rc) {
+		pr_err("%s: send panel reg failed\n", __func__);
+		return rc;
+	}
 
 	spi_message_init(&m);
 	spi_message_add_tail(&t[2], &m);
 	rc = spi_sync(mdss_spi_client, &m);
+	if (rc) {
+		pr_err("%s: send empty package failed\n", __func__);
+		return rc;
+	}
+
 	spi_message_init(&m);
 	spi_message_add_tail(&t[3], &m);
 	rc = spi_sync(mdss_spi_client, &m);
 	mdss_spi_client->max_speed_hz = max_speed_hz;
+	if (rc) {
+		pr_err("%s: send memory write reg failed\n", __func__);
+		return rc;
+	}
 
 	return rc;
 }
@@ -94,7 +103,8 @@ int mdss_spi_tx_command(const void *buf)
 	spi_message_init(&m);
 	spi_message_add_tail(&t, &m);
 	rc = spi_sync(mdss_spi_client, &m);
-
+	if (rc)
+		pr_err("%s: send panel command failed\n", __func__);
 	return rc;
 }
 
@@ -117,18 +127,18 @@ int mdss_spi_tx_parameter(const void *buf, size_t len)
 	spi_message_init(&m);
 	spi_message_add_tail(&t, &m);
 	rc = spi_sync(mdss_spi_client, &m);
+	if (rc)
+		pr_err("%s: send panel parameter failed\n", __func__);
 
 	return rc;
 }
 
-int mdss_spi_tx_pixel(const void *buf, size_t len)
+int mdss_spi_tx_pixel(const void *buf, size_t len,
+		void (*spi_tx_compelet)(void *), void *ctx)
 {
 	int rc = 0;
-	struct spi_transfer t = {
-		.tx_buf = buf,
-		.len    = len,
-		};
-	struct spi_message m;
+	static struct spi_transfer t;
+	static struct spi_message m;
 
 	if (!mdss_spi_client) {
 		pr_err("%s: spi client not available\n", __func__);
@@ -136,9 +146,17 @@ int mdss_spi_tx_pixel(const void *buf, size_t len)
 	}
 
 	mdss_spi_client->bits_per_word = 16;
+	t.tx_buf = buf;
+	t.len = len;
 	spi_message_init(&m);
+	m.complete = spi_tx_compelet;
+	m.context = ctx;
+
 	spi_message_add_tail(&t, &m);
-	rc = spi_sync(mdss_spi_client, &m);
+	rc = spi_async(mdss_spi_client, &m);
+
+	if (rc)
+		pr_err("%s: send FrameBuffer data failed\n", __func__);
 
 	return rc;
 }
@@ -149,7 +167,6 @@ static int mdss_spi_client_probe(struct spi_device *spidev)
 	int cs;
 	int cpha, cpol, cs_high;
 	u32 max_speed;
-	struct device_node *np;
 
 	irq = spidev->irq;
 	cs = spidev->chip_select;
@@ -157,14 +174,13 @@ static int mdss_spi_client_probe(struct spi_device *spidev)
 	cpol = (spidev->mode & SPI_CPOL) ? 1:0;
 	cs_high = (spidev->mode & SPI_CS_HIGH) ? 1:0;
 	max_speed = spidev->max_speed_hz;
-	np = spidev->dev.of_node;
+
 	pr_debug("cs[%x] CPHA[%x] CPOL[%x] CS_HIGH[%x] Max_speed[%d]\n",
 		cs, cpha, cpol, cs_high, max_speed);
 	mdss_spi_client = spidev;
 
 	return 0;
 }
-
 
 static const struct of_device_id mdss_spi_dt_match[] = {
 	{ .compatible = "qcom,mdss-spi-client" },
@@ -185,6 +201,10 @@ static int __init mdss_spi_init(void)
 	int ret;
 
 	ret = spi_register_driver(&mdss_spi_client_driver);
+	if (ret) {
+		pr_err("register mdss spi client driver failed!\n");
+		return ret;
+	}
 
 	return 0;
 }

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, 2017-2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -13,7 +13,6 @@
 #include <linux/clk.h>
 #include <linux/err.h>
 #include <linux/io.h>
-#include <linux/regulator/consumer.h>
 #include <linux/delay.h>
 #include <linux/mdss_io_util.h>
 
@@ -39,6 +38,7 @@ void dss_reg_w(struct dss_io_data *io, u32 offset, u32 value, u32 debug)
 		in_val = readl_relaxed(io->base + offset);
 		DEV_DBG("[%08x] => %08x [%08x]\n",
 			(u32)(unsigned long)(io->base + offset),
+
 			value, in_val);
 	}
 } /* dss_reg_w */
@@ -47,6 +47,7 @@ EXPORT_SYMBOL(dss_reg_w);
 u32 dss_reg_r(struct dss_io_data *io, u32 offset, u32 debug)
 {
 	u32 value;
+
 	if (!io || !io->base) {
 		DEV_ERR("%pS->%s: invalid input\n",
 			__builtin_return_address(0), __func__);
@@ -77,7 +78,7 @@ void dss_reg_dump(void __iomem *base, u32 length, const char *prefix,
 } /* dss_reg_dump */
 EXPORT_SYMBOL(dss_reg_dump);
 
-static struct resource *msm_dss_get_res_byname(struct platform_device *pdev,
+static struct resource *msm_mdss_get_res_byname(struct platform_device *pdev,
 	unsigned int type, const char *name)
 {
 	struct resource *res = NULL;
@@ -87,8 +88,8 @@ static struct resource *msm_dss_get_res_byname(struct platform_device *pdev,
 		DEV_ERR("%s: '%s' resource not found\n", __func__, name);
 
 	return res;
-} /* msm_dss_get_res_byname */
-EXPORT_SYMBOL(msm_dss_get_res_byname);
+} /* msm_mdss_get_res_byname */
+EXPORT_SYMBOL(msm_mdss_get_res_byname);
 
 int msm_dss_ioremap_byname(struct platform_device *pdev,
 	struct dss_io_data *io_data, const char *name)
@@ -101,9 +102,9 @@ int msm_dss_ioremap_byname(struct platform_device *pdev,
 		return -EINVAL;
 	}
 
-	res = msm_dss_get_res_byname(pdev, IORESOURCE_MEM, name);
+	res = msm_mdss_get_res_byname(pdev, IORESOURCE_MEM, name);
 	if (!res) {
-		DEV_ERR("%pS->%s: '%s' msm_dss_get_res_byname failed\n",
+		DEV_ERR("%pS->%s: '%s' msm_mdss_get_res_byname failed\n",
 			__builtin_return_address(0), __func__, name);
 		return -ENODEV;
 	}
@@ -212,10 +213,57 @@ vreg_get_fail:
 } /* msm_dss_config_vreg */
 EXPORT_SYMBOL(msm_dss_config_vreg);
 
+int msm_dss_config_vreg_opt_mode(struct dss_vreg *in_vreg, int num_vreg,
+				 enum dss_vreg_mode mode)
+{
+	int i = 0, rc = 0;
+
+	if (mode >= DSS_REG_MODE_MAX) {
+		pr_err("%pS->%s: invalid mode %d\n",
+			 __builtin_return_address(0), __func__, mode);
+		rc = -EINVAL;
+		goto error;
+	}
+
+	for (i = 0; i < num_vreg; i++) {
+		rc = PTR_RET(in_vreg[i].vreg);
+		if (rc) {
+			DEV_ERR("%pS->%s: %s regulator error. rc=%d\n",
+				__builtin_return_address(0), __func__,
+				in_vreg[i].vreg_name, rc);
+			goto error;
+		}
+
+		DEV_DBG("%s: Setting optimum mode %d for %s (load=%d)\n",
+			__func__, mode, in_vreg[i].vreg_name,
+			in_vreg[i].load[mode]);
+		rc = regulator_set_load(in_vreg[i].vreg,
+					in_vreg[i].load[mode]);
+		if (rc < 0) {
+			DEV_ERR("%pS->%s: %s set opt mode failed. rc=%d\n",
+				__builtin_return_address(0), __func__,
+				in_vreg[i].vreg_name, rc);
+			goto error;
+		} else {
+			/*
+			 * regulator_set_load can return non-zero
+			 * value for success. However, this API is expected
+			 * to return 0 for success.
+			 */
+			rc = 0;
+		}
+	}
+
+error:
+	return rc;
+}
+EXPORT_SYMBOL(msm_dss_config_vreg_opt_mode);
+
 int msm_dss_enable_vreg(struct dss_vreg *in_vreg, int num_vreg, int enable)
 {
 	int i = 0, rc = 0;
 	bool need_sleep;
+
 	if (enable) {
 		for (i = 0; i < num_vreg; i++) {
 			rc = PTR_RET(in_vreg[i].vreg);
@@ -230,7 +278,7 @@ int msm_dss_enable_vreg(struct dss_vreg *in_vreg, int num_vreg, int enable)
 				usleep_range(in_vreg[i].pre_on_sleep * 1000,
 					in_vreg[i].pre_on_sleep * 1000);
 			rc = regulator_set_load(in_vreg[i].vreg,
-				in_vreg[i].enable_load);
+				in_vreg[i].load[DSS_REG_MODE_ENABLE]);
 			if (rc < 0) {
 				DEV_ERR("%pS->%s: %s set opt m fail\n",
 					__builtin_return_address(0), __func__,
@@ -254,8 +302,11 @@ int msm_dss_enable_vreg(struct dss_vreg *in_vreg, int num_vreg, int enable)
 				usleep_range(in_vreg[i].pre_off_sleep * 1000,
 					in_vreg[i].pre_off_sleep * 1000);
 			regulator_set_load(in_vreg[i].vreg,
-				in_vreg[i].disable_load);
-			regulator_disable(in_vreg[i].vreg);
+				in_vreg[i].load[DSS_REG_MODE_DISABLE]);
+
+			if (regulator_is_enabled(in_vreg[i].vreg))
+				regulator_disable(in_vreg[i].vreg);
+
 			if (in_vreg[i].post_off_sleep)
 				usleep_range(in_vreg[i].post_off_sleep * 1000,
 					in_vreg[i].post_off_sleep * 1000);
@@ -264,7 +315,8 @@ int msm_dss_enable_vreg(struct dss_vreg *in_vreg, int num_vreg, int enable)
 	return rc;
 
 disable_vreg:
-	regulator_set_load(in_vreg[i].vreg, in_vreg[i].disable_load);
+	regulator_set_load(in_vreg[i].vreg,
+					in_vreg[i].load[DSS_REG_MODE_DISABLE]);
 
 vreg_set_opt_mode_fail:
 	for (i--; i >= 0; i--) {
@@ -272,7 +324,7 @@ vreg_set_opt_mode_fail:
 			usleep_range(in_vreg[i].pre_off_sleep * 1000,
 				in_vreg[i].pre_off_sleep * 1000);
 		regulator_set_load(in_vreg[i].vreg,
-			in_vreg[i].disable_load);
+			in_vreg[i].load[DSS_REG_MODE_DISABLE]);
 		regulator_disable(in_vreg[i].vreg);
 		if (in_vreg[i].post_off_sleep)
 			usleep_range(in_vreg[i].post_off_sleep * 1000,
@@ -286,6 +338,7 @@ EXPORT_SYMBOL(msm_dss_enable_vreg);
 int msm_dss_enable_gpio(struct dss_gpio *in_gpio, int num_gpio, int enable)
 {
 	int i = 0, rc = 0;
+
 	if (enable) {
 		for (i = 0; i < num_gpio; i++) {
 			DEV_DBG("%pS->%s: %s enable\n",
@@ -364,7 +417,7 @@ int msm_dss_clk_set_rate(struct dss_clk *clk_arry, int num_clk)
 
 	for (i = 0; i < num_clk; i++) {
 		if (clk_arry[i].clk) {
-			if (DSS_CLK_AHB != clk_arry[i].type) {
+			if (clk_arry[i].type != DSS_CLK_AHB) {
 				DEV_DBG("%pS->%s: '%s' rate %ld\n",
 					__builtin_return_address(0), __func__,
 					clk_arry[i].clk_name,
@@ -441,7 +494,7 @@ int msm_dss_enable_clk(struct dss_clk *clk_arry, int num_clk, int enable)
 EXPORT_SYMBOL(msm_dss_enable_clk);
 
 
-int mdss_i2c_byte_read(struct i2c_client *client, uint8_t slave_addr,
+int dss_i2c_byte_read(struct i2c_client *client, uint8_t slave_addr,
 			uint8_t reg_offset, uint8_t *read_buf)
 {
 	struct i2c_msg msgs[2];
@@ -468,9 +521,9 @@ int mdss_i2c_byte_read(struct i2c_client *client, uint8_t slave_addr,
 	pr_debug("%s: i2c buf is [%x]\n", __func__, *read_buf);
 	return 0;
 }
-EXPORT_SYMBOL(mdss_i2c_byte_read);
+EXPORT_SYMBOL(dss_i2c_byte_read);
 
-int mdss_i2c_byte_write(struct i2c_client *client, uint8_t slave_addr,
+int dss_i2c_byte_write(struct i2c_client *client, uint8_t slave_addr,
 			uint8_t reg_offset, uint8_t *value)
 {
 	struct i2c_msg msgs[1];
@@ -496,4 +549,4 @@ int mdss_i2c_byte_write(struct i2c_client *client, uint8_t slave_addr,
 	pr_debug("%s: I2C write status=%x\n", __func__, status);
 	return status;
 }
-EXPORT_SYMBOL(mdss_i2c_byte_write);
+EXPORT_SYMBOL(dss_i2c_byte_write);

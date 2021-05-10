@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1020,8 +1020,8 @@ static int mdss_mdp_writeback_display(struct mdss_mdp_ctl *ctl, void *arg)
 	if (ctl->mdata->default_ot_wr_limit ||
 			ctl->mdata->default_ot_rd_limit)
 		mdss_mdp_set_ot_limit_wb(ctx, true);
-
-	mdss_mdp_set_qos_wb(ctl, ctx);
+	if (ctl->mdata->mdp_rev >= MDSS_MDP_HW_REV_300)
+		mdss_mdp_set_qos_wb(ctl, ctx);
 
 	wb_args = (struct mdss_mdp_writeback_arg *) arg;
 	if (!wb_args)
@@ -1059,7 +1059,7 @@ static int mdss_mdp_writeback_display(struct mdss_mdp_ctl *ctl, void *arg)
 	mdss_mdp_irq_enable(ctx->intr_type, ctx->intf_num);
 
 	ret = mdss_iommu_ctrl(1);
-	if (IS_ERR_VALUE((unsigned long)ret)) {
+	if (IS_ERR_VALUE((unsigned long) ret)) {
 		pr_err("IOMMU attach failed\n");
 		return ret;
 	}
@@ -1180,8 +1180,7 @@ int mdss_mdp_writeback_start(struct mdss_mdp_ctl *ctl)
 		ctl->ops.prepare_fnc = mdss_mdp_writeback_prepare_wfd;
 
 		/* WB2 Intr Enable is BIT(2) in MDSS 1.8.0 */
-		if ((ctl->mdata->mdp_rev == MDSS_MDP_HW_REV_108) ||
-		    (ctl->mdata->mdp_rev == MDSS_MDP_HW_REV_111)) {
+		if (ctl->mdata->mdp_rev == MDSS_MDP_HW_REV_108) {
 			ctx->intr_type = MDSS_MDP_IRQ_TYPE_WB_ROT_COMP;
 			ctx->intf_num = 2;
 		}
