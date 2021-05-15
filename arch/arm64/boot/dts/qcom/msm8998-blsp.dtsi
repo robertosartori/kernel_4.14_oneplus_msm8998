@@ -158,18 +158,18 @@
 		reg = <0xC179000 0x600>;
 		interrupt-names = "qup_irq";
 		interrupts = <0 99 0>;
-		dmas = <&dma_blsp1 14 64 0x20000020 0x20>,
-			<&dma_blsp1 15 32 0x20000020 0x20>;
-		dma-names = "tx", "rx";
 		qcom,master-id = <86>;
 		qcom,clk-freq-out = <400000>;
 		qcom,clk-freq-in  = <19200000>;
 		clock-names = "iface_clk", "core_clk";
 		clocks = <&clock_gcc GCC_BLSP1_AHB_CLK>,
 			 <&clock_gcc GCC_BLSP1_QUP5_I2C_APPS_CLK>;
-		pinctrl-names = "i2c_active", "i2c_sleep";
-		pinctrl-0 = <&i2c_5_active>;
-		pinctrl-1 = <&i2c_5_sleep>;
+		qcom,i2c-dat = <&tlmm 87 0x00>;
+                qcom,i2c-clk = <&tlmm 88 0x00>;
+                pinctrl-names = "i2c_active", "i2c_sleep", "i2c_bitbang";
+                pinctrl-0 = <&i2c_5_active>;
+                pinctrl-1 = <&i2c_5_sleep>;
+                pinctrl-2 = <&i2c_5_bitbang>;
 		status = "disabled";
 	};
 
@@ -190,9 +190,12 @@
 		clock-names = "iface_clk", "core_clk";
 		clocks = <&clock_gcc GCC_BLSP1_AHB_CLK>,
 			 <&clock_gcc GCC_BLSP1_QUP6_I2C_APPS_CLK>;
-		pinctrl-names = "i2c_active", "i2c_sleep";
-		pinctrl-0 = <&i2c_6_active>;
-		pinctrl-1 = <&i2c_6_sleep>;
+                qcom,i2c-dat = <&tlmm 43 0x00>;
+                qcom,i2c-clk = <&tlmm 44 0x00>;
+                pinctrl-names = "i2c_active", "i2c_sleep", "i2c_bitbang";
+                pinctrl-0 = <&i2c_6_active>;
+                pinctrl-1 = <&i2c_6_sleep>;
+                pinctrl-2 = <&i2c_6_bitbang>;
 		status = "disabled";
 	};
 

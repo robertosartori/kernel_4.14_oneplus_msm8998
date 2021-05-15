@@ -115,6 +115,7 @@
 		compatible = "qcom,smmu-v2";
 		reg = <0xcd00000 0x40000>;
 		#iommu-cells = <1>;
+		qcom,no-actlr-read;
 		qcom,use-3-lvl-tables;
 		qcom,register-save;
 		qcom,no-smr-check;

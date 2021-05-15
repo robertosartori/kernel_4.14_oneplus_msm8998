@@ -39,6 +39,8 @@
 #include <linux/fb.h>
 #include <linux/mdss_io_util.h>
 
+#define CONFIG_MACH_MI 1
+
 #ifdef CONFIG_TOUCHSCREEN_COMMON
 #include <linux/input.h>
 #include <linux/input/tp_common.h>

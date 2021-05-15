@@ -57,6 +57,80 @@
     reg = <0 0x8b200000 0 0x1e00000>; //increae 4M size by oneplus
 };
 
+&tlmm {
+                /* GPIO_40 : FP_RESET_N */
+                fpc1020_reset_reset: reset {
+                        mux {
+                                pins = "gpio40";
+                                function = "gpio";
+                        };
+
+                        config {
+                                pins = "gpio40";
+                                drive-strength = <2>;
+                                bias-disable;
+                                output-low;
+                        };
+                };
+
+                /* GPIO_40 : FP_RESET_N, state device active */
+                fpc1020_reset_active: fpc1020_reset_active {
+                        mux {
+                                pins = "gpio40";
+                                function = "gpio";
+                        };
+
+                        config {
+                                pins = "gpio40";
+                                drive-strength = <2>;
+                                bias-disable;
+                                output-high;
+                        };
+                };
+
+
+        ts_active: ts_active {
+                mux {
+                        pins = "gpio89", "gpio125";
+                        function = "gpio";
+                };
+
+                config {
+                        pins = "gpio89", "gpio125";
+                        drive-strength = <16>;  /* 16 mA */
+                        bias-pull-up;           /* pull up */
+                };
+        };
+
+        ts_int_suspend: ts_int_suspend {
+                mux {
+                        pins = "gpio125";
+                        function = "gpio";
+                };
+
+                config {
+                        pins = "gpio125";
+                        drive-strength = <2>;   /* 2 mA */
+                        bias-disable;           /* NO pull */
+                };
+        };
+
+        ts_reset_suspend: ts_reset_suspend {
+                mux {
+                        pins = "gpio89";
+                        function = "gpio";
+                };
+
+                config {
+                        pins = "gpio89";
+                        drive-strength = <2>;   /* 2 mA */
+                        bias-pull-down;         /* pull down */
+                };
+        };
+
+
+};
+
 /* I/O */
 &soc {
 	gpio_keys {
@@ -139,6 +213,7 @@
 
 			};
 		};
+
 	};
 
 	/* Tri-state key */
@@ -183,38 +258,6 @@
 
 		pinctrl-0 = <&fpc1020_reset_reset>;
 		pinctrl-1 = <&fpc1020_reset_active>;
-	};
-
-	tlmm: pinctrl@03400000 {
-		/* GPIO_40 : FP_RESET_N */
-		fpc1020_reset_reset: reset {
-			mux {
-				pins = "gpio75";
-				function = "gpio";
-			};
-
-			config {
-				pins = "gpio75";
-				drive-strength = <2>;
-				bias-disable;
-				output-low;
-			};
-		};
-
-		/* GPIO_40 : FP_RESET_N, state device active */
-		fpc1020_reset_active: fpc1020_reset_active {
-			mux {
-				pins = "gpio75";
-				function = "gpio";
-			};
-
-			config {
-				pins = "gpio75";
-				drive-strength = <2>;
-				bias-disable;
-				output-high;
-			};
-		};
 	};
 
 	qcom,bcl {
@@ -433,6 +476,7 @@
 };
 
 &i2c_7 {
+                status = "okay";
 	qcom,clk-freq-out = <100000>;
 
 	bq27541-battery@55 {
@@ -599,30 +643,43 @@
 
 /* Display */
 &i2c_5 {
-	synaptics@20 {
-		status = "disabled";
-	};
-	synaptics-rmi-ts@20 {
-		compatible = "synaptics,s3320";
+			qcom,i2c-clk = <&tlmm 88 0>;
+	qcom,i2c-dat = <&tlmm 87 0>;
+		qcom,clk-freq-out = <100000>;
+                status = "ok";
+
+                /delete-node/ synaptics@20;
+
+	synaptics-rmi4-i2c@20 {
+		compatible = "syna,rmi4-i2c";
 		reg = <0x20>;
+		#address-cells = <1>;
+		#size-cells = <0>;
 		interrupt-parent = <&tlmm>;
-		interrupts = <125 0x2008>;
-		vcc_i2c_1v8-supply = <&pm8998_l6>;
-		vdd_2v8-supply = <&pm8998_l28>;
-		synaptics,tx-rx-num = <17 30>;
-		synaptics,vdd-voltage = <1808000 1808000>;
-		synaptics,avdd-voltage = <3008000 3008000>;
-		synaptics,vdd-current = <40000>;
-		synaptics,avdd-current = <20000>;
-		synaptics,display-coords = <1080 1920>;
-		synaptics,reset-gpio = <&tlmm 89 0x00>;
-		synaptics,irq-gpio = <&tlmm 125 0x2008>;
-		oem,support_hw_poweroff;
-		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
+		interrupts = <125 0x2008>; /* 0x2008 = IRQF_ONESHOT | IRQF_TRIGGER_LOW */
+		pinctrl-names = "default", "sleep";
 		pinctrl-0 = <&ts_active>;
 		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+		vdd-supply = <&pm8998_l28>;
+		vio-supply = <&pm8998_l6>;
+		syna,reset-delay-ms = <200>;
+		syna,startup-delay-ms = <200>;
+
+		rmi4-f01@1 {
+			reg = <0x01>;
+			syna,nosleep-mode = <1>;
+		};
+
+		rmi4_f12: rmi4-f12@12 {
+			reg = <0x12>;
+			touchscreen-x-mm = <68>;
+			touchscreen-y-mm = <122>;
+			syna,sensor-type = <1>;
+			syna,rezero-wait-ms = <200>;
+		};
 	};
 };
+
 &pcie0_clkreq_default {
 	mux {
 		pins = "gpio36";
@@ -670,7 +727,26 @@
 };
 
 &snd_9335 {
-	qcom,mbhc-audio-jack-type = "4-pole-jack";
+        qcom,msm-mbhc-hphl-swh = <1>;
+        /delete-property/ qcom,hph-en1-gpio;
+        /delete-property/ qcom,hph-en0-gpio;
+        /delete-property/ qcom,us-euro-gpios;
+        qcom,ear-en-gpios = <&pm8005_gpios 1 0>;
+        qcom,audio-routing =
+                "AIF4 VI", "MCLK",
+                "RX_BIAS", "MCLK",
+                "MADINPUT", "MCLK",
+                "AMIC2", "MIC BIAS2",
+                "MIC BIAS2", "Headset Mic",
+                "MIC BIAS2", "ANCRight Headset Mic",
+                "AMIC3", "MIC BIAS3",
+                "MIC BIAS3", "ANCLeft Headset Mic",
+                "DMIC0", "MIC BIAS1",
+                "MIC BIAS1", "Digital Mic0",
+                "DMIC3", "MIC BIAS4",
+                "MIC BIAS4", "Digital Mic3",
+                "SpkrLeft IN", "SPK1 OUT",
+                "SpkrRight IN", "SPK2 OUT";
 };
 /*
  * liuhaituo@MultiMediaAudio modified for adapation phone
