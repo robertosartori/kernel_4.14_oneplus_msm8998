@@ -92,7 +92,6 @@ static int msm_route_ext_ec_ref;
 static bool is_custom_stereo_on;
 static bool is_ds2_on;
 static bool swap_ch;
-static bool hifi_filter_enabled;
 static int aanc_level;
 
 #define WEIGHT_0_DB 0x4000
@@ -752,15 +751,6 @@ static struct msm_pcm_routing_fdai_data
 	/* MULTIMEDIA29 */
 	{{0, INVALID_SESSION, LEGACY_PCM_MODE, {NULL, NULL}, LEGACY_PCM},
 	 {0, INVALID_SESSION, LEGACY_PCM_MODE, {NULL, NULL}, LEGACY_PCM} },
-        /* MULTIMEDIA30 */
-	{{0, INVALID_SESSION, LEGACY_PCM_MODE, {NULL, NULL}, LEGACY_PCM},
-	 {0, INVALID_SESSION, LEGACY_PCM_MODE, {NULL, NULL}, LEGACY_PCM} },
-        /* MULTIMEDIA31 */
-	{{0, INVALID_SESSION, LEGACY_PCM_MODE, {NULL, NULL}, LEGACY_PCM},
-	 {0, INVALID_SESSION, LEGACY_PCM_MODE, {NULL, NULL}, LEGACY_PCM} },
-	/* CS_VOICE */
-	{{0, INVALID_SESSION, LEGACY_PCM_MODE, {NULL, NULL}, LEGACY_PCM},
-	 {0, INVALID_SESSION, LEGACY_PCM_MODE, {NULL, NULL}, LEGACY_PCM} },
 	/* VOIP */
 	{{0, INVALID_SESSION, LEGACY_PCM_MODE, {NULL, NULL}, LEGACY_PCM},
 	 {0, INVALID_SESSION, LEGACY_PCM_MODE, {NULL, NULL}, LEGACY_PCM} },
@@ -773,13 +763,7 @@ static struct msm_pcm_routing_fdai_data
 	/* VOICE_STUB */
 	{{0, INVALID_SESSION, LEGACY_PCM_MODE, {NULL, NULL}, LEGACY_PCM},
 	 {0, INVALID_SESSION, LEGACY_PCM_MODE, {NULL, NULL}, LEGACY_PCM} },
-	/* VOLTE */
-	{{0, INVALID_SESSION, LEGACY_PCM_MODE, {NULL, NULL}, LEGACY_PCM},
-	 {0, INVALID_SESSION, LEGACY_PCM_MODE, {NULL, NULL}, LEGACY_PCM} },
 	/* DTMF_RX */
-	{{0, INVALID_SESSION, LEGACY_PCM_MODE, {NULL, NULL}, LEGACY_PCM},
-	 {0, INVALID_SESSION, LEGACY_PCM_MODE, {NULL, NULL}, LEGACY_PCM} },
-	/* VOICE2 */
 	{{0, INVALID_SESSION, LEGACY_PCM_MODE, {NULL, NULL}, LEGACY_PCM},
 	 {0, INVALID_SESSION, LEGACY_PCM_MODE, {NULL, NULL}, LEGACY_PCM} },
 	/* QCHAT */
@@ -1340,7 +1324,7 @@ int msm_pcm_routing_reg_phy_compr_stream(int fe_id, int perf_mode,
 	int num_copps = 0;
 	struct route_payload payload;
 	u32 channels, sample_rate;
-	u16 bit_width = 16, be_bit_width;
+	u16 bit_width = 16;
 	bool is_lsm;
 
 	pr_debug("%s:fe_id[%d] perf_mode[%d] id[%d] stream_type[%d] passt[%d]",
@@ -1441,14 +1425,6 @@ int msm_pcm_routing_reg_phy_compr_stream(int fe_id, int perf_mode,
 				topology = COMPRESSED_PASSTHROUGH_NONE_TOPOLOGY;
 			pr_debug("%s: Before adm open topology %d\n", __func__,
 				topology);
-
-			be_bit_width = msm_routing_get_bit_width(
-						msm_bedais[i].format);
-			if (hifi_filter_enabled && (msm_bedais[i].sample_rate
-				== 384000 || msm_bedais[i].sample_rate ==
-				352800) && be_bit_width == 32)
-				bit_width = msm_routing_get_bit_width(
-						SNDRV_PCM_FORMAT_S32_LE);
 
 			copp_idx =
 				adm_open(msm_bedais[i].port_id,
@@ -1601,7 +1577,7 @@ int msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode,
 	int i, j, session_type, path_type, port_type, topology, num_copps = 0;
 	struct route_payload payload;
 	u32 channels, sample_rate;
-	uint16_t bits_per_sample = 16, be_bit_width;
+	uint16_t bits_per_sample = 16;
 	uint32_t passthr_mode = LEGACY_PCM;
 	int ret = 0;
 #ifdef AUDIO_SONY_PLATFORM
@@ -1681,15 +1657,7 @@ int msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode,
 			topology = msm_routing_get_adm_topology(fedai_id,
 								session_type,
 								i);
-			be_bit_width = msm_routing_get_bit_width(
-						msm_bedais[i].format);
-
-			if (hifi_filter_enabled && (msm_bedais[i].sample_rate ==
-				384000 ||msm_bedais[i].sample_rate == 352800)
-				&& be_bit_width == 32)
-				bits_per_sample = msm_routing_get_bit_width(
-							SNDRV_PCM_FORMAT_S32_LE);
-			 copp_idx = adm_open(msm_bedais[i].port_id, path_type,
+			copp_idx = adm_open(msm_bedais[i].port_id, path_type,
 					    sample_rate, channels, topology,
 					    perf_mode, bits_per_sample,
 					    app_type, acdb_dev_id);
@@ -1853,7 +1821,7 @@ static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 {
 	int session_type, path_type, topology;
 	u32 channels, sample_rate;
-	uint16_t bits_per_sample = 16, be_bit_width;
+	uint16_t bits_per_sample = 16;
 	struct msm_pcm_routing_fdai_data *fdai;
 	uint32_t passthr_mode;
 	bool is_lsm;
@@ -1966,14 +1934,6 @@ static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 								reg);
 			acdb_dev_id =
 			fe_dai_app_type_cfg[val][session_type][reg].acdb_dev_id;
-
-			be_bit_width = msm_routing_get_bit_width(
-						msm_bedais[reg].format);
-			if (hifi_filter_enabled && (msm_bedais[reg].sample_rate
-				== 384000 ||msm_bedais[reg].sample_rate ==
-				352800) && be_bit_width == 32)
-				bits_per_sample = msm_routing_get_bit_width(
-							SNDRV_PCM_FORMAT_S32_LE);
 			copp_idx = adm_open(msm_bedais[reg].port_id, path_type,
 					    sample_rate, channels, topology,
 					    fdai->perf_mode, bits_per_sample,
@@ -16535,14 +16495,6 @@ static const struct snd_kcontrol_new quin_tdm_rx_3_port_mixer_controls[] = {
 		msm_routing_put_port_mixer),
 };
 
-static const struct snd_kcontrol_new quin_tdm_rx_7_port_mixer_controls[] = {
-	SOC_DOUBLE_EXT("QUIN_TDM_TX_7", SND_SOC_NOPM,
-		MSM_BACKEND_DAI_QUIN_TDM_RX_7,
-		MSM_BACKEND_DAI_QUIN_TDM_TX_7, 1, 0,
-		msm_routing_get_port_mixer,
-		msm_routing_put_port_mixer),
-};
-
 static const struct snd_kcontrol_new tert_mi2s_rx_port_mixer_controls[] = {
 	SOC_DOUBLE_EXT("PRI_MI2S_TX", SND_SOC_NOPM,
 	MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
@@ -17595,28 +17547,6 @@ static const struct snd_kcontrol_new use_ds1_or_ds2_controls[] = {
 	SOC_SINGLE_EXT("DS2 OnOff", SND_SOC_NOPM, 0,
 	1, 0, msm_routing_get_use_ds1_or_ds2_control,
 	msm_routing_put_use_ds1_or_ds2_control),
-};
-
-static int msm_routing_get_hifi_filter_control(
-					struct snd_kcontrol *kcontrol,
-					struct snd_ctl_elem_value *ucontrol)
-{
-	ucontrol->value.integer.value[0] = hifi_filter_enabled;
-	return 0;
-}
-
-static int msm_routing_put_hifi_filter_control(
-					struct snd_kcontrol *kcontrol,
-					struct snd_ctl_elem_value *ucontrol)
-{
-	hifi_filter_enabled = ucontrol->value.integer.value[0];
-	return 0;
-}
-
-static const struct snd_kcontrol_new hifi_filter_controls[] = {
-	SOC_SINGLE_EXT("HiFi Filter", SND_SOC_NOPM, 0,
-		1, 0, msm_routing_get_hifi_filter_control,
-		msm_routing_put_hifi_filter_control),
 };
 
 int msm_routing_get_rms_value_control(struct snd_kcontrol *kcontrol,
@@ -19694,9 +19624,6 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets[] = {
 	SND_SOC_DAPM_MIXER("QUIN_TDM_RX_3 Port Mixer", SND_SOC_NOPM, 0, 0,
 	quin_tdm_rx_3_port_mixer_controls,
 	ARRAY_SIZE(quin_tdm_rx_3_port_mixer_controls)),
-	SND_SOC_DAPM_MIXER("QUIN_TDM_RX_7 Port Mixer", SND_SOC_NOPM, 0, 0,
-	quin_tdm_rx_7_port_mixer_controls,
-	ARRAY_SIZE(quin_tdm_rx_7_port_mixer_controls)),
 	SND_SOC_DAPM_MIXER("INT0_MI2S_RX Port Mixer", SND_SOC_NOPM, 0, 0,
 	int0_mi2s_rx_port_mixer_controls,
 	ARRAY_SIZE(int0_mi2s_rx_port_mixer_controls)),
@@ -22349,12 +22276,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"QUIN_TDM_TX_1_UL_HL", NULL, "QUIN_TDM_TX_1"},
 	{"QUIN_TDM_TX_2_UL_HL", NULL, "QUIN_TDM_TX_2"},
 	{"QUIN_TDM_TX_3_UL_HL", NULL, "QUIN_TDM_TX_3"},
-	{"QUIN_TDM_TX_7_UL_HL", NULL, "QUIN_TDM_TX_7"},
 	{"QUIN_TDM_RX_0", NULL, "QUIN_TDM_RX_0_DL_HL"},
 	{"QUIN_TDM_RX_1", NULL, "QUIN_TDM_RX_1_DL_HL"},
 	{"QUIN_TDM_RX_2", NULL, "QUIN_TDM_RX_2_DL_HL"},
 	{"QUIN_TDM_RX_3", NULL, "QUIN_TDM_RX_3_DL_HL"},
-	{"QUIN_TDM_RX_7", NULL, "QUIN_TDM_RX_7_DL_HL"},
 
 	{"PRI_TDM_RX_0 Port Mixer", "PRI_MI2S_TX", "PRI_MI2S_TX"},
 	{"PRI_TDM_RX_0 Port Mixer", "SEC_MI2S_TX", "SEC_MI2S_TX"},
@@ -22443,8 +22368,6 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"PRI_TDM_RX_3 Port Mixer", "QUIN_TDM_TX_2", "QUIN_TDM_TX_2"},
 	{"PRI_TDM_RX_3 Port Mixer", "QUIN_TDM_TX_3", "QUIN_TDM_TX_3"},
 	{"PRI_TDM_RX_3", NULL, "PRI_TDM_RX_3 Port Mixer"},
-	{"QUIN_TDM_RX_7 Port Mixer", "QUIN_TDM_TX_7", "QUIN_TDM_TX_7"},
-	{"QUIN_TDM_RX_7", NULL, "QUIN_TDM_RX_7 Port Mixer"},
 
 	{"SEC_TDM_RX_0 Port Mixer", "PRI_MI2S_TX", "PRI_MI2S_TX"},
 	{"SEC_TDM_RX_0 Port Mixer", "SEC_MI2S_TX", "SEC_MI2S_TX"},
@@ -22800,8 +22723,6 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"QUIN_TDM_RX_3 Port Mixer", "QUIN_TDM_TX_2", "QUIN_TDM_TX_2"},
 	{"QUIN_TDM_RX_3 Port Mixer", "QUIN_TDM_TX_3", "QUIN_TDM_TX_3"},
 	{"QUIN_TDM_RX_3", NULL, "QUIN_TDM_RX_3 Port Mixer"},
-	{"QUIN_TDM_RX_7 Port Mixer", "QUIN_TDM_TX_7", "QUIN_TDM_TX_7"},
-	{"QUIN_TDM_RX_7", NULL, "QUIN_TDM_RX_7 Port Mixer"},
 
 	{"INT0_MI2S_RX Port Mixer", "PRI_MI2S_TX", "PRI_MI2S_TX"},
 	{"INT0_MI2S_RX Port Mixer", "SEC_MI2S_TX", "SEC_MI2S_TX"},
@@ -23134,7 +23055,6 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"BE_OUT", NULL, "QUIN_TDM_RX_1"},
 	{"BE_OUT", NULL, "QUIN_TDM_RX_2"},
 	{"BE_OUT", NULL, "QUIN_TDM_RX_3"},
-	{"BE_OUT", NULL, "QUIN_TDM_RX_7"},
 	{"BE_OUT", NULL, "WSA_CDC_DMA_RX_0"},
 	{"BE_OUT", NULL, "WSA_CDC_DMA_RX_1"},
 	{"BE_OUT", NULL, "RX_CDC_DMA_RX_0"},
@@ -23219,7 +23139,6 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"QUIN_TDM_TX_1", NULL, "BE_IN"},
 	{"QUIN_TDM_TX_2", NULL, "BE_IN"},
 	{"QUIN_TDM_TX_3", NULL, "BE_IN"},
-	{"QUIN_TDM_TX_7", NULL, "BE_IN"},
 	{"WSA_CDC_DMA_TX_0", NULL, "BE_IN"},
 	{"WSA_CDC_DMA_TX_1", NULL, "BE_IN"},
 	{"WSA_CDC_DMA_TX_2", NULL, "BE_IN"},
@@ -23334,7 +23253,7 @@ static int msm_pcm_routing_prepare(struct snd_pcm_substream *substream)
 	int session_type = INVALID_SESSION;
 	struct msm_pcm_routing_bdai_data *bedai;
 	u32 channels, sample_rate;
-	uint16_t bits_per_sample = 16, voc_path_type, be_bit_width;
+	uint16_t bits_per_sample = 16, voc_path_type;
 	struct msm_pcm_routing_fdai_data *fdai;
 	u32 session_id;
 	struct media_format_info voc_be_media_format;
@@ -23441,14 +23360,6 @@ static int msm_pcm_routing_prepare(struct snd_pcm_substream *substream)
 				|| (fdai->passthr_mode == COMPRESSED_PASSTHROUGH_IEC61937))
 				topology = COMPRESSED_PASSTHROUGH_NONE_TOPOLOGY;
 
-			be_bit_width = msm_routing_get_bit_width(
-						bedai->format);
-
-			if (hifi_filter_enabled && (bedai->sample_rate == 384000
-				|| bedai->sample_rate == 352800) &&
-				be_bit_width == 32)
-				bits_per_sample = msm_routing_get_bit_width(
-							SNDRV_PCM_FORMAT_S32_LE);
 			copp_idx = adm_open(bedai->port_id, path_type,
 					    sample_rate, channels, topology,
 					    fdai->perf_mode, bits_per_sample,
@@ -24050,10 +23961,6 @@ static int msm_routing_probe(struct snd_soc_platform *platform)
 	snd_soc_add_platform_controls(platform,
 			use_ds1_or_ds2_controls,
 			ARRAY_SIZE(use_ds1_or_ds2_controls));
-
-	snd_soc_add_platform_controls(platform,
-			hifi_filter_controls,
-			ARRAY_SIZE(hifi_filter_controls));
 
 	snd_soc_add_platform_controls(platform,
 				device_pp_params_mixer_controls,

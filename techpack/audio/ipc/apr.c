@@ -310,7 +310,7 @@ static void apr_add_child_devices(struct work_struct *work)
 			__func__, ret);
 }
 
-static void apr_adsp_up(void)
+void apr_adsp_up(void)
 {
 	pr_info("%s: Q6 is Up\n", __func__);
 	apr_set_q6_state(APR_SUBSYS_LOADED);
