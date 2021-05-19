@@ -37,7 +37,6 @@
 		serial0 = &uartblsp2dm1;
 		pci-domain0 = &pcie0;
 		sdhc2 = &sdhc_2; /* SDC2 SD card slot */
-		display0 = &framebuffer0;
 	};
 
 	psci {
@@ -64,14 +63,6 @@
 		* the address was extracted from a bootloader dd image using the following:
 		* $ strings xbl.img | grep 'Display Reserved'
 		*/
-		framebuffer0: framebuffer@9d400000 {
-			compatible = "simple-framebuffer";
-			reg = <0 0x9d400000 0 (1080*1920*4)>;
-			width = <1080>;
-			height = <1920>;
-			stride = <(1080 * 4)>;
-			format = "a8r8g8b8";
-		};
 	};
 
 	cpus {
@@ -473,13 +464,6 @@
 		dfps_data_memory: dfps_data_mem@9fa00000 {
 			reg = <0x0 0x9fa00000 0x0 0x1000>;
 			label = "dfps_data_mem";
-		};
-
-		/* Bootloader display framebuffer region */
-		fb_mem: memory@9d400000 {
-			compatible = "removed-dma-pool";
-			reg = <0 0x9d400000 0 (1080 * 1920 * 4)>;
-			no-map;
 		};
 	};
 };
