@@ -26,7 +26,6 @@
 #define LSM_MAX_NUM_CHANNELS 8
 #define LSM_V3P0_MAX_NUM_CHANNELS 9
 
-#define LSM_API_VERSION_V2 2
 #define LSM_API_VERSION_V3 3
 
 typedef void (*lsm_app_cb)(uint32_t opcode, uint32_t token,
