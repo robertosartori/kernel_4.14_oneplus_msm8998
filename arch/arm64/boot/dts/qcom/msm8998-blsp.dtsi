@@ -167,9 +167,12 @@
 		clock-names = "iface_clk", "core_clk";
 		clocks = <&clock_gcc GCC_BLSP1_AHB_CLK>,
 			 <&clock_gcc GCC_BLSP1_QUP5_I2C_APPS_CLK>;
-		pinctrl-names = "i2c_active", "i2c_sleep";
+		qcom,i2c-dat = <&tlmm 87 0x00>;
+		qcom,i2c-clk = <&tlmm 88 0x00>;
+		pinctrl-names = "i2c_active", "i2c_sleep", "i2c_bitbang";
 		pinctrl-0 = <&i2c_5_active>;
 		pinctrl-1 = <&i2c_5_sleep>;
+		pinctrl-2 = <&i2c_5_bitbang>;
 		status = "disabled";
 	};
 
@@ -190,9 +193,12 @@
 		clock-names = "iface_clk", "core_clk";
 		clocks = <&clock_gcc GCC_BLSP1_AHB_CLK>,
 			 <&clock_gcc GCC_BLSP1_QUP6_I2C_APPS_CLK>;
-		pinctrl-names = "i2c_active", "i2c_sleep";
+		qcom,i2c-dat = <&tlmm 43 0x00>;
+		qcom,i2c-clk = <&tlmm 44 0x00>;
+		pinctrl-names = "i2c_active", "i2c_sleep", "i2c_bitbang";
 		pinctrl-0 = <&i2c_6_active>;
 		pinctrl-1 = <&i2c_6_sleep>;
+		pinctrl-2 = <&i2c_6_bitbang>;
 		status = "disabled";
 	};
 
@@ -213,9 +219,12 @@
 		clock-names = "iface_clk", "core_clk";
 		clocks = <&clock_gcc GCC_BLSP2_AHB_CLK>,
 			 <&clock_gcc GCC_BLSP2_QUP1_I2C_APPS_CLK>;
-		pinctrl-names = "i2c_active", "i2c_sleep";
+		qcom,i2c-dat = <&tlmm 55 0x00>;
+		qcom,i2c-clk = <&tlmm 56 0x00>;
+		pinctrl-names = "i2c_active", "i2c_sleep", "i2c_bitbang";
 		pinctrl-0 = <&i2c_7_active>;
 		pinctrl-1 = <&i2c_7_sleep>;
+		pinctrl-2 = <&i2c_7_bitbang>;
 		status = "disabled";
 	};
 
