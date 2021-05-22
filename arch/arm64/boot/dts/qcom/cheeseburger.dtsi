@@ -59,6 +59,10 @@
 
 /* I/O */
 &soc {
+	pinctrl@03400000 {
+		disabled-pins = <0 1 2 3 81 82 83 84>;
+	};
+
 	gpio_keys {
 		vol_up {
 			/delete-property/ gpio-key,wakeup;
