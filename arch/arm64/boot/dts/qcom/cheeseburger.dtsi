@@ -371,27 +371,37 @@
 	synaptics@20 {
 		status = "disabled";
 	};
-	synaptics-rmi-ts@20 {
-		compatible = "synaptics,s3320";
+
+	synaptics-rmi4-i2c@20 {
+		compatible = "syna,rmi4-i2c";
 		reg = <0x20>;
+		#address-cells = <1>;
+		#size-cells = <0>;
 		interrupt-parent = <&tlmm>;
-		interrupts = <125 0x2008>;
-		vcc_i2c_1v8-supply = <&pm8998_l6>;
-		vdd_2v8-supply = <&pm8998_l28>;
-		synaptics,tx-rx-num = <17 30>;
-		synaptics,vdd-voltage = <1808000 1808000>;
-		synaptics,avdd-voltage = <3008000 3008000>;
-		synaptics,vdd-current = <40000>;
-		synaptics,avdd-current = <20000>;
-		synaptics,display-coords = <1080 1920>;
-		synaptics,reset-gpio = <&tlmm 89 0x00>;
-		synaptics,irq-gpio = <&tlmm 125 0x2008>;
-		oem,support_hw_poweroff;
-		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
+		interrupts = <125 IRQ_TYPE_EDGE_FALLING>;
+		pinctrl-names = "default", "sleep";
 		pinctrl-0 = <&ts_active>;
 		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+		vdd-supply = <&pm8998_l28>;
+		vio-supply = <&pm8998_l6>;
+		syna,reset-delay-ms = <200>;
+		syna,startup-delay-ms = <200>;
+
+		rmi4-f01@1 {
+			reg = <0x01>;
+			syna,nosleep-mode = <1>;
+		};
+
+		rmi4_f12: rmi4-f12@12 {
+			reg = <0x12>;
+			touchscreen-x-mm = <68>;
+			touchscreen-y-mm = <122>;
+			syna,sensor-type = <1>;
+			syna,rezero-wait-ms = <200>;
+		};
 	};
 };
+
 &pcie0_clkreq_default {
 	mux {
 		pins = "gpio36";
