@@ -10,6 +10,8 @@
  * GNU General Public License for more details.
  */
 
+#include <dt-bindings/input/input.h>
+
 #include "pxlw-iris-settings.dtsi"
 
 /* Include thermal */
@@ -398,6 +400,11 @@
 			touchscreen-y-mm = <122>;
 			syna,sensor-type = <1>;
 			syna,rezero-wait-ms = <200>;
+		};
+
+		rmi4-f1a@1a {
+			reg = <0x1a>;
+			syna,codes = <KEY_BACK KEY_APPSELECT>;
 		};
 	};
 };
