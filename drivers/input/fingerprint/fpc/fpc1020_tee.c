@@ -65,6 +65,8 @@ module_param(ignor_home_for_ESD, uint, S_IRUGO | S_IWUSR);
 
 #define ONEPLUS_EDIT  //Onplus modify for msm8996 platform and 15801 HW
 
+static struct kernfs_node *soc_symlink = NULL;
+
 struct fpc1020_data {
 	struct device *dev;
 	//struct wake_lock ttw_wl;
@@ -557,6 +559,9 @@ static int fpc1020_probe(struct platform_device *pdev)
 	struct device_node *np;
 	struct fpc1020_data *fpc1020;
 
+	struct device *platform_dev;
+	struct kobject *soc_kobj;
+	struct kernfs_node *devices_node, *soc_node;
 
 	np = dev->of_node;
 	fpc1020 = devm_kzalloc(dev, sizeof(*fpc1020),
@@ -697,6 +702,29 @@ static int fpc1020_probe(struct platform_device *pdev)
     *   Goodix   1            0             1
     *   
     */
+
+	if(!dev->parent || !dev->parent->parent) {
+		dev_warn(dev, "Parent platform device not found");
+		goto exit;
+	}
+
+	platform_dev = dev->parent->parent;
+	if(strcmp(kobject_name(&platform_dev->kobj), "platform")) {
+		dev_warn(dev, "Parent platform device name not matched: %s", kobject_name(&platform_dev->kobj));
+		goto exit;
+	}
+
+	devices_node = platform_dev->kobj.sd->parent;
+	soc_kobj = &dev->parent->kobj;
+	soc_node = soc_kobj->sd;
+	kernfs_get(soc_node);
+
+	soc_symlink = kernfs_create_link(devices_node, kobject_name(soc_kobj), soc_node);
+	kernfs_put(soc_node);
+	if(IS_ERR(soc_symlink)) {
+		dev_warn(dev, "Unable to create soc symlink");
+	}
+
 	dev_info(dev, "%s: ok\n", __func__);
 exit:
 	return rc;
