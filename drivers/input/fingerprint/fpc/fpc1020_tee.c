@@ -71,6 +71,7 @@ struct fpc1020_data {
 	struct device *dev;
 	//struct wake_lock ttw_wl;
 	int irq_gpio;
+	int enable_gpio;
 	int rst_gpio;
 	int irq_num;
 	struct mutex lock;
@@ -601,6 +602,21 @@ static int fpc1020_probe(struct platform_device *pdev)
 			"gpio_direction_input (irq) failed.\n");
 		goto exit;
 	}
+
+	rc = fpc1020_request_named_gpio(fpc1020, "fpc,enable-gpio",
+		&fpc1020->enable_gpio);
+
+	if (rc)
+		goto exit;
+
+	rc = gpio_direction_output(fpc1020->enable_gpio, 1);
+
+	if (rc) {
+		dev_err(fpc1020->dev,
+			"gpio_direction_output (enable_gpio) failed.\n");
+		goto exit;
+	}
+
     /*  in tz
 	rc = fpc1020_request_named_gpio(fpc1020, "fpc,reset-gpio",
 			&fpc1020->rst_gpio);
