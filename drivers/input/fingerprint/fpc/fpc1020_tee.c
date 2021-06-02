@@ -42,18 +42,15 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/regulator/consumer.h>
-#include <soc/qcom/scm.h>
 
-#include <linux/wakelock.h>
 #include <linux/input.h>
+
+#include <linux/atomic.h>
 
 #ifdef CONFIG_FB
 #include <linux/fb.h>
 #include <linux/notifier.h>
 #endif
-
-#include <linux/project_info.h>
-#include "../fingerprint_detect/fingerprint_detect.h"
 
 static unsigned int ignor_home_for_ESD = 0;
 module_param(ignor_home_for_ESD, uint, S_IRUGO | S_IWUSR);
@@ -70,7 +67,7 @@ module_param(ignor_home_for_ESD, uint, S_IRUGO | S_IWUSR);
 
 struct fpc1020_data {
 	struct device *dev;
-    struct wake_lock ttw_wl;
+	//struct wake_lock ttw_wl;
 	int irq_gpio;
 	int rst_gpio;
 	int irq_num;
@@ -365,19 +362,6 @@ static ssize_t report_key_set(struct device *dev,
 	return count;
 }
 static DEVICE_ATTR(report_key, S_IWUSR, NULL, report_key_set);
-static ssize_t update_info_set(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
-{
-	//struct  fpc1020_data *fpc1020 = dev_get_drvdata(dev);
-
-	if (!strncmp(buf, "n", strlen("n")))
-	{
-		push_component_info(FINGERPRINTS,"N/A" , "N/A");
-	}
-
-	return count;
-}
-static DEVICE_ATTR(update_info, S_IWUSR, NULL, update_info_set);
 
 static ssize_t screen_state_get(struct device* device,
 			     struct device_attribute* attribute,
@@ -388,15 +372,6 @@ static ssize_t screen_state_get(struct device* device,
 }
 
 static DEVICE_ATTR(screen_state, S_IRUSR , screen_state_get, NULL);
-
-static ssize_t sensor_version_get(struct device* device,
-			     struct device_attribute* attribute,
-			     char* buffer)
-{
-	return scnprintf(buffer, PAGE_SIZE, "%i\n", fp_version);
-}
-
-static DEVICE_ATTR(sensor_version, S_IRUSR , sensor_version_get, NULL);
 
 static ssize_t proximity_state_set(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
@@ -421,9 +396,7 @@ static struct attribute *attributes[] = {
 	//&dev_attr_hw_reset.attr,
 	&dev_attr_irq.attr,
 	&dev_attr_report_home.attr,
-	&dev_attr_update_info.attr,
 	&dev_attr_screen_state.attr,
-	&dev_attr_sensor_version.attr,
 	&dev_attr_report_key.attr,
 	&dev_attr_proximity_state.attr,
 	NULL
@@ -453,7 +426,7 @@ int fpc1020_input_init(struct fpc1020_data *fpc1020)
 		/* Set event bits according to what events we are generating */
 		set_bit(EV_KEY, fpc1020->input_dev->evbit);
 		set_bit(EV_SYN, fpc1020->input_dev->evbit);
-		set_bit(EV_ABS, fpc1020->input_dev->evbit);
+		//set_bit(EV_ABS, fpc1020->input_dev->evbit);
 
 		set_bit(KEY_POWER, fpc1020->input_dev->keybit);
 		set_bit(KEY_F2, fpc1020->input_dev->keybit);
@@ -464,7 +437,7 @@ int fpc1020_input_init(struct fpc1020_data *fpc1020)
 		set_bit(BTN_A, fpc1020->input_dev->keybit);
 		set_bit(BTN_C, fpc1020->input_dev->keybit);
 		set_bit(BTN_B, fpc1020->input_dev->keybit);
-		set_bit(ABS_Z, fpc1020->input_dev->keybit);
+		//set_bit(ABS_Z, fpc1020->input_dev->keybit);
 		set_bit(KEY_UP, fpc1020->input_dev->keybit);
 		set_bit(KEY_DOWN, fpc1020->input_dev->keybit);
 		set_bit(KEY_LEFT, fpc1020->input_dev->keybit);
@@ -565,7 +538,7 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 	if (fpc1020->screen_state)
 		return IRQ_HANDLED;
 
-	wake_lock_timeout(&fpc1020->ttw_wl, msecs_to_jiffies(FPC_TTW_HOLD_TIME));
+	//wake_lock_timeout(&fpc1020->ttw_wl, msecs_to_jiffies(FPC_TTW_HOLD_TIME));
 
 	/* Report button input to trigger CPU boost */
 	input_report_key(fpc1020->input_dev, KEY_FINGERPRINT, 1);
@@ -584,9 +557,6 @@ static int fpc1020_probe(struct platform_device *pdev)
 	struct device_node *np;
 	struct fpc1020_data *fpc1020;
 
-	pr_info("%s: fp version %x\n", __func__, fp_version);
-	if ((fp_version != 0x01) && (fp_version != 0x02))
-		return 0;
 
 	np = dev->of_node;
 	fpc1020 = devm_kzalloc(dev, sizeof(*fpc1020),
@@ -684,7 +654,7 @@ static int fpc1020_probe(struct platform_device *pdev)
 	//disable_irq_wake( gpio_to_irq( fpc1020->irq_gpio ) );
 
 	enable_irq_wake( gpio_to_irq( fpc1020->irq_gpio ) );
-	wake_lock_init(&fpc1020->ttw_wl, WAKE_LOCK_SUSPEND, "fpc_ttw_wl");
+	//wake_lock_init(&fpc1020->ttw_wl, WAKE_LOCK_SUSPEND, "fpc_ttw_wl");
 	device_init_wakeup(fpc1020->dev, 1);
 
 	rc = sysfs_create_group(&dev->kobj, &attribute_group);
