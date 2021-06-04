@@ -118,6 +118,19 @@
 		};
 	};
 
+	/* Tri-state key */
+	tri_state_key {
+		compatible = "oneplus,tri-state-key";
+		status = "okay";
+		interrupt-parent = <&tlmm>;
+		tristate,gpio_key1 = <&tlmm 40 0x00>;
+		tristate,gpio_key2 = <&tlmm 42 0x00>;
+		tristate,gpio_key3 = <&tlmm 26 0x00>;
+		pinctrl-names = "pmx_tri_state_key_active", "pmx_tri_state_key_suspend";
+		pinctrl-0 = <&tri_state_key_active>;
+		pinctrl-1 = <&tri_state_key_suspend>;
+	};
+
 	qcom,qbt1000 {
         status = "disabled";
 	};
