@@ -1143,4 +1143,9 @@ config SENSORS_QCOM_HALL
 	default y
 	help
 	  Say Y here if you want qcom hall sensor support.
+
+config TRI_STATE_KEY
+	bool "OnePlus tri-state slider support"
+	help
+	  Say Y here if you want tri-state slider support.
 endif
