@@ -46,12 +46,12 @@
 	qcom,panel-mode-gpio = <>;
 	lab-supply = <>;
 	ibb-supply = <>;
-	clocks = <&clock_mmss clk_mmss_mdss_byte0_clk>,
-		<&clock_mmss clk_mmss_mdss_pclk0_clk>,
-		<&clock_mmss clk_mmss_mdss_esc0_clk>,
-		<&clock_mmss clk_byte0_clk_src>,
-		<&clock_mmss clk_pclk0_clk_src>,
-		<&clock_mmss clk_mmss_mdss_byte0_intf_clk>;
+	clocks = <&clock_mmss MMSS_MDSS_BYTE0_CLK>,
+		<&clock_mmss MMSS_MDSS_PCLK0_CLK>,
+		<&clock_mmss MMSS_MDSS_ESC0_CLK>,
+		<&clock_mmss BYTE0_CLK_SRC>,
+		<&clock_mmss PCLK0_CLK_SRC>,
+		<&clock_mmss MMSS_MDSS_BYTE0_INTF_CLK>;
 	clock-names = "byte_clk", "pixel_clk", "core_clk",
 		"byte_clk_rcg", "pixel_clk_rcg",
 		"byte_intf_clk";
@@ -558,8 +558,8 @@
 		qcom,cam-power-seq-cfg-val = <1>;
 		qcom,cam-power-seq-delay = <1>;
 
-		clocks = <&clock_mmss clk_mclk2_clk_src>,
-			<&clock_mmss clk_mmss_camss_mclk2_clk>;
+		clocks = <&clock_mmss MCLK2_CLK_SRC>,
+			<&clock_mmss MMSS_CAMSS_MCLK2_CLK>;
 		clock-names = "cam_src_clk", "cam_clk";
 		qcom,clock-rates = <24000000 0>;
 		status = "ok";
@@ -741,8 +741,8 @@
 		qcom,cam-power-seq-cfg-val = <1>;
 		qcom,cam-power-seq-delay = <1>;
 
-		clocks = <&clock_mmss clk_mclk2_clk_src>,
-			<&clock_mmss clk_mmss_camss_mclk2_clk>;
+		clocks = <&clock_mmss MCLK2_CLK_SRC>,
+			<&clock_mmss MMSS_CAMSS_MCLK2_CLK>;
 		clock-names = "cam_src_clk", "cam_clk";
 		qcom,clock-rates = <24000000 0>;
 		status = "ok";
@@ -924,8 +924,8 @@
 		qcom,cam-power-seq-cfg-val = <1>;
 		qcom,cam-power-seq-delay = <1>;
 
-		clocks = <&clock_mmss clk_mclk2_clk_src>,
-			<&clock_mmss clk_mmss_camss_mclk2_clk>;
+		clocks = <&clock_mmss MCLK2_CLK_SRC>,
+			<&clock_mmss MMSS_CAMSS_MCLK2_CLK>;
 		clock-names = "cam_src_clk", "cam_clk";
 		qcom,clock-rates = <24000000 0>;
 		status = "ok";
@@ -980,8 +980,8 @@
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <0>;
 		status = "ok";
-		clocks = <&clock_mmss clk_mclk0_clk_src>,
-				<&clock_mmss clk_mmss_camss_mclk0_clk>;
+		clocks = <&clock_mmss MCLK0_CLK_SRC>,
+				<&clock_mmss MMSS_CAMSS_MCLK0_CLK>;
 		clock-names = "cam_src_clk", "cam_clk";
 		qcom,clock-rates = <24000000 0>;
 	};
@@ -1035,8 +1035,8 @@
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <1>;
 		status = "ok";
-		clocks = <&clock_mmss clk_mclk2_clk_src>,
-			<&clock_mmss clk_mmss_camss_mclk2_clk>;
+		clocks = <&clock_mmss MCLK2_CLK_SRC>,
+			<&clock_mmss MMSS_CAMSS_MCLK2_CLK>;
 		clock-names = "cam_src_clk", "cam_clk";
 		qcom,clock-rates = <24000000 0>;
 	};
@@ -1081,8 +1081,8 @@
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <0>;
 		status = "ok";
-		clocks = <&clock_mmss clk_mclk1_clk_src>,
-			<&clock_mmss clk_mmss_camss_mclk1_clk>;
+		clocks = <&clock_mmss MCLK1_CLK_SRC>,
+			<&clock_mmss MMSS_CAMSS_MCLK1_CLK>;
 		clock-names = "cam_src_clk", "cam_clk";
 		qcom,clock-rates = <24000000 0>;
 	};
