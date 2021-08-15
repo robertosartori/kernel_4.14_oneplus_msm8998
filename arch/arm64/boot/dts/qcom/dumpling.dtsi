@@ -11,6 +11,10 @@
  */
 
 #include "pxlw-iris-settings.dtsi"
+
+/* Disable SMP2P Remote Debug for production */
+#include "msm-rdbg-disable.dtsi"
+
 / {
 	reserved-memory {
 		ramoops_mem: ramoops_mem@ac000000 {
