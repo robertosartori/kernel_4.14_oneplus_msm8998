@@ -3101,7 +3101,7 @@ enum Tfa98xx_Error tfaRunWaitCalibration(Tfa98xx_handle_t handle,
 /* HTC_AUD_START */
 enum tfa_error tfa_mute_bottom(int dev)
 {
-	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
+	int err = Tfa98xx_Error_Ok;
 
 	err = tfaContOpen(dev);
 	if (err != Tfa98xx_Error_Ok)
@@ -3128,7 +3128,7 @@ error_exit:
 
 enum tfa_error tfa_start(int next_profile, int *vstep)
 {
-	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
+	int err = Tfa98xx_Error_Ok;
 	int dev, devcount = tfa98xx_cnt_max_device();
 	int cal_profile = -1, istap_prof = 0, active_profile = -1;
 
@@ -3294,7 +3294,7 @@ error_exit:
 
 enum tfa_error tfa_stop(void)
 {
-	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
+	int err = Tfa98xx_Error_Ok;
 	int dev, devcount = tfa98xx_cnt_max_device();
 
 	if (devcount == 0) {
@@ -3359,7 +3359,7 @@ int tfa98xx_reset(Tfa98xx_handle_t handle)
 
 enum tfa_error tfa_reset(void)
 {
-	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
+	int err = Tfa98xx_Error_Ok;
 	int dev, devcount = tfa98xx_cnt_max_device();
 
 	for (dev = 0; dev < devcount; dev++) {
