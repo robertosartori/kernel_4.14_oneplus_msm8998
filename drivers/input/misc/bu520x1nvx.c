@@ -519,7 +519,7 @@ fail_setup_event:
 		switch_dev_unregister(&ddata->switch_lid);
 	if (ddata->switch_keydock.dev)
 		switch_dev_unregister(&ddata->switch_keydock);
-	if (&ddata->input_dev->dev) {
+	if (&ddata->input_dev->dev != NULL) {
 		input_unregister_device(ddata->input_dev);
 		input_free_device(ddata->input_dev);
 	}
@@ -551,7 +551,7 @@ static int bu520x1nvx_remove(struct platform_device *pdev)
 		switch_dev_unregister(&ddata->switch_lid);
 	if (ddata->switch_keydock.dev)
 		switch_dev_unregister(&ddata->switch_keydock);
-	if (&ddata->input_dev->dev)
+	if (&ddata->input_dev->dev != NULL)
 		input_unregister_device(ddata->input_dev);
 	mutex_destroy(&ddata->lock);
 	for (i = 0; i < ddata->n_events; i++)
