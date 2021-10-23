@@ -144,6 +144,7 @@ struct gf_dev {
 	struct pinctrl_state   *gpio_state_enable;
 	struct pinctrl_state   *gpio_state_disable;
 	signed enable_gpio;
+	signed turn_on_gpio;
 	int project_version;
 	int proximity_state; /* 0:far 1:near */
 };
