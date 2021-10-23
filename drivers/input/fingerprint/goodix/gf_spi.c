@@ -679,6 +679,26 @@ static struct notifier_block goodix_noti_block = {
 	.notifier_call = goodix_fb_state_chg_callback,
 };
 
+static int gf_request_named_gpio(struct device *dev,
+                const char *label, int *gpio)
+{
+        struct device_node *np = dev->of_node;
+        int rc = of_get_named_gpio(np, label, 0);
+        if (rc < 0) {
+                dev_err(dev, "failed to get '%s'\n", label);
+                *gpio = rc;
+                return rc;
+        }
+        *gpio = rc;
+        rc = devm_gpio_request(dev, *gpio, label);
+        if (rc) {
+                dev_err(dev, "failed to request gpio %d\n", *gpio);
+                return rc;
+        }
+        dev_info(dev, "%s - gpio: %d\n", label, *gpio);
+        return 0;
+}
+
 static struct class *gf_class;
 #if defined(USE_SPI_BUS)
 static int gf_probe(struct spi_device *spi)
@@ -811,6 +831,19 @@ static int gf_probe(struct platform_device *pdev)
 	gf_dev->irq_enabled = 1;
 	gf_disable_irq(gf_dev);
 	gpio_set_value(gf_dev->reset_gpio, 0);
+
+	status = gf_request_named_gpio(dev, "fp-gpio-turn-on",
+			&gf_dev->turn_on_gpio);
+
+	if (status)
+               goto error_dev;
+
+	status = gpio_direction_output(gf_dev->turn_on_gpio, 1);
+
+	if (status) {
+		dev_err(dev, "gpio_direction_output (turn_on_gpio) failed.\n");
+		goto error_dev;
+	}
 
 	dev_set_drvdata(dev, gf_dev);
 
