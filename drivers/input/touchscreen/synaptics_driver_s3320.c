@@ -2015,7 +2015,7 @@ const char *buffer, size_t count, loff_t *ppos)
 }
 #endif
 
-static ssize_t tp_show(struct device_driver *ddri, char *buf)
+static ssize_t tp_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct synaptics_ts_data *ts = ts_g;
 	int a;
@@ -2038,8 +2038,9 @@ static ssize_t tp_show(struct device_driver *ddri, char *buf)
 	F01_RMI_DATA_BASE, a, F01_RMI_DATA01, b, F12_2D_DATA_BASE, c);
 }
 
-static ssize_t store_tp(struct device_driver *ddri,
-const char *buf, size_t count)
+static ssize_t store_tp(struct device *dev,
+                struct device_attribute *attr,
+                const char *buf, size_t size)
 {
 	int tmp = 0;
 
@@ -2047,9 +2048,9 @@ const char *buf, size_t count)
 		tp_debug = tmp;
 	} else {
 		TPDTM_DMESG("invalid content: '%s', length = %zd\n",
-		buf, count);
+		buf, size);
 	}
-	return count;
+	return size;
 }
 static ssize_t vendor_id_read_func(struct file *file,
 char __user *user_buf, size_t count, loff_t *ppos)
@@ -2125,7 +2126,7 @@ static void checkCMD_RT133(void)
 
 #endif
 
-static ssize_t tp_baseline_show(struct device_driver *ddri, char *buf)
+static ssize_t tp_baseline_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	int ret = 0;
 	int x, y;
@@ -2226,7 +2227,7 @@ static ssize_t tp_baseline_show(struct device_driver *ddri, char *buf)
 
 }
 
-static ssize_t tp_rawdata_show(struct device_driver *ddri, char *buf)
+static ssize_t tp_rawdata_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	int ret = 0;
 	int x, y;
@@ -2277,11 +2278,12 @@ static ssize_t tp_rawdata_show(struct device_driver *ddri, char *buf)
 	return num_read_chars;
 }
 
-static ssize_t tp_delta_store(struct device_driver *ddri,
-		const char *buf, size_t count)
+static ssize_t tp_delta_store(struct device *dev,
+                struct device_attribute *attr,
+                const char *buf, size_t size)
 {
 	TPDTM_DMESG("tp_test_store is not support\n");
-	return count;
+	return size;
 }
 
 static ssize_t synaptics_rmi4_baseline_show_s3508(struct device *dev,
@@ -2320,7 +2322,6 @@ char *buf, bool savefile)
 	TPD_ERR("[sk]CURRENT_FIRMWARE_ID = 0x%x\n", CURRENT_FIRMWARE_ID);
 	snprintf(ts->fw_id, 12, "0x%x", CURRENT_FIRMWARE_ID);
 
-	push_component_info(TP, ts->fw_id, ts->manu_name);
 READDATA_AGAIN:
 	msleep(30);
 	mutex_lock(&ts->mutex);
@@ -2739,7 +2740,7 @@ END:
 	return num_read_chars;
 }
 
-static ssize_t tp_baseline_show_with_cbc(struct device_driver *ddri, char *buf)
+static ssize_t tp_baseline_show_with_cbc(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	int ret = 0;
 	int x, y;
@@ -2840,11 +2841,12 @@ char *buf, bool savefile)
 	return synaptics_rmi4_baseline_show_s3508(dev, buf, savefile);
 }
 
-static ssize_t tp_test_store(struct device_driver *ddri,
-		const char *buf, size_t count)
+static ssize_t tp_test_store(struct device *dev,
+                struct device_attribute *attr,
+                const char *buf, size_t size)
 {
 	TPDTM_DMESG("tp_test_store is not support\n");
-	return count;
+	return size;
 }
 
 static ssize_t synaptics_rmi4_vendor_id_show(struct device *dev,
@@ -3209,11 +3211,11 @@ static ssize_t tp_doze_time_store(struct device *dev,
 
 static DEVICE_ATTR(test_limit, 0664, synaptics_test_limit_show,
 synaptics_test_limit_store);
-static DRIVER_ATTR(tp_baseline_image, 0664, tp_baseline_show, tp_delta_store);
-static DRIVER_ATTR(tp_baseline_image_with_cbc, 0664,
+static DEVICE_ATTR(tp_baseline_image, 0664, tp_baseline_show, tp_delta_store);
+static DEVICE_ATTR(tp_baseline_image_with_cbc, 0664,
 tp_baseline_show_with_cbc, tp_test_store);
-static DRIVER_ATTR(tp_delta_image, 0664, tp_rawdata_show, NULL);
-static DRIVER_ATTR(tp_debug_log, 0664, tp_show, store_tp);
+static DEVICE_ATTR(tp_delta_image, 0664, tp_rawdata_show, NULL);
+static DEVICE_ATTR(tp_debug_log, 0664, tp_show, store_tp);
 static DEVICE_ATTR(tp_fw_update, 0664, synaptics_update_fw_show,
 synaptics_update_fw_store);
 static DEVICE_ATTR(tp_doze_time, 0664, tp_doze_time_show, tp_doze_time_store);
@@ -4747,9 +4749,6 @@ static int synaptics_ts_probe(struct i2c_client *client,
 	TPD_DEBUG("synatpitcs_fw: fw_name = %s,ts->manu_name:%s\n",
 	ts->fw_name, ts->manu_name);
 
-	push_component_info(TOUCH_KEY, ts->fw_id, ts->manu_name);
-	push_component_info(TP, ts->fw_id, ts->manu_name);
-
 	synaptics_wq = create_singlethread_workqueue("synaptics_wq");
 	if (!synaptics_wq) {
 		ret = -ENOMEM;
@@ -4840,23 +4839,23 @@ static int synaptics_ts_probe(struct i2c_client *client,
 		TPDTM_DMESG("device_create_file failt\n");
 		goto exit_init_failed;
 	}
-	if (driver_create_file(&tpd_i2c_driver.driver,
-	    &driver_attr_tp_debug_log)) {
+	if (device_create_file(&client->dev,
+	    &dev_attr_tp_debug_log)) {
 		TPDTM_DMESG("driver_create_file failt\n");
 		goto exit_init_failed;
 	}
-	if (driver_create_file(&tpd_i2c_driver.driver,
-	&driver_attr_tp_baseline_image_with_cbc)) {
+	if (device_create_file(&client->dev,
+	&dev_attr_tp_baseline_image_with_cbc)) {
 		TPDTM_DMESG("driver_create_file failt\n");
 		goto exit_init_failed;
 	}
-	if (driver_create_file(&tpd_i2c_driver.driver,
-	&driver_attr_tp_baseline_image)) {
+	if (device_create_file(&client->dev,
+	&dev_attr_tp_baseline_image)) {
 		TPDTM_DMESG("driver_create_file failt\n");
 		goto exit_init_failed;
 	}
-	if (driver_create_file(&tpd_i2c_driver.driver,
-	&driver_attr_tp_delta_image)) {
+	if (device_create_file(&client->dev,
+	&dev_attr_tp_delta_image)) {
 		TPDTM_DMESG("driver_create_file failt\n");
 		goto exit_init_failed;
 	}
