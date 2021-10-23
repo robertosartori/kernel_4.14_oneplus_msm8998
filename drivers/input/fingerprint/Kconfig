@@ -17,4 +17,7 @@ config FINGERPRINT_FPC
 	tristate "fpc fingerprint sensor support"
 	depends on SPI_MASTER
 
+config FINGERPRINT_GOODIX
+	tristate "goodix fingerprint sensor support"
+	depends on SPI_MASTER
 endif
