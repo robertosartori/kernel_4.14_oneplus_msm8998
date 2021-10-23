@@ -40,11 +40,11 @@
 #include <linux/fb.h>
 #include <linux/pm_qos.h>
 #include <linux/cpufreq.h>
-#include <linux/wakelock.h>
 #ifdef OEM_DEBUG_SUPPORT
 #include <linux/oneplus/boot_mode.h>
 #endif
 #include "gf_spi.h"
+#include "linux/uaccess.h"
 
 #if defined(USE_SPI_BUS)
 #include <linux/spi/spi.h>
@@ -52,8 +52,6 @@
 #elif defined(USE_PLATFORM_BUS)
 #include <linux/platform_device.h>
 #endif
-
-#include "../fingerprint_detect/fingerprint_detect.h"
 
 #define VER_MAJOR   1
 #define VER_MINOR   2
@@ -75,7 +73,7 @@ static int SPIDEV_MAJOR;
 static DECLARE_BITMAP(minors, N_SPI_MINORS);
 static LIST_HEAD(device_list);
 static DEFINE_MUTEX(device_list_lock);
-static struct wake_lock fp_wakelock;
+//static struct wake_lock fp_wakelock;
 static struct gf_dev gf;
 
 struct gf_key_map maps[] = {
@@ -495,7 +493,7 @@ static irqreturn_t gf_irq(int irq, void *handle)
 #if defined(GF_NETLINK_ENABLE)
 	char temp = GF_NET_EVENT_IRQ;
 
-	wake_lock_timeout(&fp_wakelock, msecs_to_jiffies(WAKELOCK_HOLD_TIME));
+	//wake_lock_timeout(&fp_wakelock, msecs_to_jiffies(WAKELOCK_HOLD_TIME));
 	sendnlmsg(&temp);
 #elif defined GF_FASYNC
 	struct gf_dev *gf_dev = &gf;
@@ -794,7 +792,7 @@ static int gf_probe(struct platform_device *pdev)
 
 	gf_dev->irq = gf_irq_num(gf_dev);
 
-	wake_lock_init(&fp_wakelock, WAKE_LOCK_SUSPEND, "fp_wakelock");
+	//wake_lock_init(&fp_wakelock, WAKE_LOCK_SUSPEND, "fp_wakelock");
 	status = request_threaded_irq(gf_dev->irq, NULL, gf_irq,
 			IRQF_TRIGGER_RISING | IRQF_ONESHOT,
 			"gf_fp", gf_dev);
@@ -855,7 +853,7 @@ static int gf_remove(struct platform_device *pdev)
 {
 	struct gf_dev *gf_dev = &gf;
 
-	wake_lock_destroy(&fp_wakelock);
+	//wake_lock_destroy(&fp_wakelock);
 	/* make sure ops on existing fds can abort cleanly */
 	if (gf_dev->irq)
 		free_irq(gf_dev->irq, gf_dev);
@@ -906,9 +904,6 @@ static int __init gf_init(void)
 	 * that will key udev/mdev to add/remove /dev nodes.  Last, register
 	 * the driver which manages those device numbers.
 	 */
-	pr_info("%s:fp version %x\n", __func__, fp_version);
-	if(0x03 != fp_version)
-		return 0;
 	BUILD_BUG_ON(N_SPI_MINORS > 256);
 	status = register_chrdev(SPIDEV_MAJOR, CHRD_DRIVER_NAME, &gf_fops);
 	if (status < 0) {
