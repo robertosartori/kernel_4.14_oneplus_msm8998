@@ -14,3 +14,4 @@ obj-$(CONFIG_IDTP9221)		+= idtp9221.o
 obj-$(CONFIG_SMB1390_CHARGE_PUMP)	+= smb1390-charger.o pmic-voter.o
 obj-$(CONFIG_SMB1390_CHARGE_PUMP_PSY)	+= smb1390-charger-psy.o pmic-voter.o
 obj-$(CONFIG_FG_BQ27541)        += bq27541_fuelgauger.o
+obj-$(CONFIG_ONEPLUS_FASTCHG)   += op_dash_adapter.o oneplus_fastcg.o
