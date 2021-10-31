@@ -580,6 +580,7 @@
 &vendor {
 	mtp_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
+		#include "OP-batterydata-3300mah.dtsi"
 	};
 };
 
