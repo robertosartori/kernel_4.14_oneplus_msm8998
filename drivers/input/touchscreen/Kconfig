@@ -658,15 +658,6 @@ config TOUCHSCREEN_CLEARPAD
         help
           Say Y here to enable Synaptics ClearPad touchscreen.
 
-config TOUCHSCREEN_INCELL_CLEARPAD
-	tristate "Synaptics ClearPad for In-Cell power"
-	depends on !TOUCHSCREEN_CLEARPAD
-	depends on FBDEV_SOMC_PANEL_INCELL || SOMC_PANEL_INCELL
-	default y
-	help
-	  Say Y here to enable Synaptics ClearPad touchscreen.
-	  This driver is ONLY for In-Cell powered chip.
-
 config TOUCHSCREEN_CLEARPAD_I2C
         tristate "Synaptics ClearPad I2C"
 	depends on I2C && (TOUCHSCREEN_CLEARPAD || TOUCHSCREEN_INCELL_CLEARPAD)
@@ -1130,16 +1121,6 @@ config TOUCHSCREEN_RM_TS
 	  To compile this driver as a module, choose M here: the
 	  module will be called raydium_i2c_ts.
 
-config TOUCHSCREEN_SAMSUNG_INCELL
-	tristate "Samsung Electronics Corporation (SEC) Incell Touchscreen"
-	depends on I2C
-	depends on SOMC_PANEL_INCELL
-	help
-	  Say Y here if you have a Samsung Electronics OLED panel in your
-	  device, which features touch support. You will most likely have
-	  an incell touchscreen as well.
-
-	  If unsure, say N.
 
 config TOUCHSCREEN_SILEAD
 	tristate "Silead I2C touchscreen"

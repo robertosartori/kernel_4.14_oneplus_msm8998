@@ -289,12 +289,6 @@ config USB_QCOM_DIAG_BRIDGE
 	  To compile this driver as a module, choose M here: the
 	  module will be called diag_bridge.  If unsure, choose N.
 
-config USB_SOMC_SLG4R41505
-	tristate "Enable driver for water detection by SoMC"
-	depends on QPNP_SMBFG_NEWGEN_EXTENSION
-	help
-	  Say Y here if you want to use water detection driver.
-
 config USB_CC_FUSB301
 	bool "FUSB301 Configuration Channel Controller for USB Type-C"
 	depends on USB || I2C

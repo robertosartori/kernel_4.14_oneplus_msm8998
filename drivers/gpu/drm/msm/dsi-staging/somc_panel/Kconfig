@@ -17,23 +17,3 @@ config SOMC_PANEL_LABIBB
 	default y
 	---help---
 	LAB/IBB regulators handling for MSM8994 and later generation boards.
-
-config DRM_MSM_DP_SOMC_PANEL
-	depends on DRM_MSM && EXTCON_SOMC_EXTENSION
-	bool "Support for DisplayPort on Sony Xperia"
-	default n
-	---help---
-	Enable additional code for enhancements and support to enable the
-	DisplayPort output through the USB Type-C on Sony Xperia devices.
-
-choice
-	bool "SoMC Panel variant support"
-
-config SOMC_PANEL_INCELL
-	depends on DRM_MSM_DSI_SOMC_PANEL
-	bool
-	prompt "SoMC Panel for In-Cell"
-	---help---
-	Handles incell panels and touchscreens.
-	You probably want to also enable SOMC_PANEL_LABIBB.
-endchoice

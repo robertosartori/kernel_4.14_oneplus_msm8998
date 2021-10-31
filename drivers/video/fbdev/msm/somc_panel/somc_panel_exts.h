@@ -82,18 +82,6 @@ struct mdss_panel_power_seq {
 	int *rst_seq;
 	int seq_b_num;
 	int *rst_b_seq;
-#ifdef CONFIG_FBDEV_SOMC_PANEL_INCELL
-	int disp_vdd;
-	int disp_vddio;
-	int disp_vsp;
-	int disp_vsn;
-
-	int touch_avdd;
-	int touch_vddio;
-	int touch_reset;
-	int touch_reset_first;
-	int touch_intn;
-#endif
 };
 
 struct esd_reg_status_ctrl {
@@ -240,15 +228,6 @@ struct mdss_panel_specific_pdata {
 	int vsp_gpio;
 	bool pwron_reset;
 	bool dsi_seq_hack;
-
-#ifdef CONFIG_FBDEV_SOMC_PANEL_INCELL
-	int disp_vddio_gpio;
-	int touch_reset_gpio;
-	int touch_vddio_gpio;
-	int touch_int_gpio;
-	bool panel_type;
-	struct mdss_panel_power_seq ewu_seq;
-#endif
 
 	struct dsi_panel_cmds fps_cmds;
 

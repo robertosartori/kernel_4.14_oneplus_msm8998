@@ -88,9 +88,6 @@ int somc_panel_vreg_ctrl(
 	struct dss_vreg vreg_config;
 	struct mdss_panel_power_seq *pw_seq = NULL;
 	int valid = 0;
-#ifdef CONFIG_FBDEV_SOMC_PANEL_INCELL
-	int wait = 0;
-#endif
 	int ret = 0;
 
 	valid = somc_panel_vreg_name_to_config(
@@ -105,24 +102,6 @@ int somc_panel_vreg_ctrl(
 			pw_seq = &ctrl_pdata->spec_pdata->off_seq;
 		}
 
-#ifdef CONFIG_FBDEV_SOMC_PANEL_INCELL
-		if (!strcmp(vreg, "vdd"))
-			wait = pw_seq->disp_vdd;
-		else if (!strcmp(vreg, "vddio"))
-			wait = pw_seq->disp_vddio;
-		else if (!strcmp(vreg, "lab"))
-			wait = pw_seq->disp_vsp;
-		else if (!strcmp(vreg, "ibb"))
-			wait = pw_seq->disp_vsn;
-		else if (!strcmp(vreg, "touch-avdd"))
-			wait = pw_seq->touch_avdd;
-		else
-			wait = 0;
-
-		if (!ret && wait) {
-			usleep_range(wait * 1000, wait * 1000 + 100);
-		}
-#endif
 	}
 
 	return ret;
