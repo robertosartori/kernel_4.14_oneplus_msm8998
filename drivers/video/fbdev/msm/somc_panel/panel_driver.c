@@ -360,11 +360,6 @@ static int mdss_dsi_panel_reset_seq(struct mdss_panel_data *pdata, int enable)
 	pw_seq = (enable) ? &ctrl_pdata->spec_pdata->on_seq :
 				&ctrl_pdata->spec_pdata->off_seq;
 
-#ifdef CONFIG_FBDEV_SOMC_PANEL_INCELL
-	if (incell_panel_is_seq_for_ewu() && enable)
-		pw_seq = &ctrl_pdata->spec_pdata->ewu_seq;
-#endif
-
 	if (pw_seq->rst_b_seq)
 		mdss_dsi_panel_set_gpio_seq(ctrl_pdata->rst_gpio,
 			pw_seq->seq_b_num, pw_seq->rst_b_seq);
@@ -955,9 +950,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	}
 
 chg_fps:
-#ifndef CONFIG_FBDEV_SOMC_PANEL_INCELL
 	somc_panel_chg_fps_cmds_send(ctrl_pdata);
-#endif
 
 	if (pinfo->compression_mode == COMPRESSION_DSC)
 		mdss_dsi_panel_dsc_pps_send(ctrl_pdata, pinfo);
@@ -1091,10 +1084,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 
 	somc_panel_fpsman_panel_off();
 
-#ifndef CONFIG_FBDEV_SOMC_PANEL_INCELL
 	mdss_dsi_panel_reset(pdata, 0);
-#endif
-
 end:
 	spec_pdata->disp_onoff_state = false;
 	pdata->resume_started = true;
@@ -1248,13 +1238,11 @@ static int mdss_dsi_panel_power_ctrl_ex(struct mdss_panel_data *pdata, int enabl
 		pr_err("%s: unknown panel power state requested (%d)\n",
 			__func__, enable);
 	}
-#ifndef CONFIG_FBDEV_SOMC_PANEL_INCELL
 	if (ret) {
 		msm_dss_enable_vreg(
 			ctrl_pdata->panel_power_data.vreg_config,
 			ctrl_pdata->panel_power_data.num_vreg, 0);
 	}
-#endif
 	if (!ret)
 		pinfo->panel_power_state = enable;
 

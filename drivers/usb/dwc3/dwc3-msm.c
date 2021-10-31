@@ -226,9 +226,6 @@ struct extcon_nb {
 	struct notifier_block	vbus_nb;
 	struct notifier_block	id_nb;
 	struct notifier_block	blocking_sync_nb;
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-	struct notifier_block	vbus_drop_nb;
-#endif
 };
 
 /* Input bits to state machine (mdwc->inputs) */
@@ -237,9 +234,6 @@ struct extcon_nb {
 #define B_SESS_VLD		1
 #define B_SUSPEND		2
 #define WAIT_FOR_LPM		3
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-#define A_VBUS_DROP_DET		4
-#endif
 
 #define PM_QOS_SAMPLE_SEC	2
 #define PM_QOS_THRESHOLD	400
@@ -319,12 +313,8 @@ struct dwc3_msm {
 	u32			num_gsi_event_buffers;
 	struct dwc3_event_buffer **gsi_ev_buff;
 	int pm_qos_latency;
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-	bool			send_vbus_drop_ue;
-#endif
 
-#if defined(CONFIG_EXTCON_SOMC_EXTENSION) || \
-    defined(CONFIG_USB_DWC3_MSM_ID_POLL)
+#if defined(CONFIG_USB_DWC3_MSM_ID_POLL)
 	bool			otg_present;
 #endif
 	struct pm_qos_request pm_qos_req_dma;
@@ -3223,27 +3213,6 @@ static void check_for_sdp_connection(struct work_struct *w)
 	}
 }
 
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-static int dwc3_msm_vbus_drop_notifier(struct notifier_block *nb,
-	unsigned long event, void *ptr)
-{
-	struct extcon_dev *edev = ptr;
-	struct extcon_nb *enb = container_of(nb, struct extcon_nb, vbus_nb);
-	struct dwc3_msm *mdwc = enb->mdwc;
-
-	if (!edev) {
-		dev_err(mdwc->dev, "edev null for USB-DropT\n");
-		return NOTIFY_DONE;
-	}
-
-	set_bit(A_VBUS_DROP_DET, &mdwc->inputs);
-	dev_info(mdwc->dev, "received USB-DropT ocp notification\n");
-	schedule_delayed_work(&mdwc->sm_work, 0);
-
-	return NOTIFY_DONE;
-}
-#endif
-
 static int dwc3_msm_vbus_notifier(struct notifier_block *nb,
 	unsigned long event, void *ptr)
 {
@@ -3279,9 +3248,6 @@ static int dwc3_msm_extcon_register(struct dwc3_msm *mdwc)
 	struct extcon_dev *edev;
 	int idx, extcon_cnt, ret = 0;
 	bool check_vbus_state, check_id_state, phandle_found = false;
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-	bool dropt_registered = false;
-#endif /* CONFIG_EXTCON_SOMC_EXTENSION */
 
 	extcon_cnt = of_count_phandle_with_args(node, "extcon", NULL);
 	if (extcon_cnt < 0) {
@@ -3336,42 +3302,12 @@ static int dwc3_msm_extcon_register(struct dwc3_msm *mdwc)
 			dwc3_msm_id_notifier(&mdwc->extcon[idx].id_nb,
 						true, edev);
 
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-		/*
-		 * This can be only registered with the PDPHY and there is
-		 * no way to actually get the name of the current extcon_dev
-		 * since the struct definition is private and not exposed,
-		 * so, try to register DropT at every iteration.
-		 * It will succeed only once.
-		 */
-		if (!dropt_registered) {
-			mdwc->extcon[idx].vbus_drop_nb.notifier_call =
-						dwc3_msm_vbus_drop_notifier;
-			ret = extcon_register_notifier(edev, EXTCON_VBUS_DROP,
-					&mdwc->extcon[idx].vbus_drop_nb);
-			dropt_registered = true;
-		}
-#endif /* CONFIG_EXTCON_SOMC_EXTENSION */
 	}
 
 	if (!phandle_found) {
 		dev_err(mdwc->dev, "no extcon device found\n");
 		return -ENODEV;
 	}
-
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-	/*
-	 * If we couldn't register it then fail USB probing: we don't want
-	 * to run our device without overcurrent protection in place.
-	 * This may panic the kernel later... a way to force anyone to
-	 * fix this, in case anything goes wrong.
-	 */
-	if (!dropt_registered) {
-		dev_err(mdwc->dev, "failed to register notifier "
-				   "for USB-DropT\n");
-		return -EINVAL;
-	}
-#endif /* CONFIG_EXTCON_SOMC_EXTENSION */
 
 	return 0;
 }
@@ -3679,9 +3615,6 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	}
 
 	mdwc->id_state = DWC3_ID_FLOAT;
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-	mdwc->otg_present = true;
-#endif
 	set_bit(ID, &mdwc->inputs);
 
 	mdwc->charging_disabled = of_property_read_bool(node,
@@ -4643,9 +4576,6 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 			work = 1;
 		} else {
 			dwc3_msm_gadget_vbus_draw(mdwc, 0);
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-			mdwc->send_vbus_drop_ue = false;
-#endif
 			dev_dbg(mdwc->dev, "Cable disconnected\n");
 		}
 		break;
@@ -4743,13 +4673,6 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 			mdwc->vbus_retry_count = 0;
 			mdwc->hc_died = false;
 			work = 1;
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-		} else if (test_bit(A_VBUS_DROP_DET, &mdwc->inputs)) {
-			dev_dbg(mdwc->dev, "vbus_drop_det\n");
-			dwc3_otg_start_host(mdwc, 0);
-			mdwc->drd_state = DRD_STATE_HOST_IDLE;
-			mdwc->vbus_retry_count = 0;
-#endif
 		} else {
 			dev_dbg(mdwc->dev, "still in a_host state. Resuming root hub.\n");
 			dbg_event(0xFF, "XHCIResume", 0);
