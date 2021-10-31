@@ -353,30 +353,13 @@ static void *usbpd_ipc_log;
 #define ID_HDR_PRODUCT_AMA	5
 #define ID_HDR_PRODUCT_VPD	6
 
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-#define USB_VBUS_WAIT_VOLT	900	/* mV */
-#define USB_VBUS_WAIT_ITVL	5	/* mS */
-#define USB_VBUS_WAIT_TMOUT	200     /* mS */
-#undef ID_HDR_VID
-#undef PROD_VDO_PID
-#define ID_HDR_VID		0x0FCE /* Sony Mobile Communications */
-#define PROD_VDO_PID		0x01F9
-#define ACCEPTABLE_SRC_VOLTAGE_9V 9000
-#endif
-
 static bool check_vsafe0v = true;
 module_param(check_vsafe0v, bool, 0600);
 
 static int min_sink_current = 900;
 module_param(min_sink_current, int, 0600);
 
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-static const u32 somc_default_src_caps[] = { 0x3601905A }; /* 5V @ 0.9A */
-static const u32 somc_minimum_src_caps[] = { 0x3601900A }; /* 5V @ 0.1A */
-static u32 default_src_caps[] = { 0x3601905A };	/* VSafe5V @ 0.9A */
-#else
 static const u32 default_src_caps[] = { 0x36019096 };	/* VSafe5V @ 1.5A */
-#endif
 static const u32 default_snk_caps[] = { 0x2601912C };	/* VSafe5V @ 3A */
 
 struct vdm_tx {
@@ -511,40 +494,10 @@ static const unsigned int usbpd_extcon_cable[] = {
 	EXTCON_USB,
 	EXTCON_USB_HOST,
 	EXTCON_DISP_DP,
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-	EXTCON_VBUS_DROP,
-#endif
 	EXTCON_NONE,
 };
 
 static void handle_vdm_tx(struct usbpd *pd, enum pd_sop_type sop_type);
-
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-/**
- * usbpd_ocp_notification - ocp notification callback from regulator.
- * @ctxt: Pointer to the dwc3_msm context
- *
- * NOTE: This can be called in interrupt context.
- */
-static void usbpd_ocp_notification(void *ctxt)
-{
-	struct usbpd *pd = (struct usbpd *)ctxt;
-
-	extcon_set_state_sync(pd->extcon, EXTCON_VBUS_DROP, 1);
-	extcon_set_state_sync(pd->extcon, EXTCON_VBUS_DROP, 0);
-	pr_info("%s: receive ocp notification\n", __func__);
-}
-
-static int usbpd_register_ocp(struct usbpd *pd)
-{
-	struct regulator_ocp_notification ocp_ntf;
-
-	ocp_ntf.notify = usbpd_ocp_notification;
-	ocp_ntf.ctxt = pd;
-
-	return regulator_register_ocp_notification(pd->vbus, &ocp_ntf);
-}
-#endif
 
 enum plug_orientation usbpd_get_plug_orientation(struct usbpd *pd)
 {
@@ -1243,31 +1196,6 @@ static void phy_msg_received(struct usbpd *pd, enum pd_sop_type sop,
 		usbpd_dbg(&pd->dev, "usbpd_sm already running\n");
 }
 
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-static void phy_wait_vbus_settled_down(struct usbpd *pd, int mv,
-							int itvl, int tmout)
-{
-	int rc;
-	int cnt = 0;
-	int usbin = mv;
-
-	do {
-		union power_supply_propval pval;
-
-		msleep(itvl);
-		rc = power_supply_get_property(pd->usb_psy,
-				POWER_SUPPLY_PROP_VOLTAGE_NOW, &pval);
-		if (IS_ERR_VALUE((long)rc))
-			goto waitremain;
-		usbin = pval.intval / 1000;
-		cnt++;
-	} while (usbin >= mv && tmout > (cnt * itvl));
-waitremain:
-	if (usbin >= mv && tmout > (cnt * itvl))
-		msleep(tmout - (cnt * itvl));
-}
-#endif /* CONFIG_EXTCON_SOMC_EXTENSION */
-
 static void phy_shutdown(struct usbpd *pd)
 {
 	usbpd_dbg(&pd->dev, "shutdown");
@@ -1280,11 +1208,6 @@ static void phy_shutdown(struct usbpd *pd)
 	if (pd->vbus_enabled) {
 		regulator_disable(pd->vbus);
 		pd->vbus_enabled = false;
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-		phy_wait_vbus_settled_down(pd,
-				USB_VBUS_WAIT_VOLT, USB_VBUS_WAIT_ITVL,
-				USB_VBUS_WAIT_TMOUT);
-#endif
 	}
 }
 
@@ -1463,10 +1386,6 @@ static void usbpd_set_state(struct usbpd *pd, enum usbpd_state next_state)
 		dual_role_instance_changed(pd->dual_role);
 
 		val.intval = 1; /* Rp-1.5A; SinkTxNG for PD 3.0 */
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-		if (!pd->in_explicit_contract)
-			val.intval = 0; /* Rp-Default; */
-#endif
 		power_supply_set_property(pd->usb_psy,
 				POWER_SUPPLY_PROP_TYPEC_SRC_RP, &val);
 
@@ -2296,34 +2215,6 @@ static void handle_vdm_tx(struct usbpd *pd, enum pd_sop_type sop_type)
 	pd->vdm_tx = NULL;
 }
 
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-/*
- * Set minimum src capability.
- */
-void usbpd_set_min_src_caps(struct usbpd *pd, const bool set)
-{
-	bool change = false;
-
-	if (set && memcmp(default_src_caps, somc_minimum_src_caps,
-			sizeof(default_src_caps))) {
-		memcpy(default_src_caps, somc_minimum_src_caps,
-			sizeof(default_src_caps));
-		change = true;
-	} else if (!set && memcmp(default_src_caps, somc_default_src_caps,
-			sizeof(default_src_caps))) {
-		memcpy(default_src_caps, somc_default_src_caps,
-			sizeof(default_src_caps));
-		change = true;
-	}
-
-	if (change && pd && pd->current_pr == PR_SRC) {
-		usbpd_dbg(&pd->dev, "set ERROR_RECOVERY\n");
-		usbpd_set_state(pd, PE_ERROR_RECOVERY);
-	}
-}
-EXPORT_SYMBOL(usbpd_set_min_src_caps);
-#endif
-
 static void handle_get_src_cap_extended(struct usbpd *pd)
 {
 	int ret;
@@ -2481,9 +2372,7 @@ static void dr_swap(struct usbpd *pd)
 				SVDM_CMD_TYPE_INITIATOR, 0, NULL, 0);
 	}
 
-#ifndef CONFIG_EXTCON_SOMC_EXTENSION
 	dual_role_instance_changed(pd->dual_role);
-#endif
 }
 
 
@@ -2564,11 +2453,6 @@ enable_reg:
 			usbpd_err(&pd->dev, "Unable to get vbus\n");
 			return -EAGAIN;
 		}
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-		ret = usbpd_register_ocp(pd);
-		if (ret)
-			usbpd_err(&pd->dev, "Cannot register OCP!!\n");
-#endif
 	}
 	ret = regulator_enable(pd->vbus);
 	if (ret)
@@ -3655,31 +3539,6 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 	if (pd->typec_mode == typec_mode)
 		return 0;
 
-#if defined(CONFIG_EXTCON_SOMC_EXTENSION) && \
-    (defined(CONFIG_ARCH_MSM8998) || defined(CONFIG_ARCH_SDM630))
-	switch (typec_mode) {
-	/* Sink states */
-	case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
-	case POWER_SUPPLY_TYPEC_SOURCE_MEDIUM:
-	case POWER_SUPPLY_TYPEC_SOURCE_HIGH:
-		ret = power_supply_get_property(pd->usb_psy,
-				POWER_SUPPLY_PROP_REAL_TYPE, &val);
-		if (ret) {
-			usbpd_err(&pd->dev, "Unable to read USB TYPE: %d\n",
-					ret);
-			return ret;
-		}
-
-		if (val.intval == POWER_SUPPLY_TYPE_UNKNOWN) {
-			usbpd_dbg(&pd->dev, "SNK states but APSD is not done yet.\n");
-			return 0;
-		}
-		break;
-	default:
-		break;
-	}
-#endif /* CONFIG_EXTCON_SOMC_EXTENSION */
-
 	pd->typec_mode = typec_mode;
 
 	usbpd_dbg(&pd->dev, "typec mode:%d present:%d orientation:%d\n",
@@ -3749,9 +3608,6 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 		break;
 	case POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER:
 		usbpd_info(&pd->dev, "Type-C Analog Audio Adapter connected\n");
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-		kobject_uevent(&pd->dev.kobj, KOBJ_CHANGE);
-#endif
 		break;
 	default:
 		usbpd_warn(&pd->dev, "Unsupported typec mode:%d\n",
@@ -4031,10 +3887,6 @@ static int usbpd_uevent(struct device *dev, struct kobj_uevent_env *env)
 					default_src_caps[i]);
 	}
 
-#ifdef CONFIG_EXTCON_SOMC_EXTENSION
-	if (pd->typec_mode == POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER)
-		add_uevent_var(env, "TYPEC_MODE=AAA");
-#endif
 	add_uevent_var(env, "RDO=%08x", pd->rdo);
 	add_uevent_var(env, "CONTRACT=%s", pd->in_explicit_contract ?
 				"explicit" : "implicit");

@@ -94,12 +94,6 @@
 #define ESR_SOH_SOC			50
 #define EMPTY_SOC			0
 
-#ifdef CONFIG_QPNP_SMBFG_NEWGEN_EXTENSION
-#undef BATT_MISS_SOC
-#define BATT_MISS_SOC			20
-#define	UNKNOWN_BATT_SOC		20
-#endif
-
 enum prof_load_status {
 	PROFILE_MISSING,
 	PROFILE_LOADED,
@@ -118,11 +112,6 @@ enum fg_debug_flag {
 	FG_BUS_READ		= BIT(6), /* Show REGMAP reads */
 	FG_CAP_LEARN		= BIT(7), /* Show capacity learning */
 	FG_TTF			= BIT(8), /* Show time to full */
-#ifdef CONFIG_QPNP_SMBFG_NEWGEN_EXTENSION
-	FG_TEMP_CORR		= BIT(13),
-	FG_STEP			= BIT(14),
-	FG_SOMC			= BIT(15),
-#endif
 };
 
 /* SRAM access */
@@ -237,13 +226,6 @@ enum fg_sram_param_id {
 	FG_SRAM_ESR_CAL_TEMP_MIN,
 	FG_SRAM_ESR_CAL_TEMP_MAX,
 	FG_SRAM_DELTA_ESR_THR,
-#ifdef CONFIG_QPNP_SMBFG_NEWGEN_EXTENSION
-	FG_SRAM_SOC_SYSTEM,
-	FG_SRAM_SOC_MONOTONIC,
-	FG_SRAM_CUTOFF_SOC,
-	FG_SRAM_SYSTEM_SOC,
-	FG_SRAM_SOC_FULL,
-#endif
 	FG_SRAM_MAX,
 };
 
@@ -329,9 +311,6 @@ struct fg_batt_props {
 	int		float_volt_uv;
 	int		vbatt_full_mv;
 	int		fastchg_curr_ma;
-#ifdef CONFIG_QPNP_SMBFG_NEWGEN_EXTENSION
-	int		initial_capacity;
-#endif
 	int		*therm_coeffs;
 	int		therm_ctr_offset;
 	int		therm_pull_up_kohms;
@@ -355,18 +334,6 @@ struct fg_cap_learning {
 	int64_t		init_cc_uah;
 	int64_t		final_cc_uah;
 	int64_t		learned_cc_uah;
-#ifdef CONFIG_QPNP_SMBFG_NEWGEN_EXTENSION
-	int64_t		charge_full_raw;
-	int		learning_counter;
-	int		batt_soc_drop;
-	int		cc_soc_drop;
-	int		max_bsoc_during_active;
-	int		max_ccsoc_during_active;
-	s64		max_bsoc_time_ms;
-	s64		start_time_ms;
-	s64		hold_time;
-	s64		total_time;
-#endif
 	struct mutex	lock;
 };
 
@@ -403,45 +370,6 @@ struct fg_ttf {
 	s64			last_ms;
 };
 
-#ifdef CONFIG_QPNP_SMBFG_NEWGEN_EXTENSION
-#define STEP_DATA_MAX_CFG_NUM	30
-#define STEP_DATA_RAW		7
-#define STEP_DATA_DT_MAX_NUM	(STEP_DATA_MAX_CFG_NUM * STEP_DATA_RAW)
-struct fg_dt_step_data {
-	int	data_num;
-	int	temp_low[STEP_DATA_MAX_CFG_NUM];
-	int	temp_high[STEP_DATA_MAX_CFG_NUM];
-	int	voltage_low[STEP_DATA_MAX_CFG_NUM];
-	int	voltage_high[STEP_DATA_MAX_CFG_NUM];
-	int	target_current[STEP_DATA_MAX_CFG_NUM];
-	int	target_voltage[STEP_DATA_MAX_CFG_NUM];
-	int	condition[STEP_DATA_MAX_CFG_NUM];
-};
-
-#define STEP_INPUT_BUF_NUM 3
-struct fg_step_input {
-	int	temp;
-	int	current_now;
-	int	voltage_now;
-	s64	stored_ktime_ms;
-};
-
-#define TEMP_DATA_BUF_NUM	100
-struct fg_temp_sample_data {
-	int	id;
-	int	batt_current_ma;
-	int	batt_temp;
-	ktime_t	ktime_ms;
-};
-struct fg_temp_data {
-	struct fg_temp_sample_data	data[TEMP_DATA_BUF_NUM];
-	int	last_id;
-	int	first_ktime_ms;
-	int	suspended_ktime_ms;
-};
-
-#endif
-
 static const struct fg_pt fg_ln_table[] = {
 	{ 1000,		0 },
 	{ 2000,		693 },
@@ -477,18 +405,6 @@ struct fg_memif {
 	u16			address_max;
 	u8			num_bytes_per_word;
 };
-
-#ifdef CONFIG_QPNP_SMBFG_NEWGEN_EXTENSION
-#define ORG_BATT_TYPE_SIZE	9
-#define BATT_TYPE_SIZE		(ORG_BATT_TYPE_SIZE + 2)
-#define BATT_TYPE_FIRST_HYPHEN	4
-#define BATT_TYPE_SECOND_HYPHEN	9
-#define BATT_TYPE_AGING_LEVEL	10
-
-#define NO_REQUESTED_LEVEL      -1
-#define BATT_AGING_LEVEL_NONE   -1
-#define MAX_BATT_NODE_NAME_SIZE 32
-#endif
 
 struct fg_dev {
 	struct thermal_zone_device	*tz_dev;
@@ -545,60 +461,6 @@ struct fg_dev {
 	bool			use_ima_single_mode;
 	bool			use_dma;
 	bool			qnovo_enable;
-
-#ifdef CONFIG_QPNP_SMBFG_NEWGEN_EXTENSION
-	bool			is_fg_gen4;
-
-	/* JEITA/Step charge */
-	struct delayed_work	somc_jeita_step_charge_work;
-	struct wakeup_source	step_ws;
-	struct mutex		step_lock;
-	bool			step_lock_en;
-	bool			step_en;
-	struct fg_dt_step_data	step_data;
-	int			cell_impedance_mohm;
-	int			vcell_max_mv;
-	struct fg_step_input	step_input_data[STEP_INPUT_BUF_NUM];
-	int			target_idx;
-	bool			use_real_temp;
-	bool			real_temp_use_aux;
-	int			batt_temp_correctton;
-	int			aux_temp_correctton;
-	int			real_temp_debug;
-
-	/* Soft Charge */
-	int			batt_aging_level;
-	int			max_batt_aging_level;
-	int			saved_batt_aging_level;
-	int			requested_batt_aging_level;
-	char			org_batt_type_str[ORG_BATT_TYPE_SIZE + 1];
-	int			initial_capacity;
-	int			soc_shift_wa_ccsoc;
-
-	/* FULL/Recharge */
-	bool			charge_full_releasing;
-	struct delayed_work	somc_charge_full_releasing_work;
-	bool			recharge_starting;
-	int			recharge_voltage_mv;
-	int			recharge_counter;
-	int			full_counter;
-
-	/* Soc Correction */
-	int			msoc_tune_a;
-	int			msoc_tune_b;
-	int			soc_restart_counter;
-
-	/* tempareture correction */
-	struct mutex		temp_corr_lock;
-	bool			cell_temp_avtive;
-	int			cell_temp;
-	int			iavg;
-	struct delayed_work	somc_temp_corr_work;
-	struct fg_temp_data	temp_data;
-	bool			temp_corr_en;
-	int			temp_corr_coef_a;
-	int			temp_corr_avg_sec;
-#endif
 
 	enum fg_version		version;
 	struct completion	soc_update;
@@ -712,9 +574,5 @@ extern int fg_circ_buf_avg(struct fg_circ_buf *buf, int *avg);
 extern int fg_circ_buf_median(struct fg_circ_buf *buf, int *median);
 extern int fg_lerp(const struct fg_pt *pts, size_t tablesize, s32 input,
 			s32 *output);
-
-#ifdef CONFIG_QPNP_SMBFG_NEWGEN_EXTENSION
-int fg_get_vbatt_predict(struct fg_dev *fg, int *val);
-#endif
 
 #endif
