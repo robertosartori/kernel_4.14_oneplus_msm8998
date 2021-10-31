@@ -969,3 +969,9 @@
 		pinctrl-1 = <&nfc_int_suspend &nfc_enable_suspend>;
 	};
 };
+
+&soc {
+	restart@10ac000 {
+		qcom,force-warm-reboot;
+	};
+};
