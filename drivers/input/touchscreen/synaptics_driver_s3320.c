@@ -3214,7 +3214,7 @@ synaptics_test_limit_store);
 static DEVICE_ATTR(tp_baseline_image, 0664, tp_baseline_show, tp_delta_store);
 static DEVICE_ATTR(tp_baseline_image_with_cbc, 0664,
 tp_baseline_show_with_cbc, tp_test_store);
-static DEVICE_ATTR(tp_delta_image, 0664, tp_rawdata_show, NULL);
+static DEVICE_ATTR(tp_delta_image, 0444, tp_rawdata_show, NULL);
 static DEVICE_ATTR(tp_debug_log, 0664, tp_show, store_tp);
 static DEVICE_ATTR(tp_fw_update, 0664, synaptics_update_fw_show,
 synaptics_update_fw_store);
