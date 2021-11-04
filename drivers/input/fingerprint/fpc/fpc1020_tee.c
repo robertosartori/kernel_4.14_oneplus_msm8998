@@ -672,7 +672,7 @@ static int fpc1020_probe(struct platform_device *pdev)
 	dev_info(dev, "requested irq %d\n", gpio_to_irq(fpc1020->irq_gpio));
 
 	/* Request that the interrupt should not be wakeable */
-	disable_irq_wake( gpio_to_irq( fpc1020->irq_gpio ) );
+	//disable_irq_wake( gpio_to_irq( fpc1020->irq_gpio ) );
 
 	enable_irq_wake( gpio_to_irq( fpc1020->irq_gpio ) );
 	wakeup_source_init(&fpc1020->ttw_wl, "fpc_ttw_wl");
