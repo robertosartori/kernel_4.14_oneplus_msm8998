@@ -231,6 +231,7 @@
 		compatible = "oem,oem_serial_pinctrl";
 		pinctrl-names = "uart_pinctrl_active";
 		pinctrl-0 = <&uart_console_active>;
+		status = "disabled";
 	};
 };
 

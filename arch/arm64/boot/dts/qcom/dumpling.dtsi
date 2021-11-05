@@ -892,6 +892,7 @@
 	pinctrl-names = "uart_active", "uart_deactive";
 	pinctrl-0 = <&uart_console_active>;
 	pinctrl-1 = <&uart_console_deactive>;
+	status = "disabled";
 };
 /*Anderson-Config_UARTPIN_as_GPIO*]**/
 
