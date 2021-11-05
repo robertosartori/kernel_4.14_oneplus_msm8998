@@ -666,4 +666,20 @@ config MACH_SONY_PDX201
 	If you enable this config,
 	please use SONY Mobile device tree.
 
+#
+# OnePlus 5 platform
+#
+config ARCH_ONEPLUS_CHEESEBURGER
+	bool "OnePlus 5 platform"
+	depends on ARCH_MSM8998
+	help
+	  Support for the OnePlus 5 Cheeseburger platform
+	  which is based on QCOM MSM8998 chipset.
+
+config ARCH_ONEPLUS_DUMPLING
+	bool "OnePlus 5T platform"
+	depends on ARCH_MSM8998
+	help
+	  Support for the OnePlus 5T Dumpling platform
+	  which is based on QCOM MSM8998 chipset.
 endmenu
