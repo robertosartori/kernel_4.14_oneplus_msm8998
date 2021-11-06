@@ -1,15 +1,18 @@
 /*
-* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
-*
-* This program is free software; you can redistribute it and/or modify
-* it under the terms of the GNU General Public License version 2 and
-* only version 2 as published by the Free Software Foundation.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*/
+ *Copyright 2015 NXP Semiconductors
+ *
+ *Licensed under the Apache License, Version 2.0 (the "License");
+ *you may not use this file except in compliance with the License.
+ *You may obtain a copy of the License at
+ *
+ *http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *Unless required by applicable law or agreed to in writing, software
+ *distributed under the License is distributed on an "AS IS" BASIS,
+ *WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *See the License for the specific language governing permissions and
+ *limitations under the License.
+ */
 
 #ifndef TFA_H_
 #define TFA_H_
@@ -61,15 +64,8 @@ enum tfa_error tfa_load_cnt(void *cnt, int length);
  * @param pDevice the index in the conainer file
  * @return enum tfa_error
  */
-/* HTC_AUD_START - pass upper-spk information to tfa_dsp */
-#if 0
 enum Tfa98xx_Error
 tfa_probe(unsigned char slave_address, int *pDevice);
-#else
-enum Tfa98xx_Error
-tfa_probe(bool upper_spk, unsigned char slave_address, int *pDevice);
-#endif
-/* HTC_AUD_END */
 
 /**
  * Start/Restart the SpeakerBoost on all devices/channels.
@@ -80,8 +76,7 @@ tfa_probe(bool upper_spk, unsigned char slave_address, int *pDevice);
  * In case of a warm start only a power-on and un-mute will be executed.\n
  *
  * @param profile the profile to load, if -1 then don't change profile
- * @param vsteps the volume step selections
- * for each channel, if -1 then softmute
+ * @param vsteps the volume step selections for each channel, if -1 then softmute
  *                        0 sets the maximum volume
  * @return enum tfa_error
  */

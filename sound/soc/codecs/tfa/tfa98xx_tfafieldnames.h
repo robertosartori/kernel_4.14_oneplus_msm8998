@@ -1,27 +1,13 @@
-/*
-* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
-*
-* This program is free software; you can redistribute it and/or modify
-* it under the terms of the GNU General Public License version 2 and
-* only version 2 as published by the Free Software Foundation.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*/
 
-#define tfaBfName_t struct TfaBfName
-struct TfaBfName {
-	unsigned short bfEnum;
-	char *bfName;
-};
+typedef struct TfaBfName {
+   unsigned short bfEnum;
+   char  *bfName;
+} tfaBfName_t;
 
-#define tfaIrqName_t struct TfaIrqName
-struct TfaIrqName {
+typedef struct TfaIrqName {
 	unsigned short irqEnum;
-	char *irqName;
-};
+	char  *irqName;
+} tfaIrqName_t;
 
 #include "tfa1_tfafieldnames.h"
 #include "tfa2_tfafieldnames_N1C.h"
@@ -54,15 +40,17 @@ struct TfaIrqName {
 /* missing 'common' defs break the build but unused in TFA2 context */
 #define TFA2_BF_CFSM	-1
 
+
 /* MTP access uses registers
  *  defs are derived from corresponding bitfield names as used in the BF macros
  */
-#define MTPKEY2	MTPK /* unlock key2 MTPK */
-#define MTP0	MTPOTC /* MTP data */
-#define MTP_CONTROL	CIMTP /* copy i2c to mtp */
+#define MTPKEY2  	MTPK		/* unlock key2 MTPK */
+#define MTP0     	MTPOTC 	/* MTP data */
+#define MTP_CONTROL CIMTP	/* copy i2c to mtp */
 
 /* interrupt enable register uses HW name in TFA2 */
 #define TFA2_BF_INTENVDDS TFA2_BF_IEVDDS
+
 
 /* interrupt bit field names of TFA2 and TFA1 do not match */
 #define TFA1_BF_IEACS TFA1_BF_INTENACS
