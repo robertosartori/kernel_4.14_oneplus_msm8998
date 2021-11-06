@@ -481,4 +481,13 @@ obj-$(CONFIG_SND_SOC_MAX9877)	+= snd-soc-max9877.o
 obj-$(CONFIG_SND_SOC_MAX98504)	+= snd-soc-max98504.o
 obj-$(CONFIG_SND_SOC_TPA6130A2)	+= snd-soc-tpa6130a2.o
 
-obj-$(CONFIG_SND_SOC_TFA98XX) += tfa/
+obj-$(CONFIG_SND_SOC_TFA98XX) += snd-soc-tfa98xx.o
+snd-soc-tfa98xx-objs += tfa/tfa98xx.o
+snd-soc-tfa98xx-objs += tfa/tfa_container.o
+snd-soc-tfa98xx-objs += tfa/tfa_dsp.o
+snd-soc-tfa98xx-objs += tfa/tfa9888_init.o
+snd-soc-tfa98xx-objs += tfa/tfa9891_init.o
+snd-soc-tfa98xx-objs += tfa/tfa9897_init.o
+snd-soc-tfa98xx-objs += tfa/tfa9890_init.o
+snd-soc-tfa98xx-objs += tfa/tfa9887B_init.o
+snd-soc-tfa98xx-objs += tfa/tfa9887_init.o

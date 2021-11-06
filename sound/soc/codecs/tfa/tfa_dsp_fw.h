@@ -1,17 +1,3 @@
-/*
-* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
-*
-* This program is free software; you can redistribute it and/or modify
-* it under the terms of the GNU General Public License version 2 and
-* only version 2 as published by the Free Software Foundation.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*/
-
-
 #ifndef TFA98XX_INTERNALS_H
 #define TFA98XX_INTERNALS_H
 
@@ -38,7 +24,7 @@ enum tfa_fw_event { /* not all available on each device */
 #define MODULE_FRAMEWORK        0
 #define MODULE_SPEAKERBOOST     1
 #define MODULE_BIQUADFILTERBANK 2
-#define MODULE_SETRE			9
+#define MODULE_SETRE 			9
 
 /* RPC commands */
 /* SET */
@@ -73,7 +59,7 @@ enum tfa_fw_event { /* not all available on each device */
 #define SB_PARAM_GET_LAGW               0x81
 #define SB_PARAM_GET_RE0                0x85
 #define SB_PARAM_GET_LSMODEL            0x86
-#define SB_PARAM_GET_MBDRC				0x87
+#define SB_PARAM_GET_MBDRC	        	0x87
 #define SB_PARAM_GET_MBDRC_DYNAMICS		0x89
 #define SB_PARAM_GET_TAG                0xFF
 
@@ -83,8 +69,7 @@ enum tfa_fw_event { /* not all available on each device */
 #define SB_PARAM_SET_AGCINS             0x10
 #define SB_PARAM_SET_CURRENT_DELAY      0x03
 #define SB_PARAM_GET_STATE              0xC0
-#define SB_PARAM_GET_XMODEL             0xC1
-/* Gets current Excursion Model. */
+#define SB_PARAM_GET_XMODEL             0xC1	/* Gets current Excursion Model. */
 
 /* sets the speaker calibration impedance (@25 degrees celsius) */
 #define SB_PARAM_SET_RE0                0x89
@@ -94,8 +79,9 @@ enum tfa_fw_event { /* not all available on each device */
 #define BFB_PAR_ID_GET_CONFIG           0x81
 
 /* for compatibility */
-#define FW_PARAM_GET_STATE			FW_PAR_ID_GLOBAL_GET_INFO
-#define FW_PARAM_GET_FEATURE_BITS	FW_PAR_ID_GET_FEATURE_BITS
+#define FW_PARAM_GET_STATE        	FW_PAR_ID_GLOBAL_GET_INFO
+#define FW_PARAM_GET_FEATURE_BITS 	FW_PAR_ID_GET_FEATURE_BITS
+
 
 /* RPC Status results */
 #define STATUS_OK                  0
@@ -107,7 +93,7 @@ enum tfa_fw_event { /* not all available on each device */
 #define TFA2_MAX_PARAM_SIZE (507*3) /* TFA2 */
 #define TFA1_MAX_PARAM_SIZE (145*3) /* TFA1 */
 
-#define ROUND_DOWN(a, n) (((a)/(n))*(n))
+#define ROUND_DOWN(a,n) (((a)/(n))*(n))
 
 /* feature bits */
 #define FEATURE1_TCOEF 0x100 /* bit8 set means tCoefA expected */
@@ -115,22 +101,19 @@ enum tfa_fw_event { /* not all available on each device */
 
 /* DSP firmware xmem defines */
 #define TFA1_FW_XMEM_CALIBRATION_DONE	231
-#define TFA2_FW_XMEM_CALIBRATION_DONE	516
-#define TFA1_FW_XMEM_COUNT_BOOT			0xa1
-#define TFA2_FW_XMEM_COUNT_BOOT			512
+#define TFA2_FW_XMEM_CALIBRATION_DONE   516
+#define TFA1_FW_XMEM_COUNT_BOOT		  	0xa1
+#define TFA2_FW_XMEM_COUNT_BOOT		  	512
 #define TFA2_FW_XMEM_CMD_COUNT			520
 
 /* note that the following defs rely on the handle variable */
-#define TFA_FW_XMEM_CALIBRATION_DONE \
-		TFA_FAM_FW(handle, XMEM_CALIBRATION_DONE)
-#define TFA_FW_XMEM_COUNT_BOOT \
-		TFA_FAM_FW(handle, XMEM_COUNT_BOOT)
-#define TFA_FW_XMEM_CMD_COUNT \
-		TFA_FAM_FW(handle, XMEM_CMD_COUNT)
+#define TFA_FW_XMEM_CALIBRATION_DONE 	TFA_FAM_FW(handle,XMEM_CALIBRATION_DONE)
+#define TFA_FW_XMEM_COUNT_BOOT 			TFA_FAM_FW(handle,XMEM_COUNT_BOOT)
+#define TFA_FW_XMEM_CMD_COUNT 			TFA_FAM_FW(handle,XMEM_CMD_COUNT)
 
-#define TFA2_FW_ReZ_SCALE				65536
-#define TFA1_FW_ReZ_SCALE				16384
-#define TFA_FW_ReZ_SCALE \
-		TFA_FAM_FW(handle, ReZ_SCALE)
+#define TFA2_FW_ReZ_SCALE             	65536
+#define TFA1_FW_ReZ_SCALE             	16384
+#define TFA_FW_ReZ_SCALE              	TFA_FAM_FW(handle,ReZ_SCALE)
+
 
 #endif /* TFA98XX_INTERNALS_H */
