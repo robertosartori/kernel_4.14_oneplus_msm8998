@@ -7282,17 +7282,13 @@ static void i2s_auxpcm_init(struct platform_device *pdev)
 	}
 
 	for (count = 0; count < PCM_I2S_SEL_MAX; count++) {
-		pr_info("SARU: %s\n", str[count]);
 		muxsel = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 						      str[count]);
 		if (muxsel) {
-			pr_info("SARU: found\n");
 			mi2s_auxpcm_conf[count].pcm_i2s_sel_vt_addr
 				= ioremap(muxsel->start, resource_size(muxsel));
 		}
 	}
-
-	mi2s_auxpcm_conf[PCM_I2S_SEL_MAX - 1].pcm_i2s_sel_vt_addr = ioremap(0x1711d000, 4);
 
 	ret = of_property_read_u32_array(pdev->dev.of_node,
 			"qcom,msm-mi2s-master",
