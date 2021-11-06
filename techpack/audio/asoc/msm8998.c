@@ -2970,6 +2970,37 @@ static int msm_hifi_ctrl_event(struct snd_soc_dapm_widget *w,
 
 	return 0;
 }
+#if defined(CONFIG_ARCH_ONEPLUS_CHEESEBURGER) || defined(CONFIG_ARCH_ONEPLUS_DUMPLING)
+static const struct snd_soc_dapm_widget msm_dapm_widgets_oneplus[] = {
+
+	SND_SOC_DAPM_SUPPLY("MCLK",  SND_SOC_NOPM, 0, 0,
+			    msm_mclk_event,
+			    SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+
+	SND_SOC_DAPM_SUPPLY("MCLK TX",  SND_SOC_NOPM, 0, 0,
+	msm_mclk_tx_event, SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+
+	SND_SOC_DAPM_SPK("Lineout_1 amp", NULL),
+	SND_SOC_DAPM_SPK("Lineout_3 amp", NULL),
+	SND_SOC_DAPM_SPK("Lineout_2 amp", NULL),
+	SND_SOC_DAPM_SPK("Lineout_4 amp", NULL),
+	SND_SOC_DAPM_SPK("hifi amp", msm_hifi_ctrl_event),
+	SND_SOC_DAPM_MIC("Handset Mic", NULL),
+	SND_SOC_DAPM_MIC("Headset Mic", NULL),
+	SND_SOC_DAPM_MIC("ANCRight Headset Mic", NULL),
+	SND_SOC_DAPM_MIC("ANCLeft Headset Mic", NULL),
+	SND_SOC_DAPM_MIC("Analog Mic3", NULL),
+	SND_SOC_DAPM_MIC("Analog Mic4", NULL),
+	SND_SOC_DAPM_MIC("Analog Mic5", NULL),
+	SND_SOC_DAPM_MIC("Analog Mic6", NULL),
+	SND_SOC_DAPM_MIC("Digital Mic0", NULL),
+	SND_SOC_DAPM_MIC("Digital Mic1", NULL),
+	SND_SOC_DAPM_MIC("Digital Mic2", NULL),
+	SND_SOC_DAPM_MIC("Digital Mic3", NULL),
+	SND_SOC_DAPM_MIC("Digital Mic4", NULL),
+	SND_SOC_DAPM_MIC("Digital Mic5", NULL),
+};
+#endif
 
 static const struct snd_soc_dapm_widget msm_dapm_widgets[] = {
 
@@ -3635,9 +3666,13 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 		return ret;
 	}
 
+#if defined(CONFIG_ARCH_ONEPLUS_CHEESEBURGER) || defined(CONFIG_ARCH_ONEPLUS_DUMPLING)
+	snd_soc_dapm_new_controls(dapm, msm_dapm_widgets_oneplus,
+				ARRAY_SIZE(msm_dapm_widgets_oneplus));
+#else
 	snd_soc_dapm_new_controls(dapm, msm_dapm_widgets,
 				ARRAY_SIZE(msm_dapm_widgets));
-
+#endif
 	if (!strcmp(dev_name(codec_dai->dev), "tasha_codec"))
 		snd_soc_dapm_add_routes(dapm, wcd_audio_paths_tasha,
 					ARRAY_SIZE(wcd_audio_paths_tasha));
@@ -6463,13 +6498,15 @@ static struct snd_soc_dai_link msm_mi2s_be_dai_links[] = {
 		.ops = &msm_mi2s_be_ops,
 		.ignore_suspend = 1,
 	},
+#if (defined(CONFIG_ARCH_ONEPLUS_CHEESEBURGER) || defined(CONFIG_ARCH_ONEPLUS_DUMPLING)) && \
+	defined(CONFIG_SND_SOC_TFA98XX)
 	{
 		.name = LPASS_BE_QUAT_MI2S_RX,
 		.stream_name = "Quaternary MI2S Playback",
 		.cpu_dai_name = "msm-dai-q6-mi2s.3",
 		.platform_name = "msm-pcm-routing",
-		.codec_name = "msm-stub-codec.1",
-		.codec_dai_name = "msm-stub-rx",
+		.codec_name = "tfa98xx.9-0036",
+		.codec_dai_name = "tfa98xx_codec-9-36",
 		.no_pcm = 1,
 		.dpcm_playback = 1,
 		.id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
@@ -6478,6 +6515,23 @@ static struct snd_soc_dai_link msm_mi2s_be_dai_links[] = {
 		.ignore_suspend = 1,
 		.ignore_pmdown_time = 1,
 	},
+#else
+	{
+		.name = LPASS_BE_QUAT_MI2S_RX,
+		.stream_name = "Quaternary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "msm-dai-q6-mi2s.3",
+		.codec_dai_name = "msm-pcm-routing",
+		.no_pcm = 1,
+		.dpcm_playback = 1,
+		.id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm_mi2s_be_ops,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+	},
+#endif
 	{
 		.name = LPASS_BE_QUAT_MI2S_TX,
 		.stream_name = "Quaternary MI2S Capture",
@@ -6924,8 +6978,13 @@ static int msm_audrx_stub_init(struct snd_soc_pcm_runtime *rtd)
 		return ret;
 	}
 
+#if defined(CONFIG_ARCH_ONEPLUS_CHEESEBURGER) || defined(CONFIG_ARCH_ONEPLUS_DUMPLING)
+	snd_soc_dapm_new_controls(dapm, msm_dapm_widgets_oneplus,
+				ARRAY_SIZE(msm_dapm_widgets_oneplus));
+#else
 	snd_soc_dapm_new_controls(dapm, msm_dapm_widgets,
 				ARRAY_SIZE(msm_dapm_widgets));
+#endif
 
 	return 0;
 }
