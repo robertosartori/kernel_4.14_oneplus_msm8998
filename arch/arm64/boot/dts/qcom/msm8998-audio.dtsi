@@ -16,6 +16,7 @@
 &msm_audio_ion {
 	qcom,smmu-version = <2>;
 	iommus = <&lpass_q6_smmu 1>;
+	qcom,smmu-sid-mask = /bits/ 64 <0xf>;
 };
 
 &spi_10 {
