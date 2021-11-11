@@ -520,31 +520,42 @@ static int32_t msm_ois_config(struct msm_ois_ctrl_t *o_ctrl,
 			pr_err("Failed ois control%d\n", rc);
 		break;
 	case CFG_OIS_I2C_WRITE_SEQ_TABLE: {
-		struct msm_camera_i2c_seq_reg_setting conf_array;
+		struct msm_camera_i2c_seq_reg_setting *conf_array = NULL;
 		struct msm_camera_i2c_seq_reg_array *reg_setting = NULL;
 
 #ifdef CONFIG_COMPAT
 		if (is_compat_task()) {
-			memcpy(&conf_array,
-				(void *)cdata->cfg.settings,
-				sizeof(struct msm_camera_i2c_seq_reg_setting));
-		} else
+			conf_array = cdata->cfg.settings;
+		} else {
 #endif
-		if (copy_from_user(&conf_array,
+		conf_array = kzalloc(
+			(sizeof(struct msm_camera_i2c_seq_reg_setting)),
+			GFP_KERNEL);
+		if (!conf_array) {
+			pr_err("%s:%d failed\n", __func__, __LINE__);
+			rc = -ENOMEM;
+			break;
+		}
+		if (copy_from_user(conf_array,
 			(void __user *)cdata->cfg.settings,
 			sizeof(struct msm_camera_i2c_seq_reg_setting))) {
 			pr_err("%s:%d failed\n", __func__, __LINE__);
 			rc = -EFAULT;
 			break;
 		}
-
-		if (!conf_array.size ||
-			conf_array.size > I2C_SEQ_REG_DATA_MAX) {
+#ifdef CONFIG_COMPAT
+		}
+#endif
+		if (!conf_array->size ||
+			conf_array->size > I2C_SEQ_REG_DATA_MAX) {
 			pr_err("%s:%d failed\n", __func__, __LINE__);
 			rc = -EFAULT;
 			break;
 		}
-		reg_setting = kzalloc(conf_array.size *
+#ifdef CONFIG_COMPAT
+		if (!is_compat_task()) {
+#endif
+		reg_setting = kzalloc(conf_array->size *
 			(sizeof(struct msm_camera_i2c_seq_reg_array)),
 			GFP_KERNEL);
 		if (!reg_setting) {
@@ -553,8 +564,8 @@ static int32_t msm_ois_config(struct msm_ois_ctrl_t *o_ctrl,
 			break;
 		}
 		if (copy_from_user(reg_setting,
-			(void __user *)conf_array.reg_setting,
-			conf_array.size *
+			(void __user *)conf_array->reg_setting,
+			conf_array->size *
 			sizeof(struct msm_camera_i2c_seq_reg_array))) {
 			pr_err("%s:%d failed\n", __func__, __LINE__);
 			kfree(reg_setting);
@@ -562,11 +573,18 @@ static int32_t msm_ois_config(struct msm_ois_ctrl_t *o_ctrl,
 			break;
 		}
 
-		conf_array.reg_setting = reg_setting;
+		conf_array->reg_setting = reg_setting;
+#ifdef CONFIG_COMPAT
+		}
+#endif
 		rc = o_ctrl->i2c_client.i2c_func_tbl->
 			i2c_write_seq_table(&o_ctrl->i2c_client,
-			&conf_array);
+			conf_array);
 		kfree(reg_setting);
+#ifdef CONFIG_COMPAT
+		if (!is_compat_task())
+			kfree(conf_array);
+#endif
 		break;
 	}
 	default:
@@ -854,6 +872,7 @@ static long msm_ois_subdev_do_ioctl(
 	void *parg;
 	struct msm_camera_i2c_seq_reg_setting settings;
 	struct msm_camera_i2c_seq_reg_setting32 settings32;
+	struct msm_camera_i2c_seq_reg_array *reg_setting = NULL;
 
 	if (!file || !arg) {
 		pr_err("%s:failed NULL parameter\n", __func__);
@@ -912,6 +931,7 @@ static long msm_ois_subdev_do_ioctl(
 				pr_err("%s:%d failed\n", __func__, __LINE__);
 				return -EFAULT;
 			}
+			reg_setting = settings.reg_setting;
 
 			ois_data.cfg.settings = &settings;
 			parg = &ois_data;
@@ -926,6 +946,7 @@ static long msm_ois_subdev_do_ioctl(
 		return -EINVAL;
 	}
 	rc = msm_ois_subdev_ioctl(sd, cmd, parg);
+	kfree(reg_setting);
 
 	return rc;
 }
