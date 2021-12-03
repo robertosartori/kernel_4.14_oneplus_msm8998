@@ -14,13 +14,48 @@
 /dts-v1/;
 
 #include "msm8998-v2.1.dtsi"
-#include "msm8998-mdss-panels.dtsi"
 #include "msm8998-mtp.dtsi"
 #include "cheeseburger.dtsi"
 #include "cheeseburger-pvt.dtsi"
+//#include "dsi-panel-samsung_s6e3fa5_1080p_cmd.dtsi"
+#include "msm8998-sde-overlay.dtsi"
+#include "msm8998-oneplus-common-sde-overlay.dtsi"
+#include "sde-dsi-panel-samsung_s6e3fa5_1080p_cmd.dtsi"
+#include "dsi-panel-oneplus.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM 8998 v2.1 MTP";
 	compatible = "qcom,msm8998-mtp", "qcom,msm8998", "qcom,mtp";
 	qcom,board-id = <8 0 16859 23>;
 };
+
+/* Disable MDSS rotator node to use SDE rotator. */
+/*&mdss_rotator {
+        status = "disabled";
+};
+*/
+&sde_rotator {
+        status = "ok";
+};
+
+&dsi_panel_cmd_display {
+        qcom,dsi-panel = <&sde_dsi_samsung_s6e3fa5_1080p_cmd>;
+};
+
+&soc {
+        mdss_dsi0_pll: qcom,mdss_dsi_pll@c994400 {
+                qcom,dsi-pll-ssc-en;
+                qcom,dsi-pll-ssc-mode = "down-spread";
+                qcom,ssc-frequency-hz = <31500>;
+                qcom,ssc-ppm = <5000>;
+        };
+
+        mdss_dsi1_pll: qcom,mdss_dsi_pll@c996400 {
+                qcom,dsi-pll-ssc-en;
+                qcom,dsi-pll-ssc-mode = "down-spread";
+                qcom,ssc-frequency-hz = <31500>;
+                qcom,ssc-ppm = <5000>;
+        };
+
+};
+

@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -10,28 +10,28 @@
  * GNU General Public License for more details.
  */
 
+#include "msm8998-sde.dtsi"
+#include "msm8998-sde-display.dtsi"
+#include "msm8998-mtp.dtsi"
+
 #include "pxlw-iris-settings.dtsi"
+/* Include thermal */
+#include "msm8998-oneplus-common-thermal.dtsi"
 
 /* Disable SMP2P Remote Debug for production */
 #include "msm-rdbg-disable.dtsi"
 
 / {
 	reserved-memory {
-		ramoops_mem: ramoops_mem@ac000000 {
-			reg = <0 0xAC000000 0 0x00200000>;
-			label = "ramoops_mem";
-		};
-		param_mem: param_mem@ac200000 {
-			reg = <0 0xAC200000 0 0x00100000>;
-			label = "param_mem";
-		};
-		mtp_mem: mtp_mem@ac400000 {
-			reg = <0 0xAC400000 0 0x00B00000>;
-			label = "mtp_mem";
-		};
-		bootloader_log_mem: bootloader_log_mem@9fff7000 {
-			reg = <0 0x9FFF7000 0 0x00100000>;
-			label = "bootloader_log_mem";
+		ramoops {
+			compatible = "removed-dma-pool", "ramoops";
+			no-map;
+			reg = <0 0xac000000 0 0x00200000>;
+			record-size = <0x10000>;
+			console-size = <0x60000>;
+			ftrace-size = <0x10000>;
+			pmsg-size = <0x20000>;
+			status = "okay";
 		};
 	};
 };
@@ -62,6 +62,63 @@
 
 /* I/O */
 &soc {
+        sde_dsi_yoshino_panels: qcom,dsi-display@8 {
+                label = "dsi_panel_somc_yoshino_cmd";
+                qcom,display-type = "primary";
+
+	        /* Dual DSI single panel, clocked from MUX 0 */
+	        qcom,dsi-ctrl-num = <0>;
+        	qcom,dsi-phy-num = <0>;
+	
+	        /* Set workaround for legacy bootloaders */
+		qcom,set-split-flush-reg-wa;
+
+	        qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0";
+	
+	        qcom,dsi-panel = <&dsi_samsung_s6e3fa5_1080p_cmd>;
+
+                qcom,dsi-display-active;
+        };
+        /* SDE */
+        dsi_panel_cmd_display: qcom,dsi-display@12 {
+                compatible = "qcom,dsi-display";
+                label = "primary";
+
+                qcom,dsi-ctrl = <&sde_dsi0>;
+                qcom,dsi-phy = <&mdss_dsi_phy0>;
+                clocks = <&mdss_dsi0_pll BYTECLK_MUX_0_CLK>,
+                         <&mdss_dsi0_pll PCLK_MUX_0_CLK>,
+                         <&mdss_dsi0_pll BYTECLK_MUX_0_CLK>,
+                         <&mdss_dsi0_pll PCLK_MUX_0_CLK>,
+                         <&mdss_dsi0_pll BYTECLK_SRC_0_CLK>,
+                         <&mdss_dsi0_pll PCLK_SRC_0_CLK>,
+                         <&mdss_dsi0_pll BYTECLK_SRC_0_CLK>,
+                         <&mdss_dsi0_pll PCLK_SRC_0_CLK>,
+                         <&mdss_dsi0_pll SHADOW_BYTECLK_SRC_0_CLK>,
+                         <&mdss_dsi0_pll SHADOW_PCLK_SRC_0_CLK>;
+                clock-names = "mux_byte_clk0", "mux_pixel_clk0",
+                              "mux_byte_clk1", "mux_pixel_clk1",
+                              "src_byte_clk0", "src_pixel_clk0",
+                              "src_byte_clk1", "src_pixel_clk1",
+                              "shadow_byte_clk0", "shadow_pixel_clk0";
+
+                pinctrl-names = "panel_active", "panel_suspend";
+                pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
+                pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+
+                qcom,platform-te-gpio = <&tlmm 11 0>;
+                qcom,panel-te-source = <0>;
+		qcom,platform-reset-gpio = <&tlmm 94 0>;
+                vddio-supply = <&pm8998_l14>;
+                lab-supply = <&lab_regulator>;
+                ibb-supply = <&ibb_regulator>;
+
+                qcom,dsi-display-list = <&sde_dsi_yoshino_panels>;
+        };
+	pinctrl@03400000 {
+		disabled-pins = <0 1 2 3 81 82 83 84>;
+	};
+
 	gpio_keys {
 		vol_up {
 			/delete-property/ gpio-key,wakeup;
@@ -113,35 +170,6 @@
 				};
 			};
 		};
-
-		oem_rf_cable_mux {
-			oem_rf_cable_active: oem_rf_cable_active {
-				mux {
-					pins = "gpio36";
-					function = "gpio";
-				};
-
-				config {
-					pins = "gpio36";
-					drive-strength = <2>;
-					bias-pull-up;
-				};
-			};
-
-			oem_rf_cable_suspend: oem_rf_cable_suspend {
-				mux {
-					pins = "gpio36";
-					function = "gpio";
-				};
-
-				config {
-					pins = "gpio36";
-					drive-strength = <2>;
-					bias-pull-up;
-				};
-
-			};
-		};
 	};
 
 	/* Tri-state key */
@@ -152,82 +180,37 @@
 		tristate,gpio_key1 = <&tlmm 40 0x00>;
 		tristate,gpio_key2 = <&tlmm 42 0x00>;
 		tristate,gpio_key3 = <&tlmm 26 0x00>;
-
-		pinctrl-names = "pmx_tri_state_key_active",
-		"pmx_tri_state_key_suspend";
+		pinctrl-names = "pmx_tri_state_key_active", "pmx_tri_state_key_suspend";
 		pinctrl-0 = <&tri_state_key_active>;
 		pinctrl-1 = <&tri_state_key_suspend>;
-	};
-
-	oem_rf_cable {
-		compatible = "oem,rf_cable";
-		interrupt-parent = <&tlmm>;
-		rf,cable-gpio    = <&tlmm 36 0>;
-		pinctrl-names = "oem_rf_cable_active",
-		"oem_rf_cable_suspend";
-		pinctrl-0 = <&oem_rf_cable_active >;
-		pinctrl-1 = <&oem_rf_cable_suspend>;
 	};
 
 	qcom,qbt1000 {
         status = "disabled";
 	};
 
-	tlmm: pinctrl@03400000 {
-		goodixfp_enable_init: goodixfp_enable_init {
-			mux {
-				pins = "gpio65";
-				function = "gpio";
-			};
+	/* Fingerprint */
+	fpc_fpc1020 {
+		compatible = "fpc,fpc1020";
+		fpc,enable-on-boot;
+		fpc,enable-wakeup;
+		interrupt-parent = <&tlmm>;
+		interrupts = <121 0x0>;
+		fpc,irq-gpio    = <&tlmm 121 0x0>;
+		fpc,enable-gpio = <&tlmm 25 0x0>;
+		vdd_ana-supply  = <&pm8998_l6>;
 
-			config {
-				pins = "gpio65";
-				drive-strength = <8>;
-				bias-pull-up;
-				output-high;
-			};
-		};
-		goodixfp_disable_init: goodixfp_disable_init {
-			mux {
-				pins = "gpio65";
-				function = "gpio";
-			};
+		pinctrl-names = "fpc1020_reset_reset",
+				"fpc1020_reset_active",
+				"fp_enable";
 
-			config {
-				pins = "gpio65";
-				drive-strength = <8>;
-				bias-pull-up;
-				output-low;
-			};
-		};
-		goodixfp_irq_init: goodixfp_irq_init {
-			mux {
-				pins = "gpio121";
-				function = "gpio";
-			};
-
-			config {
-				pins = "gpio121";
-				drive-strength = <2>;
-				bias-disable;
-				input-enable;
-			};
-		};
+		pinctrl-0 = <&fpc1020_reset_reset>;
+		pinctrl-1 = <&fpc1020_reset_active>;
+		pinctrl-2 = <&fp_enable>;
 	};
 
-	goodix_fp {
-	compatible = "goodix,fingerprint";
-	interrupt-parent = <&tlmm>;
-	fp-gpio-irq = <&tlmm 121 0x00>;
-	fp-gpio-reset = <&tlmm 75 0x00>;
-	fp-gpio-enable = <&tlmm 65 0x00>;
-	fp-gpio-turn-on = <&tlmm 25 0x00>;
-	pinctrl-names = "fp_en_init", "fp_dis_init",  "fp_enable";
-	pinctrl-0 = <&goodixfp_enable_init &goodixfp_irq_init>;
-	pinctrl-1 = <&goodixfp_disable_init>;
-	pinctrl-2 = <&fp_enable>;
-	status = "okay";
-	oem,dumpling;
+	fingerprint_detect {
+		compatible = "oneplus,fpdetect";
 	};
 
 	tlmm: pinctrl@03400000 {
@@ -245,10 +228,36 @@
 				output-high;
 			};
 		};
-	};
 
-	fingerprint_detect {
-		compatible = "oneplus,fpdetect";
+		/* GPIO_40 : FP_RESET_N */
+		fpc1020_reset_reset: reset {
+			mux {
+				pins = "gpio75";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio75";
+				drive-strength = <2>;
+				bias-disable;
+				output-low;
+			};
+		};
+
+		/* GPIO_40 : FP_RESET_N, state device active */
+		fpc1020_reset_active: fpc1020_reset_active {
+			mux {
+				pins = "gpio75";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio75";
+				drive-strength = <2>;
+				bias-disable;
+				output-high;
+			};
+		};
 	};
 
 	qcom,bcl {
@@ -256,11 +265,6 @@
 		qcom,ibat-monitor {
 			qcom,soc-low-threshold = <5>;
 		};
-	};
-	ramoops {
-		compatible = "ramoops";
-		status = "ok";
-		memory-region = <&ramoops_mem>;
 	};
 
 	/* Add  0x9c 0x21C, 0xf0 0x23C */
@@ -276,20 +280,14 @@
 				0xf0 0x23C
 				0x0f 0x240>;
 	};
-
 	force_enable_serial {
 		compatible = "oem,force_serial";
 	};
 	oem_serial_pinctrl {
 		compatible = "oem,oem_serial_pinctrl";
-		pinctrl-names = "uart_pinctrl_active",
-		"uart_pinctrl_deactive";
+		pinctrl-names = "uart_pinctrl_active";
 		pinctrl-0 = <&uart_console_active>;
-		pinctrl-1 = <&uart_console_deactive>;
-	};
-	bootloader_log {
-		compatible = "bootloader_log";
-		linux,contiguous-region = <&bootloader_log_mem>;
+		status = "disabled";
 	};
 };
 
@@ -320,7 +318,6 @@
 		qcom,out-strength = <1>;
 		status = "okay";
 	};
-
 };
 
 &sdhc_2 {
@@ -330,12 +327,16 @@
 &pmi8998_haptics {
 	status = "okay";
 	qcom,wave-shape = "sine";
-	qcom,wave-play-rate-us = <4255>;
-	qcom,vmax-mv = <1800>;
+	qcom,play-mode = "buffer";
+	qcom,wave-samples = <0x28 0x28 0x28 0x28 0x28 0x28 0x28 0x28>;
 	qcom,brake-pattern = <0x3 0x3 0x3 0x3>;
+	qcom,wave-rep-cnt = <1>;
+	qcom,wave-samp-rep-cnt = <1>;
+	qcom,use-play-irq;
+	qcom,vmax-mv = <2088>;
+	qcom,wave-play-rate-us = <4255>;
 	qcom,lra-auto-res-mode = "qwd";
 	qcom,lra-res-cal-period = <32>;
-	qcom,wave-samples = [28 28 28 28 28 28 28 28];
 };
 
 &spmi_bus {
@@ -348,15 +349,15 @@
 			keypad-led-vbob-min = <3312000>;
 			keypad-led-vbob-max = <3600000>;
 			keypad-backlight {
-			//here maybe pm8998_gpios, depends on what you use.
-				gpios = <&pmi8998_gpios 5 0>;
+				gpios = <&pmi8998_gpios 5 0>; //here maybe pm8998_gpios, depends on what you use.
 				label = "button-backlight";
 				linux,default-trigger = "none";
 				default-state = "off";
 			};
 		};
 	};
-	//shankai@bsp, add debounce time 2017-3-18
+
+	/*shankai@bsp, add debounce time 2017-3-18*/
 	qcom,pm8998@0{
 		qcom,power-on@800 {
 		    qcom,pon-dbc-delay = <31250>;
@@ -405,6 +406,7 @@
 
 &i2c_7 {
 	qcom,clk-freq-out = <100000>;
+
 	bq27541-battery@55 {
 		status = "ok";
 		compatible = "ti,bq27541-battery";
@@ -519,8 +521,8 @@
 };
 
 &pmi8998_charger {
-	/*Set FCC MAX 500mA by default,FCC will*/
-	/* be set again after check battery temperature*/
+ /*Set FCC MAX 500mA by default,FCC will*/
+ /*be set again after check battery temperature*/
 	qcom,fcc-max-ua = <500000>;
 	qcom,usb-icl-ua = <1800000>;
 	qcom,fv-max-uv = <4365000>;
@@ -563,6 +565,8 @@
 	qcom,fg-rsense-sel = <0>;
 };
 
+
+/* Display */
 &i2c_5 {
 	synaptics@20 {
 		status = "disabled";
@@ -574,16 +578,14 @@
 		interrupts = <125 0x2008>;
 		vcc_i2c_1v8-supply = <&pm8998_l6>;
 		vdd_2v8-supply = <&pm8998_l28>;
-		synaptics,tx-rx-num = <15 30>;
+		synaptics,tx-rx-num = <17 30>;
 		synaptics,vdd-voltage = <1808000 1808000>;
 		synaptics,avdd-voltage = <3008000 3008000>;
 		synaptics,vdd-current = <40000>;
 		synaptics,avdd-current = <20000>;
-		synaptics,display-coords = <1080 2160>;
-		synaptics,panel-coords = <1080 2160>;
+		synaptics,display-coords = <1080 1920>;
 		synaptics,reset-gpio = <&tlmm 89 0x00>;
 		synaptics,irq-gpio = <&tlmm 125 0x2008>;
-		oem,support_1080x2160_tp;
 		oem,support_hw_poweroff;
 		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
 		pinctrl-0 = <&ts_active>;
@@ -603,7 +605,6 @@
 	};
 };
 
-
 &mdss_dp_ctrl {
 	status = "disabled";
 };
@@ -612,15 +613,21 @@
 	status = "disabled";
 };
 
-&mdss_dsi {
-	hw-config = "single_dsi";
-};
 
 &mdss_dsi1 {
 	status = "disabled";
+	/delete-property/ qcom,dsi-pref-prim-pan;
 };
 
 &labibb {
+	status = "disabled";
+};
+
+&mdss_hdmi_tx {
+	status = "disabled";
+};
+
+&mdss_hdmi_pll {
 	status = "disabled";
 };
 
@@ -657,19 +664,18 @@
 	};
 
 	sound-9335 {
-	  op,project_17801;
 		qcom,audio-routing =
 			"AIF4 VI", "MCLK",
 			"RX_BIAS", "MCLK",
 			"MADINPUT", "MCLK",
 			"AMIC2", "MIC BIAS2",
 			"MIC BIAS2", "Headset Mic",
-			"AMIC3", "MIC BIAS3",
-			"MIC BIAS3", "Analog Mic3",
-			"AMIC4", "MIC BIAS1",
-			"MIC BIAS1", "Analog Mic4",
-			"AMIC5", "MIC BIAS4",
-			"MIC BIAS4", "Analog Mic5",
+			"AMIC3", "MIC BIAS2",
+			"MIC BIAS2", "ANCRight Headset Mic",
+			"AMIC4", "MIC BIAS2",
+			"MIC BIAS2", "ANCLeft Headset Mic",
+			"AMIC5", "MIC BIAS3",
+			"MIC BIAS3", "Handset Mic",
 			"AMIC6", "MIC BIAS4",
 			"MIC BIAS4", "Analog Mic6",
 			"DMIC0", "MIC BIAS1",
@@ -713,11 +719,11 @@
 	qcom,msm-mi2s-ext-mclk = <0>;
 	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&quat_mi2s_active
-	&quat_mi2s_sd0_active
-	&quat_mi2s_sd1_active>;
+			&quat_mi2s_sd0_active
+			&quat_mi2s_sd1_active>;
 	pinctrl-1 = <&quat_mi2s_sleep
-	&quat_mi2s_sd0_sleep
-	&quat_mi2s_sd1_sleep>;
+			&quat_mi2s_sd0_sleep
+			&quat_mi2s_sd1_sleep>;
 };
 
 &wcd_us_euro_gpio {
@@ -731,11 +737,9 @@
 &wcd_usbc_analog_en2n_gpio {
 	status = "disabled";
 };
-
 &clock_audio_lnbb {
 	status = "disabled";
 };
-
 
 /* Camera */
 &cci {
@@ -746,11 +750,6 @@
 	qcom,camera@1 {
 		status = "disabled";
 	};
-
-	qcom,eeprom@2 {
-		status = "ok";
-	};
-
 };
 
 &firmware {
@@ -778,8 +777,11 @@
 	};
 };
 
+/*Anderson-Config_UARTPIN_as_GPIO*]**/
+
 /* External Thermistors */
 &pm8998_vadc {
+	#thermal-sensor-cells = <1>;
 	chan@4e {
 		label = "ufs_therm";
 		reg = <0x4e>;
@@ -849,44 +851,6 @@
 	};
 };
 
-&rpm_bus {
-	rpm-regulator-ldoa25 {
-		pm8998_l25: regulator-l25 {
-			regulator-min-microvolt = <3312000>;
-		};
-
-		pm8998_l25_pin_ctrl: regulator-l25-pin-ctrl {
-			regulator-min-microvolt = <3312000>;
-		};
-	};
-};
-
-
-/*Anderson-Config_UARTPIN_as_GPIO*[*/
-&soc {
-	tlmm: pinctrl@03400000 {
-		uart_console_deactive: uart_console_deactive {
-			mux {
-				pins = "gpio4", "gpio5";
-				function = "gpio";
-			};
-
-			config {
-				pins = "gpio4", "gpio5";
-				drive-strength = <2>;
-				bias-pull-down;
-			};
-		};
-	};
-};
-
-&uartblsp2dm1 {
-	pinctrl-names = "uart_active", "uart_deactive";
-	pinctrl-0 = <&uart_console_active>;
-	pinctrl-1 = <&uart_console_deactive>;
-	status = "disabled";
-};
-/*Anderson-Config_UARTPIN_as_GPIO*]**/
 
 /*pcie 0 don't used,gpio 37 will used in nfc.*/
 /*but gpio37 will request in pcie0. so disable it*/
@@ -911,7 +875,7 @@
 	};
 };
 
-&i2c_6 {
+&i2c_6 { /* BLSP1 QUP6 (NFC) */
 	nq@28 {
 		status = "disabled";
 	};
@@ -934,8 +898,24 @@
 	};
 };
 
+&uartblsp2dm1 {
+	pinctrl-names = "uart_active";
+	pinctrl-0 = <&uart_console_active>;
+	status = "okay";
+};
+
 &soc {
 	restart@10ac000 {
 		qcom,force-warm-reboot;
 	};
+};
+
+&pmi8998_wled {
+        linux,name = "wled";
+        qcom,current-limit-microamp = <25000>;
+        somc,init-br-ua = <10000>;
+        somc-s1,br-power-save-ua = <800>;
+        somc,bl-scale-enabled;
+        somc,area_count_table_size = <0>;
+        qcom,enabled-strings = <0 1 2>;
 };

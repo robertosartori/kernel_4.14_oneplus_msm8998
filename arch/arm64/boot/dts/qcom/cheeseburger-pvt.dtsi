@@ -10,10 +10,7 @@
  * GNU General Public License for more details.
  */
 
-#include "dsi-panel-samsung_s6e3fa3_1080p_cmd.dtsi"
-#include "dsi-panel-samsung_s6e3fa3_1080p_video.dtsi"
 #include "dsi-panel-samsung_s6e3fa5_1080p_cmd.dtsi"
-#include "dsi-panel-samsung_s6e3fa6_1080p_cmd.dtsi"
 
 &mdss_dsi_active {
 	mux {
@@ -33,41 +30,8 @@
 	};
 };
 
-&mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_samsung_s6e3fa5_1080p_cmd>;
-	pinctrl-names = "mdss_default", "mdss_sleep";
-	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
-	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
-	qcom,platform-reset-gpio = <&tlmm 94 0>;
-	qcom,platform-te-gpio = <&tlmm 11 0>;
-  qcom,platform-vci-gpio = <&tlmm 21 0>;
-  qcom,panel-mode-gpio = <>;
-  lab-supply = <>;
-  ibb-supply = <>;
-                        clocks = <&clock_mmss MMSS_MDSS_BYTE0_CLK>,
-                                 <&clock_mmss MMSS_MDSS_PCLK0_CLK>,
-                                 <&clock_mmss MMSS_MDSS_ESC0_CLK>,
-                                 <&clock_mmss BYTE0_CLK_SRC>,
-                                 <&clock_mmss PCLK0_CLK_SRC>,
-                                 <&clock_mmss MMSS_MDSS_BYTE0_INTF_CLK>;
-                        clock-names = "byte_clk", "pixel_clk", "core_clk",
-                                "byte_clk_rcg", "pixel_clk_rcg",
-                                "byte_intf_clk";
-};
-
-&dsi_samsung_s6e3fa3_1080p_cmd {
-  qcom,panel-supply-entries = <&dsi_panel_pwr_supply_no_labibb>;
-};
-
-&dsi_samsung_s6e3fa3_1080p_video {
-  qcom,panel-supply-entries = <&dsi_panel_pwr_supply_no_labibb>;
-};
 
 &dsi_samsung_s6e3fa5_1080p_cmd {
-  qcom,panel-supply-entries = <&dsi_panel_pwr_supply_no_labibb>;
-};
-
-&dsi_samsung_s6e3fa6_1080p_cmd {
   qcom,panel-supply-entries = <&dsi_panel_pwr_supply_no_labibb>;
 };
 

@@ -270,11 +270,6 @@
 			compatible = "qcom,mdss-fb";
 		};
 
-		mdss_fb2: qcom,mdss_fb_hdmi {
-			cell-index = <2>;
-			compatible = "qcom,mdss-fb";
-			qcom,mdss-intf = <&mdss_hdmi_tx>;
-		};
 
 		mdss_fb3: qcom,mdss_fb_dp {
 			cell-index = <3>;
@@ -635,40 +630,6 @@
 					"mmss_smmu_ahb_clk",
 					"mmss_smmu_axi_clk";
 			      };
-	};
-
-	mdss_hdmi_tx: qcom,hdmi_tx@c9a0000 {
-		cell-index = <0>;
-		compatible = "qcom,hdmi-tx";
-
-		reg =	<0xc9a0000 0x50c>,
-			<0x780000 0x621c>,
-			<0xc9e0000 0x28>;
-		reg-names = "core_physical", "qfprom_physical", "hdcp_physical";
-
-		hpd-gdsc-supply = <&gdsc_mdss>;
-
-		qcom,supply-names = "hpd-gdsc";
-		qcom,min-voltage-level = <0>;
-		qcom,max-voltage-level = <0>;
-		qcom,enable-load = <0>;
-		qcom,disable-load = <0>;
-
-		qcom,msm_ext_disp = <&msm_ext_disp>;
-
-		clocks = <&clock_mmss MMSS_MNOC_AHB_CLK>,
-			 <&clock_mmss MMSS_MDSS_AHB_CLK>,
-			 <&clock_mmss MMSS_MDSS_HDMI_CLK>,
-			 <&clock_mmss MMSS_MDSS_MDP_CLK>,
-			 <&clock_mmss MMSS_MDSS_HDMI_DP_AHB_CLK>,
-			 <&clock_mmss MMSS_MDSS_EXTPCLK_CLK>;
-
-		clock-names = "hpd_mnoc_clk", "hpd_iface_clk",
-				"hpd_core_clk", "hpd_mdp_core_clk",
-				"hpd_alt_iface_clk", "core_extp_clk";
-
-		qcom,mdss-fb-map = <&mdss_fb2>;
-		qcom,pluggable;
 	};
 };
 

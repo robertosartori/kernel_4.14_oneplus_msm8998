@@ -9,31 +9,21 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-
-/* Remove all FBDEV related configuration */
-
-/delete-node/ &mdss_mdp;
-/delete-node/ &mdss_dsi;
-/delete-node/ &msm_ext_disp;
-/delete-node/ &mdss_dp_ctrl;
-/delete-node/ &mdss_rotator;
-/delete-node/ &mdss_dp_pll;
-
-
-&soc {
-	/delete-node/ qcom,mdss_wb_panel;
-
-	mdss_dp_ctrl: dummy-fb-mdss_dp {
-	};
-
-	mdss_fb0: mdss_fb0 {
-	};
-
-	mdss_fb2: mdss_fb2 {
+&sde_dsi_samsung_s6e3fa5_1080p_cmd {
+	qcom,platform-te-gpio = <&tlmm 11 0>;
+	qcom,platform-reset-gpio = <&tlmm 94 0>;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,panel-vspvsn-supply-entries = <&dsi_panel_vspvsn_pwr_supply>;
+	qcom,mdss-dsi-display-timings {
+		1080p60 {
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+		};
 	};
 };
 
-#include "msm8998-sde.dtsi"
-#include "msm8998-sde-display.dtsi"
-
+&sde_dsi_yoshino_panels {
+	/* Default panel */
+	qcom,dsi-panel = <&sde_dsi_samsung_s6e3fa5_1080p_cmd>;
+};
 

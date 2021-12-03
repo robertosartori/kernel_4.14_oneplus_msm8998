@@ -562,7 +562,7 @@
 };
 
 &mdss_dsi0 {
-        qcom,dsi-pref-prim-pan = <&dsi_samsung_s6e3fa5_1080p_cmd>;
+        qcom,dsi-pref-prim-pan = <&sde_dsi_samsung_s6e3fa5_1080p_cmd>;
 };
 
 &mdss_dsi1 {
@@ -571,10 +571,6 @@
 };
 
 &labibb {
-	status = "disabled";
-};
-
-&mdss_hdmi_tx {
 	status = "disabled";
 };
 
@@ -869,4 +865,16 @@
         somc,bl-scale-enabled;
         somc,area_count_table_size = <0>;
         qcom,enabled-strings = <0 1 2>;
+};
+
+&pm8998_l14 {
+        qcom,regulator-type = <0>;      /* LDO */
+        qcom,init-enable = <0>;
+        qcom,init-ldo-mode = <1>;
+        qcom,init-pin-ctrl-enable = <0>;
+        qcom,init-pin-ctrl-mode = <0>;
+        regulator-min-microvolt = <1800000>;
+        regulator-max-microvolt = <1800000>;
+        qcom,init-voltage = <1800000>;
+        status = "okay";
 };
