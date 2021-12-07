@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -847,6 +847,7 @@ void kgsl_memdesc_init(struct kgsl_device *device,
 		(memdesc->flags & KGSL_MEMALIGN_MASK) >> KGSL_MEMALIGN_SHIFT,
 		ilog2(PAGE_SIZE));
 	kgsl_memdesc_set_align(memdesc, align);
+	spin_lock_init(&memdesc->lock);
 }
 
 int
