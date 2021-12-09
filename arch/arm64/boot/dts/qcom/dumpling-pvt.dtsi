@@ -418,6 +418,8 @@
 };
 
 &cci {
+	/delete-node/ qcom,eeprom@0;
+
 	actuator0: qcom,actuator@0 {
 		cell-index = <0>;
 		reg = <0x0>;
