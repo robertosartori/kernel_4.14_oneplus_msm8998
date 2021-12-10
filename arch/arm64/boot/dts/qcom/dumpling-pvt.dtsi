@@ -419,6 +419,7 @@
 
 &cci {
 	/delete-node/ qcom,eeprom@0;
+	/delete-node/ qcom,eeprom@1;
 
 	actuator0: qcom,actuator@0 {
 		cell-index = <0>;
