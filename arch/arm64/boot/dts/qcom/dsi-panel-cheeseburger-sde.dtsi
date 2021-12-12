@@ -1,0 +1,22 @@
+&sde_dsi_samsung_s6e3fa5_1080p_cmd {
+	qcom,platform-te-gpio = <&tlmm 11 0>;
+	qcom,platform-reset-gpio = <&tlmm 94 0>;
+	qcom,platform-touch-vddio-en-gpio = <&tlmm 133 0>;
+	qcom,platform-touch-reset-gpio = <&tlmm 89 0>;
+	qcom,mdss-dsi-reset-sequence = <0 15>, <1 16>, <0 15>, <1 20>;
+	qcom,mdss-dsi-touch-reset-sequence = <1 5>;
+	qcom,panel-vspvsn-supply-entries = <&dsi_panel_vspvsn_pwr_supply>;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_no_labibb>;
+	qcom,mdss-dsi-display-timings {
+		1080p60 {
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+		};
+	};
+};
+
+&sde_dsi_yoshino_panels {
+        /* Default panel */
+        qcom,dsi-panel = <&sde_dsi_samsung_s6e3fa5_1080p_cmd>;
+};
+
