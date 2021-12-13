@@ -27,11 +27,6 @@
 	qcom,board-id = <8 0 16859 23>;
 };
 
-/* Disable MDSS rotator node to use SDE rotator. */
-&mdss_rotator {
-	status = "disabled";
-};
-
 &sde_rotator {
 	status = "ok";
 };

@@ -715,5 +715,4 @@
 
 
 };
-#include "msm8998-mdss-panels.dtsi"
 #include "msm8998-sde-display.dtsi"

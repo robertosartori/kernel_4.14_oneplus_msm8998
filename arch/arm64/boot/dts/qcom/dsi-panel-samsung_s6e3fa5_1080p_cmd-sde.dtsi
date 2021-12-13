@@ -23,7 +23,7 @@
 		qcom,mdss-dsi-panel-version = "S6E3FA5";
 		qcom,mdss-dsi-backlight-version = "SAMSUNG";
 		qcom,mdss-dsi-backlight-manufacture = "SAMSUNG";
-		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
+		qcom,mdss-dsi-panel-controller = <&sde_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
 		qcom,mdss-dsi-panel-destination = "display_1";
 		qcom,mdss-dsi-panel-framerate = <60>;

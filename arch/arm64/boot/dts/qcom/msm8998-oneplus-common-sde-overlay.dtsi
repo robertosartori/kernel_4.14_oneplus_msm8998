@@ -17,9 +17,15 @@
  * Removing them is possible, along with losing cont-splash, but
  * this will initialize the panel only when we enter the OS.
  */
-//#include "msm8998-sde-overlay.dtsi"
+#include "msm8998-sde-overlay.dtsi"
 
 &soc {
+        mdss_dsi0_pll: qcom,mdss_dsi_pll@c994400 {
+                qcom,dsi-pll-ssc-en;
+                qcom,dsi-pll-ssc-mode = "down-spread";
+                qcom,ssc-frequency-hz = <31500>;
+                qcom,ssc-ppm = <5000>;
+        };
 	dsi_panel_pwr_supply: dsi_panel_pwr_supply {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -135,22 +141,3 @@
 	qcom,sde-perf-default-mode = <3>;
 	connectors = <&sde_wb &dsi_panel_cmd_display>;
 };
-
-&mdss_mdp {
-        /delete-property/ compatible;
-        /delete-property/ reg;
-        /delete-property/ reg-names;
-};
-
-&mdss_dsi {
-        /delete-property/ compatible;
-};
-
-&mdss_dsi0 {
-        /delete-property/ label;
-};
-
-&mdss_dsi1 {
-        /delete-property/ label;
-};
-
