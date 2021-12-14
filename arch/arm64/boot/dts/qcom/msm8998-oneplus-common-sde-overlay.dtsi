@@ -136,6 +136,10 @@
 	connectors = <&sde_wb &dsi_panel_cmd_display>;
 };
 
+&cont_splash_mem {
+        reg = <0x0 0x9d400000 0x0 0x02400000>;
+};
+
 &mdss_mdp {
         /delete-property/ compatible;
         /delete-property/ reg;

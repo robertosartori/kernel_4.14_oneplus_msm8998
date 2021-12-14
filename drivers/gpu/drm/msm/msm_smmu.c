@@ -507,9 +507,12 @@ static int msm_smmu_fault_handler(struct iommu_domain *domain,
 	/* see iommu.h for fault flags definition */
 	SDE_EVT32(iova, flags);
 
-	/* generate dump, but no panic */
-	SDE_DBG_DUMP("all", "dbg_bus", "vbif_dbg_bus");
 
+	/* generate dump, but no panic */
+	
+	SDE_DBG_DUMP("all", "dbg_bus", "vbif_dbg_bus");
+DRM_ERROR("trigger dump, iova=0x%08lx, flags=0x%x\n", iova, flags);
+       DRM_ERROR("SMMU device:%s", client->dev ? client->dev->kobj.name : "");
 	/*
 	 * return -ENOSYS to allow smmu driver to dump out useful
 	 * debug info.
