@@ -1039,7 +1039,6 @@ int kgsl_pwrscale_init(struct device *dev, const char *governor)
 	if (IS_ERR(pwrscale->cooling_dev))
 		pwrscale->cooling_dev = NULL;
 
-	pwrscale->gpu_profile.bus_devfreq = NULL;
 	if (data->bus.num) {
 		pwrscale->bus_profile.profile.max_state
 					= pwr->num_pwrlevels - 1;
@@ -1048,8 +1047,6 @@ int kgsl_pwrscale_init(struct device *dev, const char *governor)
 
 		bus_devfreq = devfreq_add_device(device->busmondev,
 			&pwrscale->bus_profile.profile, "gpubw_mon", NULL);
-		if (!IS_ERR(bus_devfreq))
-			pwrscale->gpu_profile.bus_devfreq = bus_devfreq;
 	}
 
 	ret = sysfs_create_link(&device->dev->kobj,
@@ -1139,11 +1136,18 @@ static void do_devfreq_resume(struct work_struct *work)
 
 static void do_devfreq_notify(struct work_struct *work)
 {
-	struct kgsl_pwrscale *pwrscale = container_of(work,
-			struct kgsl_pwrscale, devfreq_notify_ws);
-	struct devfreq *devfreq = pwrscale->devfreqptr;
+        struct kgsl_pwrscale *pwrscale = container_of(work,
+                        struct kgsl_pwrscale, devfreq_notify_ws);
+        struct devfreq *devfreq = pwrscale->devfreqptr;
+        struct devfreq *bus_devfreq = pwrscale->bus_devfreq;
 
-	srcu_notifier_call_chain(&pwrscale->nh,
-				 ADRENO_DEVFREQ_NOTIFY_RETIRE,
-				 devfreq);
+        mutex_lock(&devfreq->lock);
+        update_devfreq(devfreq);
+        mutex_unlock(&devfreq->lock);
+
+        if (bus_devfreq) {
+                mutex_lock(&bus_devfreq->lock);
+                update_devfreq(bus_devfreq);
+                mutex_unlock(&bus_devfreq->lock);
+        }
 }

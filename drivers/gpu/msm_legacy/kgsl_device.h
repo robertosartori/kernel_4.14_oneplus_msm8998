@@ -66,6 +66,7 @@ enum kgsl_event_results {
 };
 
 #define KGSL_FLAG_WAKE_ON_TOUCH BIT(0)
+#define KGSL_FLAG_SPARSE        BIT(1)
 
 /*
  * "list" of event types for ftrace symbolic magic
@@ -195,6 +196,10 @@ struct kgsl_functable {
 	void (*stop_fault_timer)(struct kgsl_device *device);
 	void (*dispatcher_halt)(struct kgsl_device *device);
 	void (*dispatcher_unhalt)(struct kgsl_device *device);
+        int (*suspend_device)(struct kgsl_device *device,
+                pm_message_t pm_state);
+        int (*resume_device)(struct kgsl_device *device,
+                pm_message_t pm_state);
 };
 
 struct kgsl_ioctl {
@@ -420,6 +425,8 @@ struct kgsl_context {
 	unsigned int fault_count;
 	unsigned long fault_time;
 	struct kgsl_mem_entry *user_ctxt_record;
+        unsigned int total_fault_count;
+        unsigned int last_faulted_cmd_ts;
 };
 
 #define _context_comm(_c) \
