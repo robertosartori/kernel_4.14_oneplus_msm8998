@@ -338,7 +338,7 @@
 		reg-names = "dsi_ctrl", "mmss_misc";
 		interrupt-parent = <&sde_kms>;
 		interrupts = <4 0>;
-
+		qcom,cont-splash-enabled;
 		gdsc-supply = <&gdsc_mdss>;
 		vdda-1p2-supply = <&pm8998_l2>;
 

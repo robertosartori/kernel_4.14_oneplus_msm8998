@@ -39,7 +39,7 @@
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
 	qcom,platform-reset-gpio = <&tlmm 94 0>;
-	qcom,platform-te-gpio = <&tlmm 11 0>;
+	qcom,platform-te-gpio = <&tlmm 10 0>;
   qcom,platform-vci-gpio = <&tlmm 21 0>;
   qcom,panel-mode-gpio = <>;
   lab-supply = <>;
