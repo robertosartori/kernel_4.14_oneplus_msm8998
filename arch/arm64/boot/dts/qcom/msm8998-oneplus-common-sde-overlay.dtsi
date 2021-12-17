@@ -111,16 +111,13 @@
 		pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
 		pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
 
-		qcom,platform-te-gpio = <&tlmm 11 0>;
+		qcom,platform-te-gpio = <&tlmm 10 0>;
 		qcom,panel-te-source = <0>;
 
 		qcom,platform-reset-gpio = <&tlmm 94 0>;
-		qcom,platform-touch-vddio-en-gpio = <&tlmm 133 0>;
-		qcom,platform-touch-reset-gpio = <&tlmm 89 0>;
 		vddio-supply = <&pm8998_l14>;
-		touch-avdd-supply = <&pm8998_l28>;
-		lab-supply = <&lab_regulator>;
-		ibb-supply = <&ibb_regulator>;
+		lab-supply = <>;
+		ibb-supply = <>;
 
 		qcom,dsi-display-list = <&sde_dsi_yoshino_panels>;
 	};

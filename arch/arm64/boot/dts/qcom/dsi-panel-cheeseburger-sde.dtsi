@@ -1,5 +1,5 @@
 &sde_dsi_samsung_s6e3fa5_1080p_cmd {
-	qcom,platform-te-gpio = <&tlmm 11 0>;
+	qcom,platform-te-gpio = <&tlmm 10 0>;
 	qcom,platform-reset-gpio = <&tlmm 94 0>;
 	qcom,platform-touch-vddio-en-gpio = <&tlmm 133 0>;
 	qcom,platform-touch-reset-gpio = <&tlmm 89 0>;

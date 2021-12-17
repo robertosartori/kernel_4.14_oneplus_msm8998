@@ -17,7 +17,6 @@
  *---------------------------------------------------------------------------*/
 &sde_kms {
 	sde_dsi_samsung_s6e3fa5_1080p_cmd: qcom,sde_mdss_dsi_samsung_s6e3fa5_1080p_cmd {
-		qcom,cont-splash-enabled;
 		qcom,mdss-dsi-panel-name = "samsung s6e3fa5 1080p cmd mode dsi panel sde";
 		qcom,mdss-dsi-panel-manufacture = "SAMSUNG";
 		qcom,mdss-dsi-panel-version = "S6E3FA5";
@@ -82,7 +81,6 @@
 		qcom,mdss-dsi-te-v-sync-continue-lines = <0x3c>;
 		qcom,mdss-dsi-te-dcs-command = <1>;
 		qcom,esd-check-enabled;
-		qcom,mdss-dsi-panel-status-check-mode = "te_signal_check";
 		qcom,mdss-dsi-te-check-enable;
 		qcom,mdss-dsi-te-using-te-pin;
 		qcom,mdss-dsi-t-clk-post = <0x07>;

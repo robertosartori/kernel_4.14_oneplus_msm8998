@@ -706,8 +706,6 @@ static int msm_iommu_dynamic_attach(struct iommu_domain *domain, struct device *
 		.oas		= MMU_OAS,
 		.tlb		= &msm_iommu_gather_ops,
 		.iommu_dev	= dev,
-		.iova_base	= domain->geometry.aperture_start,
-		.iova_end	= domain->geometry.aperture_end,
 	};
 	domain->geometry.aperture_end = (1ULL << priv->pgtbl_cfg.ias) - 1;
 	domain->geometry.force_aperture = true;
@@ -845,8 +843,6 @@ static int msm_iommu_attach_dev(struct iommu_domain *domain, struct device *dev)
 			.cbndx  = ctx_drvdata->num,
 		},
 		.iommu_dev	= iommu_drvdata->dev,
-		.iova_base	= domain->geometry.aperture_start,
-		.iova_end	= domain->geometry.aperture_end,
 	};
 	domain->geometry.aperture_end = (1ULL << priv->pgtbl_cfg.ias) - 1;
 	domain->geometry.force_aperture = true;
