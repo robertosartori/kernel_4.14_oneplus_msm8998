@@ -99,6 +99,7 @@ struct kgsl_pwr_history {
  */
 struct kgsl_pwrscale {
 	struct devfreq *devfreqptr;
+	struct devfreq *bus_devfreq;
 	struct msm_adreno_extended_profile gpu_profile;
 	struct msm_busmon_extended_profile bus_profile;
 	unsigned long freq_table[KGSL_MAX_PWRLEVELS];

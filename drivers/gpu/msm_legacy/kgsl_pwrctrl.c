@@ -2470,7 +2470,7 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 	kgsl_pwrctrl_vbif_init();
 
 	/* temperature sensor name */
-	of_property_read_string(pdev->dev.of_node, "qcom,tzone-name",
+	of_property_read_string(pdev->dev.of_node, "tzone-name",
 		&pwr->tzone_name);
 
 	/* Cx ipeak client support */
