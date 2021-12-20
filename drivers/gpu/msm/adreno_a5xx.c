@@ -1697,8 +1697,8 @@ static int a5xx_enable_pwr_counters(struct adreno_device *adreno_dev,
 static int64_t a5xx_read_throttling_counters(struct adreno_device *adreno_dev)
 {
 	int i;
-	int64_t adj;
-	uint32_t th[ADRENO_GPMU_THROTTLE_COUNTERS];
+	uint64_t adj;
+	uint64_t th[ADRENO_GPMU_THROTTLE_COUNTERS];
 	struct adreno_busy_data *busy = &adreno_dev->busy_data;
 
 	if (!adreno_is_a540(adreno_dev))
