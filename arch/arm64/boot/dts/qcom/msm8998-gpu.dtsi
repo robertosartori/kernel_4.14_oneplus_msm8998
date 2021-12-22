@@ -32,6 +32,23 @@
 		compatible = "qcom,kgsl-busmon";
 	};
 
+        ddr_bw_opp_table_gpu: ddr-bw-opp-table-gpu {
+                compatible = "operating-points-v2";
+                BW_OPP_ENTRY( 0,    8); /* off */
+                BW_OPP_ENTRY( 100,  8); /* 762 MB/s */
+                BW_OPP_ENTRY( 150,  8); /* 1144 MB/s */
+                BW_OPP_ENTRY( 200,  8); /* 1525 MB/s */
+                BW_OPP_ENTRY( 300,  8); /* 2288 MB/s */
+                BW_OPP_ENTRY( 412,  8); /* 3143 MB/s */
+                BW_OPP_ENTRY( 547,  8); /* 4173 MB/s */
+                BW_OPP_ENTRY( 681,  8); /* 5195 MB/s */
+                BW_OPP_ENTRY( 768,  8); /* 5859 MB/s */
+                BW_OPP_ENTRY( 1017, 8); /* 7759 MB/s */
+                BW_OPP_ENTRY( 1296, 8); /* 9987 MB/s */
+                BW_OPP_ENTRY( 1555, 8); /* 11863 MB/s */
+                BW_OPP_ENTRY( 1804, 8); /* 13763 MB/s */
+        };
+
 	gpubw: qcom,gpubw {
 		compatible = "qcom,devbw";
 		governor = "bw_vbif";
@@ -42,7 +59,7 @@
 		 * subsystem is inactiv3
 		 */
 		qcom,active-only;
-		operating-points-v2 = <&ddr_bw_opp_table>;
+		operating-points-v2 = <&ddr_bw_opp_table_gpu>;
 	};
 
 	msm_gpu: qcom,kgsl-3d0@5000000 {
