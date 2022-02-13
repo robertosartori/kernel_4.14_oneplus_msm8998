@@ -418,30 +418,86 @@
 			};
 		};
 
+		pmi8998_pwm_3: pwm@b300 {
+			compatible = "qcom,qpnp-pwm";
+			reg = <0xb300 0x100>,
+			      <0xb042 0x7e>;
+			reg-names = "qpnp-lpg-channel-base",
+				    "qpnp-lpg-lut-base";
+			qcom,lpg-lut-size = <0x7e>;
+			qcom,channel-id = <3>;
+			qcom,supported-sizes = <6>, <9>;
+			qcom,ramp-index = <2>;
+			#pwm-cells = <2>;
+		};
+
+		pmi8998_pwm_4: pwm@b400 {
+			compatible = "qcom,qpnp-pwm";
+			reg = <0xb400 0x100>,
+			      <0xb042 0x7e>;
+			reg-names = "qpnp-lpg-channel-base",
+				    "qpnp-lpg-lut-base";
+			qcom,lpg-lut-size = <0x7e>;
+			qcom,channel-id = <4>;
+			qcom,supported-sizes = <6>, <9>;
+			qcom,ramp-index = <3>;
+			#pwm-cells = <2>;
+			};
+
+		pmi8998_pwm_5: pwm@b500 {
+			compatible = "qcom,qpnp-pwm";
+			reg = <0xb500 0x100>,
+			      <0xb042 0x7e>;
+			reg-names = "qpnp-lpg-channel-base",
+				    "qpnp-lpg-lut-base";
+			qcom,lpg-lut-size = <0x7e>;
+			qcom,channel-id = <5>;
+			qcom,supported-sizes = <6>, <9>;
+			qcom,ramp-index = <4>;
+			#pwm-cells = <2>;
+		};
 
 		qcom,leds@d000 {
-			compatible = "qcom,tri-led";
+			compatible = "qcom,leds-qpnp";
 			reg = <0xd000 0x100>;
 			label = "rgb";
 			status = "okay";
 
-			red {
-				label = "red";
-				pwms = <&pmi8998_pwms 4 1000000>;
-				led-sources = <0>;
-				linux,default-trigger = "timer";
+			red_led: qcom,rgb_0 {
+				label = "rgb";
+				qcom,id = <3>;
+				qcom,mode = "pwm";
+				pwms = <&pmi8998_pwm_5 0 1000000>;
+				qcom,pwm-us = <1000>;
+				qcom,max-current = <12>;
+				qcom,default-state = "off";
+				linux,name = "red";
+				linux,default-trigger =
+					"battery-charging";
 			};
-			green {
-				label = "green";
-				pwms = <&pmi8998_pwms 3 1000000>;
-				led-sources = <1>;
-				linux,default-trigger = "timer";
+
+			green_led: qcom,rgb_1 {
+				label = "rgb";
+				qcom,id = <4>;
+				qcom,mode = "pwm";
+				pwms = <&pmi8998_pwm_4 0 1000000>;
+				qcom,pwm-us = <1000>;
+				qcom,max-current = <12>;
+				qcom,default-state = "off";
+				linux,name = "green";
+				linux,default-trigger = "battery-full";
 			};
-			blue {
-				label = "blue";
-				pwms = <&pmi8998_pwms 2 1000000>;
-				led-sources = <2>;
-				linux,default-trigger = "timer";
+
+			blue_led: qcom,rgb_2 {
+				label = "rgb";
+				qcom,id = <5>;
+				qcom,mode = "pwm";
+				pwms = <&pmi8998_pwm_3 0 1000000>;
+				qcom,pwm-us = <1000>;
+				qcom,max-current = <12>;
+				qcom,default-state = "off";
+				linux,name = "blue";
+				linux,default-trigger = "boot-indication";
 			};
 		};
 
