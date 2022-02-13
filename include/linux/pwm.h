@@ -106,6 +106,7 @@ struct pwm_device {
 	struct pwm_chip *chip;
 	void *chip_data;
 
+	unsigned int period;
 	struct pwm_args args;
 	struct pwm_state state;
 };
