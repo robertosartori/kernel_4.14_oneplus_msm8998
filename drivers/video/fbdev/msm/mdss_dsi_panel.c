@@ -877,6 +877,23 @@ static void mdss_dsi_panel_switch_mode(struct mdss_panel_data *pdata,
 		mdss_dsi_panel_dsc_pps_send(ctrl_pdata, &pdata->panel_info);
 }
 
+/*
+ * Backlight remapping:
+ * level 0 - 55 retain
+ * level 55 - 230 -> 55 - 200
+ * level 230 - 255 -> 200 - 255
+ */
+static inline u32 backlight_level_remap(u32 level)
+{
+	if (level <= 55)
+		return level;
+
+	if (level <= 230)
+		return (level * 29 + 330) / 35;
+
+	return level * 11 / 5 - 306;
+}
+
 static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 							u32 bl_level)
 {
@@ -890,6 +907,11 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
+
+	if (ctrl_pdata->high_brightness_panel && ctrl_pdata->bklt_max == 255) {
+		pr_debug("%s goto backlight level remap\n", __func__);
+		bl_level = backlight_level_remap(bl_level);
+	}
 
 	/*
 	 * Some backlight controllers specify a minimum duty cycle
@@ -950,6 +972,274 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	}
 }
 
+int mdss_dsi_panel_set_srgb_mode(struct mdss_dsi_ctrl_pdata *ctrl, int level)
+{
+	struct dsi_panel_cmds *srgb_on_cmds;
+	struct dsi_panel_cmds *srgb_off_cmds;
+
+	mutex_lock(&ctrl->panel_mode_lock);
+	if (!ctrl->is_panel_on) {
+		mutex_unlock(&ctrl->panel_mode_lock);
+		return 0;
+	}
+	srgb_on_cmds = &ctrl->srgb_on_cmds;
+	srgb_off_cmds = &ctrl->srgb_off_cmds;
+	if (level) {
+		if (srgb_on_cmds->cmd_cnt) {
+			mdss_dsi_panel_cmds_send(ctrl, srgb_on_cmds,
+				CMD_REQ_COMMIT);
+			pr_err("sRGB Mode on.\n");
+		} else {
+			pr_err("This panel not support sRGB mode on.\n");
+		}
+	} else {
+		if (srgb_off_cmds->cmd_cnt) {
+			mdss_dsi_panel_cmds_send(ctrl,
+				srgb_off_cmds, CMD_REQ_COMMIT);
+			pr_err("sRGB Mode off.\n");
+		} else {
+			pr_err("This panel not support sRGB mode off.\n");
+		}
+	}
+	mutex_unlock(&ctrl->panel_mode_lock);
+	return 0;
+}
+
+int mdss_dsi_panel_get_srgb_mode(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	return ctrl->srgb_mode;
+}
+
+int mdss_dsi_panel_set_adobe_rgb_mode(struct mdss_dsi_ctrl_pdata *ctrl,
+	int level)
+{
+	struct dsi_panel_cmds *adobe_rgb_on_cmds;
+	struct dsi_panel_cmds *adobe_rgb_off_cmds;
+
+	mutex_lock(&ctrl->panel_mode_lock);
+	if (!ctrl->is_panel_on) {
+		mutex_unlock(&ctrl->panel_mode_lock);
+		return 0;
+	}
+	adobe_rgb_on_cmds = &ctrl->adobe_rgb_on_cmds;
+	adobe_rgb_off_cmds = &ctrl->adobe_rgb_off_cmds;
+	if (level) {
+		if (adobe_rgb_on_cmds->cmd_cnt) {
+			mdss_dsi_panel_cmds_send(ctrl, adobe_rgb_on_cmds,
+				CMD_REQ_COMMIT);
+			pr_err("Adobe RGB Mode on.\n");
+		} else {
+			pr_err("This Panel not support Adobe RGB mode on.\n");
+		}
+	} else {
+		if (adobe_rgb_off_cmds->cmd_cnt) {
+			mdss_dsi_panel_cmds_send(ctrl, adobe_rgb_off_cmds,
+				CMD_REQ_COMMIT);
+			pr_err("Adobe RGB Mode off.\n");
+		} else {
+			pr_err("This Panel not support Adobe RGB mode off.\n");
+		}
+	}
+	mutex_unlock(&ctrl->panel_mode_lock);
+	return 0;
+}
+
+int mdss_dsi_panel_get_adobe_rgb_mode(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	return ctrl->adobe_rgb_mode;
+}
+
+int mdss_dsi_panel_set_dci_p3_mode(struct mdss_dsi_ctrl_pdata *ctrl, int level)
+{
+	struct dsi_panel_cmds *dci_p3_on_cmds;
+	struct dsi_panel_cmds *dci_p3_off_cmds;
+
+	mutex_lock(&ctrl->panel_mode_lock);
+	if (!ctrl->is_panel_on) {
+		mutex_unlock(&ctrl->panel_mode_lock);
+		return 0;
+	 }
+	dci_p3_on_cmds = &ctrl->dci_p3_on_cmds;
+	dci_p3_off_cmds = &ctrl->dci_p3_off_cmds;
+	if (level) {
+		if (dci_p3_on_cmds->cmd_cnt) {
+			mdss_dsi_panel_cmds_send(ctrl, dci_p3_on_cmds,
+				CMD_REQ_COMMIT);
+			pr_err("DCI-P3 Mode on.\n");
+		} else {
+			pr_err("This Panel not support DCI-P3 mode on.\n");
+		}
+	} else {
+		if (dci_p3_off_cmds->cmd_cnt) {
+			mdss_dsi_panel_cmds_send(ctrl, dci_p3_off_cmds,
+				CMD_REQ_COMMIT);
+			pr_err("DCI-P3 Mode off.\n");
+		} else {
+			pr_err("This Panel not support DCI-P3 mode off.\n");
+		}
+	}
+	mutex_unlock(&ctrl->panel_mode_lock);
+	return 0;
+}
+
+int mdss_dsi_panel_get_dci_p3_mode(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	return ctrl->dci_p3_mode;
+}
+
+int mdss_dsi_panel_set_night_mode(struct mdss_dsi_ctrl_pdata *ctrl, int level)
+{
+	struct dsi_panel_cmds *night_mode_on_cmds;
+	struct dsi_panel_cmds *night_mode_off_cmds;
+
+	mutex_lock(&ctrl->panel_mode_lock);
+	if (!ctrl->is_panel_on) {
+		mutex_unlock(&ctrl->panel_mode_lock);
+		return 0;
+	}
+	night_mode_on_cmds = &ctrl->night_mode_on_cmds;
+	/* night mode same as sRGB mode */
+	night_mode_off_cmds = &ctrl->night_mode_off_cmds;
+	/* night mode same as sRGB mode */
+	if (level) {
+		if (night_mode_on_cmds->cmd_cnt) {
+			mdss_dsi_panel_cmds_send(ctrl,
+				night_mode_on_cmds, CMD_REQ_COMMIT);
+			pr_err("Night Mode on.\n");
+		} else {
+			pr_err("This panel not support Night mode on.\n");
+		}
+	} else {
+		if (night_mode_off_cmds->cmd_cnt) {
+			mdss_dsi_panel_cmds_send(ctrl,
+			night_mode_off_cmds, CMD_REQ_COMMIT);
+			pr_err("Night Mode off.\n");
+		} else {
+			pr_err("This panel not support night mode off.\n");
+		}
+	}
+	mutex_unlock(&ctrl->panel_mode_lock);
+	return 0;
+}
+
+int mdss_dsi_panel_get_night_mode(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	return ctrl->night_mode;
+}
+
+int mdss_dsi_panel_set_oneplus_mode(struct mdss_dsi_ctrl_pdata *ctrl, int level)
+{
+	struct dsi_panel_cmds *oneplus_mode_on_cmds;
+	struct dsi_panel_cmds *oneplus_mode_off_cmds;
+
+	mutex_lock(&ctrl->panel_mode_lock);
+	if (!ctrl->is_panel_on) {
+		mutex_unlock(&ctrl->panel_mode_lock);
+		return 0;
+	}
+	oneplus_mode_on_cmds = &ctrl->oneplus_mode_on_cmds;
+	/* night mode same as sRGB mode */
+	oneplus_mode_off_cmds = &ctrl->oneplus_mode_off_cmds;
+	/* night mode same as sRGB mode */
+	if (level) {
+		if (oneplus_mode_on_cmds->cmd_cnt) {
+			mdss_dsi_panel_cmds_send(ctrl, oneplus_mode_on_cmds,
+				CMD_REQ_COMMIT);
+			pr_err("Oneplus Mode on.\n");
+		} else {
+			pr_err("This panel not support oneplus mode on.\n");
+		}
+	} else {
+		if (oneplus_mode_off_cmds->cmd_cnt) {
+			mdss_dsi_panel_cmds_send(ctrl, oneplus_mode_off_cmds,
+					CMD_REQ_COMMIT);
+			pr_err("Oneplus Mode off.\n");
+		} else {
+			pr_err("This panel not support oneplus mode off.\n");
+		}
+	}
+	mutex_unlock(&ctrl->panel_mode_lock);
+
+	return 0;
+}
+
+int mdss_dsi_panel_get_oneplus_mode(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	return ctrl->oneplus_mode;
+}
+
+int mdss_dsi_panel_set_adaption_mode(struct mdss_dsi_ctrl_pdata *ctrl,
+	int level)
+{
+	struct dsi_panel_cmds *adaption_mode_on_cmds;
+	struct dsi_panel_cmds *adaption_mode_off_cmds;
+
+	mutex_lock(&ctrl->panel_mode_lock);
+	if (!ctrl->is_panel_on) {
+		mutex_unlock(&ctrl->panel_mode_lock);
+		return 0;
+	}
+	adaption_mode_on_cmds = &ctrl->adaption_mode_on_cmds;
+	/* night mode same as sRGB mode */
+	adaption_mode_off_cmds = &ctrl->adaption_mode_off_cmds;
+	/* night mode same as sRGB mode */
+	if (level) {
+		if (adaption_mode_on_cmds->cmd_cnt) {
+			mdss_dsi_panel_cmds_send(ctrl, adaption_mode_on_cmds,
+				CMD_REQ_COMMIT);
+			pr_err("Adaption Mode on.\n");
+		} else {
+			pr_err("This panel not support Adaption mode on.\n");
+		}
+	} else {
+		if (adaption_mode_off_cmds->cmd_cnt) {
+			mdss_dsi_panel_cmds_send(ctrl, adaption_mode_off_cmds,
+				CMD_REQ_COMMIT);
+			pr_err("Adaption Mode off.\n");
+		} else {
+			pr_err("This panel not support adaption mode off.\n");
+		}
+	}
+	mutex_unlock(&ctrl->panel_mode_lock);
+	return 0;
+}
+
+int mdss_dsi_panel_get_adaption_mode(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	return ctrl->adaption_mode;
+}
+
+static void mdss_dsi_panel_set_active_panel_modes(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	int ret = 0;
+
+	/* Both modes cannot be active at the same time, refer to mdss_dsi.c */
+	ret = mdss_dsi_panel_get_srgb_mode(ctrl);
+	if (ret) {
+		mdss_dsi_panel_set_srgb_mode(ctrl, ret);
+	} else {
+		ret = mdss_dsi_panel_get_dci_p3_mode(ctrl);
+		if (ret)
+			mdss_dsi_panel_set_dci_p3_mode(ctrl, ret);
+	}
+
+	ret = mdss_dsi_panel_get_adobe_rgb_mode(ctrl);
+	if (ret)
+		mdss_dsi_panel_set_adobe_rgb_mode(ctrl, ret);
+
+	ret = mdss_dsi_panel_get_night_mode(ctrl);
+	if (ret)
+		mdss_dsi_panel_set_night_mode(ctrl, ret);
+
+	ret = mdss_dsi_panel_get_oneplus_mode(ctrl);
+	if (ret)
+		mdss_dsi_panel_set_oneplus_mode(ctrl, ret);
+
+	ret = mdss_dsi_panel_get_adaption_mode(ctrl);
+	if (ret)
+		mdss_dsi_panel_set_adaption_mode(ctrl, ret);
+}
+
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
@@ -982,6 +1272,10 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	pr_debug("%s: ndx=%d cmd_cnt=%d\n", __func__,
 				ctrl->ndx, on_cmds->cmd_cnt);
 
+	mutex_lock(&ctrl->panel_mode_lock);
+	ctrl->is_panel_on = true;
+	mutex_unlock(&ctrl->panel_mode_lock);
+
 	if (on_cmds->cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, on_cmds, CMD_REQ_COMMIT);
 
@@ -995,6 +1289,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	mdss_dsi_panel_apply_display_setting(pdata, pinfo->persist_mode);
 
 end:
+	mdss_dsi_panel_set_active_panel_modes(ctrl);
 	pr_debug("%s:-\n", __func__);
 	return ret;
 }
@@ -1058,6 +1353,10 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			goto end;
 	}
+
+	mutex_lock(&ctrl->panel_mode_lock);
+	ctrl->is_panel_on = false;
+	mutex_unlock(&ctrl->panel_mode_lock);
 
 	if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds, CMD_REQ_COMMIT);
@@ -3027,11 +3326,45 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	mdss_dsi_set_refresh_rate_range(np, pinfo);
 
+	ctrl_pdata->high_brightness_panel = of_property_read_bool(np,
+			"qcom,mdss-dsi-high-brightness-panel");
+
 	ctrl_pdata->bl_high2bit = of_property_read_bool(np,
 			"qcom,mdss-bl-high2bit");
 
 	pinfo->is_dba_panel = of_property_read_bool(np,
 			"qcom,dba-panel");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->srgb_on_cmds,
+		"qcom,mdss-dsi-panel-srgb-on-command",
+		"qcom,mdss-dsi-srgb-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->srgb_off_cmds,
+		"qcom,mdss-dsi-panel-srgb-off-command",
+		"qcom,mdss-dsi-srgb-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->dci_p3_on_cmds,
+		"qcom,mdss-dsi-panel-dci-p3-on-command",
+		"qcom,mdss-dsi-dci-p3-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->dci_p3_off_cmds,
+		"qcom,mdss-dsi-panel-dci-p3-off-command",
+		"qcom,mdss-dsi-dci-p3-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->night_mode_on_cmds,
+		"qcom,mdss-dsi-panel-night-mode-on-command",
+		"qcom,mdss-dsi-night-mode-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->night_mode_off_cmds,
+		"qcom,mdss-dsi-panel-night-mode-off-command",
+		"qcom,mdss-dsi-night-mode-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->oneplus_mode_on_cmds,
+		"qcom,mdss-dsi-panel-oneplus-mode-on-command",
+		"qcom,mdss-dsi-oneplus-mode-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->oneplus_mode_off_cmds,
+		"qcom,mdss-dsi-panel-oneplus-mode-off-command",
+		"qcom,mdss-dsi-oneplus-mode-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->adaption_mode_on_cmds,
+		"qcom,mdss-dsi-panel-adaption-mode-on-command",
+		"qcom,mdss-dsi-adaption-mode-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->adaption_mode_off_cmds,
+		"qcom,mdss-dsi-panel-adaption-mode-off-command",
+		"qcom,mdss-dsi-adaption-mode-command-state");
 
 	if (pinfo->is_dba_panel) {
 		bridge_chip_name = of_get_property(np,
@@ -3084,6 +3417,9 @@ int mdss_dsi_panel_init(struct device_node *node,
 		pr_info("%s: Panel Name = %s\n", __func__, panel_name);
 		strlcpy(&pinfo->panel_name[0], panel_name, MDSS_MAX_PANEL_LEN);
 	}
+
+	mutex_init(&ctrl_pdata->panel_mode_lock);
+
 	rc = mdss_panel_parse_dt(node, ctrl_pdata);
 	if (rc) {
 		pr_err("%s:%d panel dt parse failed\n", __func__, __LINE__);

@@ -1719,6 +1719,13 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 		}
 	}
 
+	if (!ctrl_pdata->setting_mode_loaded) {
+		ctrl_pdata->setting_mode_loaded = true;
+		mutex_lock(&ctrl_pdata->panel_mode_lock);
+		ctrl_pdata->is_panel_on = true;
+		mutex_unlock(&ctrl_pdata->panel_mode_lock);
+	}
+
 	if ((pdata->panel_info.type == MIPI_CMD_PANEL) &&
 		mipi->vsync_enable && mipi->hw_vsync_mode) {
 		mdss_dsi_set_tear_on(ctrl_pdata);
@@ -3118,6 +3125,58 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 			queue_delayed_work(ctrl_pdata->workq,
 				&ctrl_pdata->dba_work, HZ);
 		}
+		break;
+	case MDSS_EVENT_PANEL_SET_SRGB_MODE:
+		ctrl_pdata->srgb_mode = (int)(unsigned long) arg;
+		if (ctrl_pdata->srgb_mode != 0)
+			ctrl_pdata->dci_p3_mode = 0;
+		mdss_dsi_panel_set_srgb_mode(ctrl_pdata,
+		    (int)(unsigned long) ctrl_pdata->srgb_mode);
+		break;
+	case MDSS_EVENT_PANEL_GET_SRGB_MODE:
+		rc = mdss_dsi_panel_get_srgb_mode(ctrl_pdata);
+		break;
+	case MDSS_EVENT_PANEL_SET_ADOBE_RGB_MODE:
+		ctrl_pdata->adobe_rgb_mode = (int)(unsigned long) arg;
+		mdss_dsi_panel_set_adobe_rgb_mode(ctrl_pdata,
+		    (int)(unsigned long) ctrl_pdata->adobe_rgb_mode);
+		break;
+	case MDSS_EVENT_PANEL_GET_ADOBE_RGB_MODE:
+		rc = mdss_dsi_panel_get_adobe_rgb_mode(ctrl_pdata);
+		break;
+	case MDSS_EVENT_PANEL_SET_DCI_P3_MODE:
+		ctrl_pdata->dci_p3_mode = (int)(unsigned long) arg;
+		if (ctrl_pdata->dci_p3_mode != 0)
+			ctrl_pdata->srgb_mode = 0;
+		mdss_dsi_panel_set_dci_p3_mode(ctrl_pdata,
+		    (int)(unsigned long) ctrl_pdata->dci_p3_mode);
+		break;
+	case MDSS_EVENT_PANEL_GET_DCI_P3_MODE:
+		rc = mdss_dsi_panel_get_dci_p3_mode(ctrl_pdata);
+		break;
+	case MDSS_EVENT_PANEL_SET_NIGHT_MODE:
+		ctrl_pdata->night_mode = (int)(unsigned long) arg;
+		mdss_dsi_panel_set_night_mode(ctrl_pdata,
+		    (int)(unsigned long) ctrl_pdata->night_mode);
+		break;
+	case MDSS_EVENT_PANEL_GET_NIGHT_MODE:
+		rc = mdss_dsi_panel_get_night_mode(ctrl_pdata);
+		break;
+	case MDSS_EVENT_PANEL_SET_ONEPLUS_MODE:
+		ctrl_pdata->oneplus_mode = (int)(unsigned long) arg;
+		mdss_dsi_panel_set_oneplus_mode(ctrl_pdata,
+		    (int)(unsigned long) ctrl_pdata->oneplus_mode);
+		break;
+	case MDSS_EVENT_PANEL_GET_ONEPLUS_MODE:
+		rc = mdss_dsi_panel_get_oneplus_mode(ctrl_pdata);
+		break;
+	case MDSS_EVENT_PANEL_SET_ADAPTION_MODE:
+		ctrl_pdata->adaption_mode = (int)(unsigned long) arg;
+		mdss_dsi_panel_set_adaption_mode(ctrl_pdata,
+		    (int)(unsigned long) ctrl_pdata->adaption_mode);
+		break;
+	case MDSS_EVENT_PANEL_GET_ADAPTION_MODE:
+		rc = mdss_dsi_panel_get_adaption_mode(ctrl_pdata);
 		break;
 	case MDSS_EVENT_DSI_TIMING_DB_CTRL:
 		mdss_dsi_timing_db_ctrl(ctrl_pdata, (int)(unsigned long)arg);
