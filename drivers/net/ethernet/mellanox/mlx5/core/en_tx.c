@@ -345,8 +345,14 @@ static netdev_tx_t mlx5e_sq_xmit(struct mlx5e_txqsq *sq, struct sk_buff *skb,
 			mlx5e_insert_vlan(eseg->inline_hdr.start, skb, ihs, &skb_data, &skb_len);
 			ihs += VLAN_HLEN;
 		} else {
-			memcpy(eseg->inline_hdr.start, skb_data, ihs);
 			mlx5e_tx_skb_pull_inline(&skb_data, &skb_len, ihs);
+			unsafe_memcpy(eseg->inline_hdr.start, skb_data, ihs,
+				/* This copy has been bounds-checked earlier in
+				 * mlx5i_sq_calc_wqe_attr() and intentionally
+				 * crosses a flex array boundary. Since it is
+				 * performance sensitive, splitting the copy is
+				 * undesirable.
+				 */);
 		}
 		eseg->inline_hdr.sz = cpu_to_be16(ihs);
 		ds_cnt += DIV_ROUND_UP(ihs - sizeof(eseg->inline_hdr.start), MLX5_SEND_WQE_DS);
