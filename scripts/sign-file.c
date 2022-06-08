@@ -37,6 +37,7 @@
  * Remove this if/when that API is no longer used
  */
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#pragma GCC diagnostic ignored "-Wint-conversion"
 
 /*
  * Use CMS if we have openssl-1.0.0 or newer available - otherwise we have to
