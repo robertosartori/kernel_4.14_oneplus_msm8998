@@ -2065,7 +2065,6 @@ int __init rpm_smd_regulator_driver_init(void)
 	initialized = true;
 	return 0;
 }
-EXPORT_SYMBOL(rpm_smd_regulator_driver_init);
 
 static void __exit rpm_vreg_exit(void)
 {
