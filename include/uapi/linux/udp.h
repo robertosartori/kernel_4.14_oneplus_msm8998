@@ -20,6 +20,7 @@
 
 #include <linux/types.h>
 
+#ifdef __KERNEL__
 struct udphdr {
 	__be16	source;
 	__be16	dest;
@@ -27,6 +28,7 @@ struct udphdr {
 	__sum16	check;
 };
 
+#endif
 /* UDP socket options */
 #define UDP_CORK	1	/* Never send partially complete segments */
 #define UDP_ENCAP	100	/* Set the socket to accept encapsulated packets */
