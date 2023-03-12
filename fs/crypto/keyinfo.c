@@ -121,19 +121,8 @@ static int validate_user_key(struct fscrypt_info *crypt_info,
 	 * up until now to validate the key. It's cleaner to fail now
 	 * than to fail in block I/O.
 	 */
-	if (!is_private_data_mode(crypt_info)) {
-		res = derive_key_aes(ctx->nonce, master_key,
-				crypt_info->ci_raw_key);
-	} else {
-		/* Inline encryption: no key derivation required because IVs are
-		 * assigned based on iv_sector.
-		 */
-		BUILD_BUG_ON(sizeof(crypt_info->ci_raw_key) !=
-				sizeof(master_key->raw));
-		memcpy(crypt_info->ci_raw_key,
-			master_key->raw, sizeof(crypt_info->ci_raw_key));
-		res = 0;
-	}
+	res = derive_key_aes(ctx->nonce, master_key,
+			crypt_info->ci_raw_key);
 out:
 	up_read(&keyring_key->sem);
 	key_put(keyring_key);
