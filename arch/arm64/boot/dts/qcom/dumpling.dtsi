@@ -17,21 +17,15 @@
 
 / {
 	reserved-memory {
-		ramoops_mem: ramoops_mem@ac000000 {
-			reg = <0 0xAC000000 0 0x00200000>;
-			label = "ramoops_mem";
-		};
-		param_mem: param_mem@ac200000 {
-			reg = <0 0xAC200000 0 0x00100000>;
-			label = "param_mem";
-		};
-		mtp_mem: mtp_mem@ac400000 {
-			reg = <0 0xAC400000 0 0x00B00000>;
-			label = "mtp_mem";
-		};
-		bootloader_log_mem: bootloader_log_mem@9fff7000 {
-			reg = <0 0x9FFF7000 0 0x00100000>;
-			label = "bootloader_log_mem";
+		ramoops {
+			compatible = "removed-dma-pool", "ramoops";
+			no-map;
+			reg = <0 0xac000000 0 0x00200000>;
+			record-size = <0x10000>;
+			console-size = <0x60000>;
+			ftrace-size = <0x10000>;
+			pmsg-size = <0x20000>;
+			status = "okay";
 		};
 	};
 };
@@ -257,11 +251,6 @@
 			qcom,soc-low-threshold = <5>;
 		};
 	};
-	ramoops {
-		compatible = "ramoops";
-		status = "ok";
-		memory-region = <&ramoops_mem>;
-	};
 
 	/* Add  0x9c 0x21C, 0xf0 0x23C */
 	qusb_phy0: qusb@c012000 {
@@ -286,10 +275,6 @@
 		"uart_pinctrl_deactive";
 		pinctrl-0 = <&uart_console_active>;
 		pinctrl-1 = <&uart_console_deactive>;
-	};
-	bootloader_log {
-		compatible = "bootloader_log";
-		linux,contiguous-region = <&bootloader_log_mem>;
 	};
 };
 
