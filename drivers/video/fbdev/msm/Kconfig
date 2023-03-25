@@ -166,4 +166,16 @@ config FB_MSM_MDSS_FRC_DEBUG
 	statistics and check whether its output pattern matches expected
 	cadence.
 
+config MDSS_BROKEN_BOOTLOADER_HANDOFF
+	depends on FB_MSM
+	bool "Disable display bootloader handoff"
+	default n
+	---help---
+	On certain devices, the display handoff between the bootloader and
+	the kernel can cause issues, for example display artifacts or a long
+	boot time. Enabling this will force the kernel to reset the display
+	clocks and regulators instead of relying on the setup left by the
+	bootloader.
+	In this case, the continuos splash logo feature will not work.
+
 endif

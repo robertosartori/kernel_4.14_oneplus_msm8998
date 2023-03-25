@@ -3193,6 +3193,7 @@ static int mdss_mdp_probe(struct platform_device *pdev)
 			MMSS_MDP_ROBUST_LUT);
 	}
 
+#ifndef CONFIG_MDSS_BROKEN_BOOTLOADER_HANDOFF
 	/*
 	 * Read the DISP_INTF_SEL register to check if display was enabled in
 	 * bootloader or not. If yes, let handoff handle removing the extra
@@ -3201,6 +3202,11 @@ static int mdss_mdp_probe(struct platform_device *pdev)
 	 */
 	intf_sel = readl_relaxed(mdata->mdp_base +
 		MDSS_MDP_REG_DISP_INTF_SEL);
+#else
+	/* Handoff is disabled, turn off clk/regulators */
+	intf_sel = 0;
+#endif
+
 	split_display = readl_relaxed(mdata->mdp_base +
 		MDSS_MDP_REG_SPLIT_DISPLAY_EN);
 	if (intf_sel != 0) {
