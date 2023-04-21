@@ -657,7 +657,6 @@ static struct clk_rcg2 ahb_clk_src = {
 };
 
 static struct freq_tbl ftbl_csi_clk_src[] = {
-	F(  19200000,  P_BI_TCXO,         1,    0,     0),
 	F( 164571429,  P_MMPLL10_OUT_EVEN,  3.5,    0,     0),
 	F( 256000000,  P_MMPLL4_OUT_EVEN,     3,    0,     0),
 	F( 384000000,  P_MMPLL4_OUT_EVEN,     2,    0,     0),
@@ -666,7 +665,6 @@ static struct freq_tbl ftbl_csi_clk_src[] = {
 };
 
 static struct freq_tbl ftbl_csi_clk_src_vq[] = {
-	F(  19200000,  P_BI_TCXO,         1,    0,     0),
 	F( 164571429,  P_MMPLL10_OUT_EVEN,  3.5,    0,     0),
 	F( 256000000,  P_MMPLL4_OUT_EVEN,     3,    0,     0),
 	F( 274290000,  P_MMPLL7_OUT_EVEN,   3.5,    0,     0),
@@ -693,7 +691,6 @@ static struct clk_rcg2 csi0_clk_src = {
 };
 
 static struct freq_tbl ftbl_vfe_clk_src[] = {
-	F(  19200000,  P_BI_TCXO,         1,    0,     0),
 	F( 200000000,  P_GPLL0,      3,    0,     0),
 	F( 300000000,  P_GPLL0,      2,    0,     0),
 	F( 320000000,  P_MMPLL7_OUT_EVEN,     3,    0,     0),
@@ -704,7 +701,6 @@ static struct freq_tbl ftbl_vfe_clk_src[] = {
 };
 
 static struct freq_tbl ftbl_vfe_clk_src_vq[] = {
-	F(  19200000,  P_BI_TCXO,         1,    0,     0),
 	F( 200000000,  P_GPLL0,      3,    0,     0),
 	F( 300000000,  P_GPLL0,      2,    0,     0),
 	F( 320000000,  P_MMPLL7_OUT_EVEN,     3,    0,     0),
@@ -749,7 +745,6 @@ static struct clk_rcg2 vfe1_clk_src = {
 };
 
 static struct freq_tbl ftbl_mdp_clk_src[] = {
-	F(  19200000, P_BI_TCXO,         1,    0,     0),
 	F(  85714286, P_GPLL0,      7,    0,     0),
 	F( 100000000, P_GPLL0,      6,    0,     0),
 	F( 150000000, P_GPLL0,      4,    0,     0),
@@ -804,7 +799,6 @@ static struct clk_rcg2 maxi_clk_src = {
 };
 
 static struct freq_tbl ftbl_cpp_clk_src[] = {
-	F(  19200000,     P_BI_TCXO,      1,    0,     0),
 	F( 100000000,  P_GPLL0,      6,    0,     0),
 	F( 200000000,  P_GPLL0,      3,    0,     0),
 	F( 384000000,  P_MMPLL4_OUT_EVEN,     2,    0,     0),
@@ -833,7 +827,6 @@ static struct clk_rcg2 cpp_clk_src = {
 };
 
 static struct freq_tbl ftbl_jpeg0_clk_src[] = {
-	F(  19200000,    P_BI_TCXO,      1,    0,     0),
 	F(  75000000, P_GPLL0,      8,    0,     0),
 	F( 150000000, P_GPLL0,      4,    0,     0),
 	F( 480000000, P_MMPLL7_OUT_EVEN,     2,    0,     0),
@@ -841,7 +834,6 @@ static struct freq_tbl ftbl_jpeg0_clk_src[] = {
 };
 
 static struct freq_tbl ftbl_jpeg0_clk_src_vq[] = {
-	F(  19200000,    P_BI_TCXO,      1,    0,     0),
 	F(  75000000, P_GPLL0,      8,    0,     0),
 	F( 150000000, P_GPLL0,      4,    0,     0),
 	F( 320000000, P_MMPLL7_OUT_EVEN,     3,    0,     0),
@@ -929,7 +921,6 @@ static struct clk_rcg2 video_core_clk_src = {
 };
 
 static struct freq_tbl ftbl_csiphy_clk_src[] = {
-	F(  19200000,    P_BI_TCXO,       1,    0,     0),
 	F(  164570000,   P_MMPLL10_OUT_EVEN,  3.5,  0,     0),
 	F(  256000000,   P_MMPLL4_OUT_EVEN,   3,    0,     0),
 	F(  384000000,   P_MMPLL4_OUT_EVEN,   2,    0,     0),
@@ -937,7 +928,6 @@ static struct freq_tbl ftbl_csiphy_clk_src[] = {
 };
 
 static struct freq_tbl ftbl_csiphy_clk_src_vq[] = {
-	F(  19200000,    P_BI_TCXO,       1,    0,     0),
 	F(  164570000,   P_MMPLL10_OUT_EVEN,  3.5,  0,     0),
 	F(  256000000,   P_MMPLL4_OUT_EVEN,   3,    0,     0),
 	F(  274290000,   P_MMPLL7_OUT_EVEN,   3.5,  0,     0),
@@ -1011,7 +1001,6 @@ static struct clk_rcg2 csi3_clk_src = {
 };
 
 static struct freq_tbl ftbl_fd_core_clk_src[] = {
-	F( 19200000,   P_BI_TCXO,         1,    0,     0),
 	F( 100000000,  P_GPLL0,      6,    0,     0),
 	F( 200000000,  P_GPLL0,      3,    0,     0),
 	F( 576000000,  P_MMPLL10_OUT_EVEN,    1,    0,     0),
@@ -1019,7 +1008,6 @@ static struct freq_tbl ftbl_fd_core_clk_src[] = {
 };
 
 static struct freq_tbl ftbl_fd_core_clk_src_vq[] = {
-	F( 19200000,   P_BI_TCXO,         1,    0,     0),
 	F( 100000000,  P_GPLL0,      6,    0,     0),
 	F( 200000000,  P_GPLL0,      3,    0,     0),
 	F( 404000000,  P_MMPLL0_OUT_EVEN,     2,    0,     0),
@@ -1314,7 +1302,6 @@ static struct clk_rcg2 mclk3_clk_src = {
 };
 
 static struct freq_tbl ftbl_csiphytimer_clk_src[] = {
-	F(  19200000, P_BI_TCXO,         1,    0,     0),
 	F( 200000000, P_GPLL0,      3,    0,     0),
 	F( 269333333, P_MMPLL0_OUT_EVEN,     3,    0,     0),
 	{ }
