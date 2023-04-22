@@ -141,7 +141,7 @@ static struct rpm_regulator_param params[RPM_REGULATOR_PARAM_MAX] = {
 	PARAM(MODE_LDO,          1,  0,  0,  0,  0, "lsmd", 0, 1,          "qcom,init-ldo-mode"),
 	PARAM(MODE_SMPS,         0,  1,  0,  0,  0, "ssmd", 0, 2,          "qcom,init-smps-mode"),
 	PARAM(PIN_CTRL_ENABLE,   1,  1,  1,  0,  0, "pcen", 0, 0xF,        "qcom,init-pin-ctrl-enable"),
-	PARAM(PIN_CTRL_MODE,     0,  1,  1,  0,  0, "pcmd", 0, 0x1F,       "qcom,init-pin-ctrl-mode"),
+	PARAM(PIN_CTRL_MODE,     1,  1,  1,  0,  0, "pcmd", 0, 0x1F,       "qcom,init-pin-ctrl-mode"),
 	PARAM(FREQUENCY,         0,  1,  0,  1,  0, "freq", 0, 31,         "qcom,init-frequency"),
 	PARAM(HEAD_ROOM,         0,  0,  0,  1,  0, "hr",   0, 0x7FFFFFFF, "qcom,init-head-room"),
 	PARAM(QUIET_MODE,        0,  1,  0,  0,  0, "qm",   0, 2,          "qcom,init-quiet-mode"),
