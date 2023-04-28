@@ -369,11 +369,11 @@ HOST_LFS_LDFLAGS := $(shell getconf LFS_LDFLAGS 2>/dev/null)
 HOST_LFS_LIBS := $(shell getconf LFS_LIBS 2>/dev/null)
 
 ifneq ($(LLVM),)
-HOSTCC       = clang
-HOSTCXX      = clang++
+HOSTCC       = $(CC_WRAPPER) clang
+HOSTCXX      = $(CC_WRAPPER) clang++
 else
-HOSTCC       = gcc
-HOSTCXX      = g++
+HOSTCC       = $(CC_WRAPPER) gcc
+HOSTCXX      = $(CC_WRAPPER) g++
 endif
 HOSTCFLAGS   := -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 \
 		-fomit-frame-pointer -std=gnu89 $(HOST_LFS_CFLAGS)
@@ -388,9 +388,9 @@ endif
 
 # Make variables (CC, etc...)
 LDGOLD		= $(CROSS_COMPILE)ld.gold
-CPP		= $(CC) -E
+CPP		= $(CC_WRAPPER) $(CC) -E
 ifneq ($(LLVM),)
-CC		= clang
+CC		= $(CC_WRAPPER) clang
 LD		= ld.lld
 AR		= llvm-ar
 NM		= llvm-nm
@@ -401,7 +401,7 @@ OBJSIZE	= llvm-size
 STRIP		= llvm-strip
 else
 LD		= $(CROSS_COMPILE)ld
-CC		= $(CROSS_COMPILE)gcc
+CC		= $(CC_WRAPPER) $(CROSS_COMPILE)gcc
 AR		= $(CROSS_COMPILE)ar
 NM		= $(CROSS_COMPILE)nm
 STRIP		= $(CROSS_COMPILE)strip
