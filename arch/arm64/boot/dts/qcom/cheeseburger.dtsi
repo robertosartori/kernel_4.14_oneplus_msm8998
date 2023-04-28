@@ -874,11 +874,11 @@
 		compatible = "nxp,pn547";
 		reg = <0x28>;
 		interrupt-parent = <&tlmm>;
-		interrupts = <92 0x1>;
+		interrupts = <92 0>;
 		nxp,irq_gpio = <&tlmm 92 0x00>;
 		nxp,dwld_en = <&tlmm 93 0x00>;
 		nxp,ven = <&tlmm 12 0x01>;
-		nxp,pvdd_en = <&tlmm 116 0x00>;
+		nxp,pvdd_en = <&tlmm 37 0x00>;
 		clocks = <&clock_rpmcc RPM_SMD_LN_BB_CLK3_PIN>;
 		clock-names = "nfc_clk";
 		pinctrl-names = "pn547-active", "pn547-inactive";
