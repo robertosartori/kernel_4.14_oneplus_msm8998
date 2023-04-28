@@ -632,6 +632,7 @@ static int pn547_probe(struct i2c_client *client,
 	gpio_direction_input(pn547_dev->irq_gpio);
 	gpio_direction_output(pn547_dev->ven_gpio, 0);
 	gpio_direction_output(pn547_dev->firm_gpio, 0);
+	gpio_direction_output(pn547_dev->pvdd_en_gpio, 0);
 #ifdef CONFIG_NFC_PN547_CLOCK_REQUEST
 	gpio_direction_input(pn547_dev->clk_req_gpio);
 #endif
