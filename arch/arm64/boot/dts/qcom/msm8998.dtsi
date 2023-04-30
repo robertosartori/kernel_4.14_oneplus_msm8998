@@ -45,24 +45,8 @@
 	};
 
 	chosen {
-		#address-cells = <2>;
-		#size-cells = <2>;
-		ranges;
-
-		bootargs = "rcupdate.rcu_expedited=1 earlycon clk_ignore_unused";
-
-		/*
-		* Define as "serial0:115200n8" instead of simplefb "display0" for UART console;
-		* the tiny golden UART TX pad on the OnePlus 5 mainboard can be found in the
-		* bottom left corner right above the black screw.
-		*/
-		stdout-path = "serial0:115200n8";
-
-		/*
-		* HACK: Use display framebuffer setup by the UEFI XBL bootloader for simplefb.
-		* the address was extracted from a bootloader dd image using the following:
-		* $ strings xbl.img | grep 'Display Reserved'
-		*/
+		stdout-path = "serial0";
+		bootargs = "rcupdate.rcu_expedited=1 clk_ignore_unused";
 	};
 
 	cpus {
