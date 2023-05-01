@@ -46,7 +46,7 @@
 
 	chosen {
 		stdout-path = "serial0";
-		bootargs = "rcupdate.rcu_expedited=1 clk_ignore_unused";
+		bootargs = "rcupdate.rcu_expedited=1";
 	};
 
 	cpus {
