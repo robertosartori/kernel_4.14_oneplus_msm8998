@@ -3197,7 +3197,7 @@ static struct clk_branch mmss_video_maxi_clk = {
 
 static struct clk_branch mmss_vmem_ahb_clk = {
 	.halt_reg = 0x0F068,
-	.halt_check = BRANCH_HALT,
+	.halt_check = BRANCH_VOTED,
 	.hwcg_reg = 0x0F068,
 	.hwcg_bit = 1,
 	.clkr = {
