@@ -300,7 +300,7 @@ static struct clk_gate2 gcc_mmss_gpll0_div_clk = {
 		.hw.init = &(struct clk_init_data){
 			.name = "gcc_mmss_gpll0_div_clk",
 			.parent_names = (const char *[]){
-				"gpll0_early_div",
+				"gpll0",
 			},
 			.num_parents = 1,
 			.flags = CLK_SET_RATE_PARENT,
@@ -334,7 +334,7 @@ static struct clk_gate2 gcc_gpu_gpll0_div_clk = {
 		.hw.init = &(struct clk_init_data){
 			.name = "gcc_gpu_gpll0_div_clk",
 			.parent_names = (const char *[]){
-				"gpll0_early_div",
+				"gpll0",
 			},
 			.num_parents = 1,
 			.flags = CLK_SET_RATE_PARENT,
@@ -1352,10 +1352,6 @@ static struct clk_gate2 gpll0_out_msscc = {
 		.enable_mask = BIT(2),
 		.hw.init = &(struct clk_init_data) {
 			.name = "gpll0_out_msscc",
-			.parent_names = (const char *[]){
-				"gpll0_ao",
-			},
-			.num_parents = 1,
 			.ops = &clk_gate2_ops,
 		},
 	},
