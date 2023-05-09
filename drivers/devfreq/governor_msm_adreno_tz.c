@@ -374,6 +374,9 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq)
 		return level;
 	}
 
+	/* Scale up busy_time to achieve optimal performance */
+	priv->bin.busy_time += (stats.busy_time << 1);
+
 	/*
 	 * If there is an extended block of busy processing,
 	 * increase frequency.  Otherwise run the normal algorithm.
