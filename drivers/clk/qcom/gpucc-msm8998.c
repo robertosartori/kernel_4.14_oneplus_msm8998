@@ -133,11 +133,13 @@ static struct clk_alpha_pll gpu_pll0_pll = {
 	.num_vco = ARRAY_SIZE(fabia_vco),
 	.config = &gpu_pll0_config,
 	.clkr.hw.init = &(struct clk_init_data) {
-			.name = "gpu_cc_pll0",
-			.parent_names = (const char *[]){ "gpucc_xo" },
-			.num_parents = 1,
-			.ops = &clk_alpha_pll_fabia_ops,
-			VDD_GPU_MX_FMAX_MAP1(MIN, 1420000500),
+		.name = "gpu_cc_pll0",
+		.parent_names = (const char *[]){ "gpucc_xo" },
+		.num_parents = 1,
+		.ops = &clk_alpha_pll_fabia_ops,
+		VDD_GPU_MX_FMAX_MAP3(LOW, 828000000,
+				     NOMINAL, 1192000000,
+				     HIGH, 1420000000),
 	},
 };
 
@@ -152,7 +154,7 @@ static struct clk_alpha_pll_postdiv gpu_pll0_out_even = {
 		.name = "gpucc_pll0_out_even",
 		.parent_names = (const char *[]){ "gpu_cc_pll0" },
 		.num_parents = 1,
-		.flags = CLK_SET_RATE_PARENT | CLK_GET_RATE_NOCACHE,
+		.flags = CLK_SET_RATE_PARENT,
 		.ops = &clk_alpha_pll_postdiv_fabia_ops,
 	},
 };
@@ -168,20 +170,20 @@ static struct clk_alpha_pll_postdiv gpu_pll0_out_odd = {
 		.name = "gpucc_pll0_out_odd",
 		.parent_names = (const char *[]){ "gpu_cc_pll0" },
 		.num_parents = 1,
-		.flags = CLK_SET_RATE_PARENT | CLK_GET_RATE_NOCACHE,
+		.flags = CLK_SET_RATE_PARENT,
 		.ops = &clk_alpha_pll_postdiv_fabia_ops,
 	},
 };
 
 static struct freq_tbl ftbl_gfx3d_clk_src[] = {
-	F_GFX( 180000000, P_GPU_CC_PLL0_OUT_EVEN, 1, 0, 0,  360000000),
-	F_GFX( 257000000, P_GPU_CC_PLL0_OUT_EVEN, 1, 0, 0,  514000000),
-	F_GFX( 342000000, P_GPU_CC_PLL0_OUT_EVEN, 1, 0, 0,  684000000),
-	F_GFX( 414000000, P_GPU_CC_PLL0_OUT_EVEN, 1, 0, 0,  828000000),
-	F_GFX( 515000000, P_GPU_CC_PLL0_OUT_EVEN, 1, 0, 0, 1030000000),
-	F_GFX( 596000000, P_GPU_CC_PLL0_OUT_EVEN, 1, 0, 0, 1192000000),
-	F_GFX( 670000000, P_GPU_CC_PLL0_OUT_EVEN, 1, 0, 0, 1340000000),
-	F_GFX( 710000000, P_GPU_CC_PLL0_OUT_EVEN, 1, 0, 0, 1420000000),
+	F(180000000, P_GPU_CC_PLL0_OUT_EVEN, 2, 0, 0),
+	F(257000000, P_GPU_CC_PLL0_OUT_EVEN, 2, 0, 0),
+	F(342000000, P_GPU_CC_PLL0_OUT_EVEN, 2, 0, 0),
+	F(414000000, P_GPU_CC_PLL0_OUT_EVEN, 2, 0, 0),
+	F(515000000, P_GPU_CC_PLL0_OUT_EVEN, 2, 0, 0),
+	F(596000000, P_GPU_CC_PLL0_OUT_EVEN, 2, 0, 0),
+	F(670000000, P_GPU_CC_PLL0_OUT_EVEN, 2, 0, 0),
+	F(710000000, P_GPU_CC_PLL0_OUT_EVEN, 2, 0, 0),
 	{ }
 };
 
@@ -189,15 +191,16 @@ static struct clk_init_data gfx3d_clk_data = {
 	.name = "gfx3d_clk_src",
 	.parent_names = gpucc_parent_names_0,
 	.num_parents = ARRAY_SIZE(gpucc_parent_names_0),
+	.flags = CLK_SET_RATE_PARENT,
 	.ops = &clk_rcg2_ops,
-	VDD_GFX_FMAX_MAP8(MIN_SVS,  360000000,
-			  LOW_SVS,  514000000,
-			  SVS_MINUS,684000000,
-			  SVS,      828000000,
-			  SVS_PLUS, 1030000000,
-			  NOMINAL,  1192000000,
-			  TURBO,    1340000000,
-			  TURBO_L1, 1420000000),
+	VDD_GFX_FMAX_MAP8(MIN_SVS,  180000000,
+			  LOW_SVS,  257000000,
+			  SVS_MINUS,342000000,
+			  SVS,      414000000,
+			  SVS_PLUS, 515000000,
+			  NOMINAL,  596000000,
+			  TURBO,    670000000,
+			  TURBO_L1, 710000000),
 };
 
 static struct clk_rcg2 gfx3d_clk_src = {
@@ -284,9 +287,6 @@ static struct clk_branch gpucc_gfx3d_clk = {
 			.num_parents = 1,
 			.flags = CLK_SET_RATE_PARENT,
 			.ops = &clk_branch2_ops,
-			VDD_GPU_MX_FMAX_MAP3(LOW, 828000000,
-					     NOMINAL, 1192000000,
-					     HIGH, 1420000000),
 		},
 	}
 };
