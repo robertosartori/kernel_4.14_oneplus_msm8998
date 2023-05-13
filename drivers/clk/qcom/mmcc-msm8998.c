@@ -860,7 +860,6 @@ static struct clk_rcg2 jpeg0_clk_src = {
 static struct freq_tbl ftbl_rot_clk_src[] = {
 	F( 171428571, P_GPLL0,    3.5,    0,     0),
 	F( 275000000, P_MMPLL5_OUT_EVEN,     3,    0,     0),
-	F( 300000000, P_GPLL0,      2,    0,     0),
 	F( 330000000, P_MMPLL5_OUT_EVEN,   2.5,    0,     0),
 	F( 412500000, P_MMPLL5_OUT_EVEN,     2,    0,     0),
 	F( 550000000, P_MMPLL5_OUT_EVEN,   1.5,    0,     0),
@@ -878,10 +877,9 @@ static struct clk_rcg2 rot_clk_src = {
 		.parent_names = mmcc_parent_names_3,
 		.num_parents = ARRAY_SIZE(mmcc_parent_names_3),
 		.ops = &clk_rcg2_ops,
-		VDD_DIG_FMAX_MAP5(
+		VDD_DIG_FMAX_MAP4(
 			LOWER, 171428571,
 			LOW, 275000000,
-			LOW_L1, 300000000,
 			NOMINAL, 330000000,
 			HIGH, 550000000),
 	},
