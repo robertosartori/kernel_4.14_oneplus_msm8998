@@ -369,7 +369,6 @@ static struct freq_tbl ftbl_usb30_master_clk_src[] = {
 	F(  19200000,	P_BI_TCXO,       1,    0,     0),
 	F( 60000000,	P_GPLL0,    10,    0,     0),
 	F( 120000000,	P_GPLL0,    5,    0,     0),
-	F( 133333333,	P_GPLL0,  4.5,    0,     0),
 	F( 150000000,	P_GPLL0,    4,    0,     0),
 	{ }
 };
@@ -1225,7 +1224,6 @@ static struct clk_rcg2 usb3_phy_aux_clk_src = {
 
 static struct freq_tbl ftbl_hmss_gpll0_clk_src[] = {
 	F( 300000000,   P_GPLL0,    2,    0,     0),
-	F( 600000000,   P_GPLL0,    1,    0,     0),
 	{ }
 };
 
