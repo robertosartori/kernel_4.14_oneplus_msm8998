@@ -469,10 +469,6 @@ static struct clk_regmap *gpucc_msm8998_clocks[] = {
 	[GPU_PLL0_PLL_OUT_EVEN] = &gpu_pll0_out_even.clkr,
 	[GPU_PLL0_PLL_OUT_ODD] = &gpu_pll0_out_odd.clkr,
 	[GFX3D_CLK_SRC] = &gfx3d_clk_src.clkr,
-	[RBBMTIMER_CLK_SRC] = &rbbmtimer_clk_src.clkr,
-	[GFX3D_ISENSE_CLK_SRC] = &gfx3d_isense_clk_src.clkr,
-	[GPUCC_RBBMTIMER_CLK] = &gpucc_rbbmtimer_clk.clkr,
-	[GPUCC_GFX3D_ISENSE_CLK] = &gpucc_gfx3d_isense_clk.clkr,
 	[GPUCC_GFX3D_CLK] = &gpucc_gfx3d_clk.clkr,
 	//[GPUCC_DBG_CLK] = &gfxcc_dbg_clk.clkr,
 	//[GPUCC_GCC_DBG_CLK] = &gpucc_gcc_dbg_clk.clkr,
@@ -482,6 +478,10 @@ static struct clk_regmap *gpucc_msm8998_early_clocks[] = {
 	[GPUCC_XO] = &gpucc_xo.clkr,
 	[RBCPR_CLK_SRC] = &rbcpr_clk_src.clkr,
 	[GPUCC_RBCPR_CLK] = &gpucc_rbcpr_clk.clkr,
+	[RBBMTIMER_CLK_SRC] = &rbbmtimer_clk_src.clkr,
+	[GFX3D_ISENSE_CLK_SRC] = &gfx3d_isense_clk_src.clkr,
+	[GPUCC_RBBMTIMER_CLK] = &gpucc_rbbmtimer_clk.clkr,
+	[GPUCC_GFX3D_ISENSE_CLK] = &gpucc_gfx3d_isense_clk.clkr,
 };
 
 static const struct regmap_config gpucc_msm8998_regmap_config = {
@@ -538,7 +538,7 @@ int gpucc_msm8998_probe(struct platform_device *pdev)
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 */
-	vdd_dig.regulator[0] = devm_regulator_get(&pdev->dev, "vdd_dig");
+	/* Early GPUCC is responsible for this, check if it succeeded */
 	if (IS_ERR(vdd_dig.regulator[0])) {
 		if (PTR_ERR(vdd_dig.regulator[0]) != -EPROBE_DEFER)
 			dev_err(&pdev->dev,
