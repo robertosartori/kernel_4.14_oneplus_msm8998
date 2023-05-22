@@ -191,14 +191,14 @@ static struct clk_init_data gfx3d_clk_data = {
 	.parent_names = gpucc_parent_names_0,
 	.num_parents = ARRAY_SIZE(gpucc_parent_names_0),
 	.ops = &clk_rcg2_ops,
-	VDD_GFX_FMAX_MAP8(MIN_SVS,  180000000,
-			  LOW_SVS,  257000000,
-			  SVS_MINUS,342000000,
-			  SVS,      414000000,
-			  SVS_PLUS, 515000000,
-			  NOMINAL,  596000000,
-			  TURBO,    670000000,
-			  TURBO_L1, 710000000),
+	VDD_GFX_FMAX_MAP8(MIN_SVS,  360000000,
+			  LOW_SVS,  514000000,
+			  SVS_MINUS,684000000,
+			  SVS,      828000000,
+			  SVS_PLUS, 1030000000,
+			  NOMINAL,  1192000000,
+			  TURBO,    1340000000,
+			  TURBO_L1, 1420000000),
 };
 
 static struct clk_rcg2 gfx3d_clk_src = {
