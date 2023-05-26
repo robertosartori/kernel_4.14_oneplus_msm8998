@@ -182,8 +182,6 @@ static int dsi_link_hs_clk_set_rate(
 	if (ctrl->platform_clk_reconf_hack) {
 		rc = clk_set_rate(link_hs_clks->byte_clk,
 					link_hs_clks->byte_clk_rate / 2);
-		rc = clk_set_rate(link_hs_clks->pixel_clk,
-					link_hs_clks->pix_clk_rate / 2);
 	}
 
 	rc = clk_set_rate(link_hs_clks->byte_clk, link_hs_clks->byte_clk_rate);
