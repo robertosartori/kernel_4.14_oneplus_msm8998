@@ -631,6 +631,9 @@ struct mdss_dsi_ctrl_pdata {
 	bool phy_power_off;
 
 	bool platform_clk_reconf_hack; /* MSM8998 link clocks hack */
+#ifdef CONFIG_MDSS_BROKEN_BOOTLOADER_HANDOFF
+	bool handoff_completed;
+#endif
 };
 
 struct dsi_status_data {
