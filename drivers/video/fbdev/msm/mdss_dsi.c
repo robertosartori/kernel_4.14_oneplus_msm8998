@@ -1598,6 +1598,17 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 		mdss_dsi_clk_ctrl(ctrl_pdata, ctrl_pdata->dsi_clk_handle,
 				  MDSS_DSI_ALL_CLKS, MDSS_DSI_CLK_OFF);
 
+#ifdef CONFIG_MDSS_BROKEN_BOOTLOADER_HANDOFF
+	/* In case of 'broken' handoff between bootloader and kernel, we need
+	* to remove the vote on the ESC clk to allow the system to enter RPM vmin
+	* after boot.
+	* To avoid calling this during device resume, perform this action only once during boot.
+	*/
+	if (!ctrl_pdata->handoff_completed) {
+		clk_disable_unprepare(ctrl_pdata->esc_clk);
+		ctrl_pdata->handoff_completed = true;
+	};
+#endif
 end:
 	pr_debug("%s-:\n", __func__);
 	return ret;
