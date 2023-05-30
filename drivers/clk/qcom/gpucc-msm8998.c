@@ -484,6 +484,7 @@ static struct clk_regmap *gpucc_msm8998_clocks[] = {
 	[GPU_PLL0_PLL_OUT_ODD] = &gpu_pll0_out_odd.clkr,
 	[GFX3D_CLK_SRC] = &gfx3d_clk_src.clkr,
 	[GPUCC_GFX3D_CLK] = &gpucc_gfx3d_clk.clkr,
+	[GPUCC_RBCPR_CLK] = &gpucc_rbcpr_clk.clkr,
 	//[GPUCC_DBG_CLK] = &gfxcc_dbg_clk.clkr,
 	//[GPUCC_GCC_DBG_CLK] = &gpucc_gcc_dbg_clk.clkr,
 };
@@ -491,7 +492,6 @@ static struct clk_regmap *gpucc_msm8998_clocks[] = {
 static struct clk_regmap *gpucc_msm8998_early_clocks[] = {
 	[GPUCC_XO] = &gpucc_xo.clkr,
 	[RBCPR_CLK_SRC] = &rbcpr_clk_src.clkr,
-	[GPUCC_RBCPR_CLK] = &gpucc_rbcpr_clk.clkr,
 	[RBBMTIMER_CLK_SRC] = &rbbmtimer_clk_src.clkr,
 	[GFX3D_ISENSE_CLK_SRC] = &gfx3d_isense_clk_src.clkr,
 	[GPUCC_RBBMTIMER_CLK] = &gpucc_rbbmtimer_clk.clkr,
