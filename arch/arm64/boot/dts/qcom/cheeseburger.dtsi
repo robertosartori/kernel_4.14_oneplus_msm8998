@@ -877,7 +877,7 @@
 		interrupts = <92 0>;
 		nxp,irq_gpio = <&tlmm 92 0x00>;
 		nxp,dwld_en = <&tlmm 93 0x00>;
-		nxp,ven = <&tlmm 12 0x01>;
+		nxp,ven = <&tlmm 12 0x00>;
 		nxp,pvdd_en = <&tlmm 37 0x00>;
 		nxp,use_pn544;
 		nxp,dev_name = "nq-nci";
