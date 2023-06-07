@@ -880,6 +880,7 @@
 		nxp,ven = <&tlmm 12 0x01>;
 		nxp,pvdd_en = <&tlmm 37 0x00>;
 		nxp,use_pn544;
+		nxp,dev_name = "nq-nci";
 		clocks = <&clock_rpmcc RPM_SMD_LN_BB_CLK3_PIN>;
 		clock-names = "nfc_clk";
 		pinctrl-names = "pn547-active", "pn547-inactive";
