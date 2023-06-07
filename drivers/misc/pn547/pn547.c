@@ -616,7 +616,10 @@ static int pn547_probe(struct i2c_client *client,
 	mutex_init(&pn547_dev->read_mutex);
 
 	pn547_dev->pn547_device.minor = MISC_DYNAMIC_MINOR;
-	pn547_dev->pn547_device.name = "pn54x";
+	if (of_property_read_string(client->dev.of_node, "nxp,dev_name", &pn547_dev->pn547_device.name)) {
+		pr_info("%s : missing \"nxp,dev_name\" property, using default \"pn54x\"\n", __func__);
+		pn547_dev->pn547_device.name = "pn54x";
+	}
 	pn547_dev->pn547_device.fops = &pn547_dev_fops;
 
 	ret = misc_register(&pn547_dev->pn547_device);
