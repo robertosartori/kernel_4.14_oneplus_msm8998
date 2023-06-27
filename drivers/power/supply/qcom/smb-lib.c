@@ -6560,8 +6560,8 @@ static void op_check_charger_uovp(struct smb_charger *chg, int vchg_mv)
 
 	if (!chg->chg_ovp) {
 		if (vchg_mv > CHG_SOFT_OVP_MV || vchg_mv <= CHG_SOFT_UVP_MV) {
-			pr_err("charger is over voltage, count=%d\n",
-				over_volt_count);
+			pr_err("charger is over voltage, count=%d, voltage %i\n",
+				over_volt_count, vchg_mv);
 			uovp_satus = true;
 			if (pre_uovp_satus)
 				over_volt_count++;
