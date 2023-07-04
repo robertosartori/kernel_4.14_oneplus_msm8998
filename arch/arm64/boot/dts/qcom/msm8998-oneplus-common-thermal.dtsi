@@ -28,15 +28,13 @@
 	avg-cpu-little {
 		virt-zone-name = "avg-cpu-c0";
 		thermal-sensor-names = "cpu0-silver-usr", "cpu1-silver-usr",
-				  "cpu2-silver-usr", "cpu3-silver-usr",
-				  "kryo-l3-0-usr";
+				  "cpu2-silver-usr", "cpu3-silver-usr";
 		aggregation-logic = <0>; /* WEIGHTED_AVG */
 	};
 	avg-cpu-big {
 		virt-zone-name = "avg-cpu-c1";
 		thermal-sensor-names = "cpu0-gold-usr", "cpu1-gold-usr",
-				  "cpu2-gold-usr", "cpu3-gold-usr",
-				  "kryo-l3-1-usr";
+				  "cpu2-gold-usr", "cpu3-gold-usr";
 		aggregation-logic = <0>; /* WEIGHTED_AVG */
 	};
 };
