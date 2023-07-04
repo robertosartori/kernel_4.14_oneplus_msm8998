@@ -3232,14 +3232,6 @@
 	qcom,qpnp-lab-ps-threshold = <20>;
 };
 
-&bcl_sensor {
-	interrupts = <0x2 0x42 0x0 IRQ_TYPE_NONE>,
-		     <0x2 0x42 0x2 IRQ_TYPE_NONE>;
-	interrupt-names = "bcl-high-ibat",
-			  "bcl-low-vbat";
-	qcom,vbat-polling-delay-ms = <100>;
-	qcom,ibat-polling-delay-ms = <100>;
-};
 /*
 &pm8998_vadc {
 	qcom,adc-bit-resolution = <15>;

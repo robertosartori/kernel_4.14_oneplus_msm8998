@@ -251,15 +251,9 @@
 			reg-names = "fg_user_adc",
 					"fg_lmh";
 			interrupts = <0x2 0x42 0x0 IRQ_TYPE_NONE>,
-					<0x2 0x42 0x1 IRQ_TYPE_NONE>,
-					<0x2 0x42 0x2 IRQ_TYPE_NONE>,
-					<0x2 0x42 0x3 IRQ_TYPE_NONE>,
-					<0x2 0x42 0x4 IRQ_TYPE_NONE>;
+					<0x2 0x42 0x2 IRQ_TYPE_NONE>;
 			interrupt-names = "bcl-high-ibat",
-						"bcl-very-high-ibat",
-						"bcl-low-vbat",
-						"bcl-very-low-vbat",
-						"bcl-crit-low-vbat";
+					"bcl-low-vbat";
 			#thermal-sensor-cells = <1>;
 		};
 
@@ -750,7 +744,7 @@
 
 &thermal_zones {
 	ibat-high {
-		polling-delay-passive = <0>;
+		polling-delay-passive = <100>;
 		polling-delay = <0>;
 		thermal-governor = "step_wise";
 		thermal-sensors = <&bcl_sensor 0>;
@@ -760,21 +754,6 @@
 			ibat_high: low-ibat {
 				temperature = <5000>;
 				hysteresis = <200>;
-				type = "passive";
-			};
-		};
-	};
-	ibat-vhigh {
-		polling-delay-passive = <0>;
-		polling-delay = <0>;
-		thermal-governor = "step_wise";
-		thermal-sensors = <&bcl_sensor 1>;
-		wake-capable-sensor;
-
-		trips {
-			ibat_vhigh: ibat_vhigh {
-				temperature = <6000>;
-				hysteresis = <100>;
 				type = "passive";
 			};
 		};
@@ -815,80 +794,6 @@
 			};
 			vbat_map7 {
 				trip = <&low_vbat>;
-				cooling-device =
-					<&CPU7 THERMAL_MAX_LIMIT
-						THERMAL_MAX_LIMIT>;
-			};
-		};
-	};
-	vbat_low {
-		polling-delay-passive = <0>;
-		polling-delay = <0>;
-		thermal-governor = "low_limits_cap";
-		thermal-sensors = <&bcl_sensor 3>;
-		wake-capable-sensor;
-		tracks-low;
-
-		trips {
-			low-vbat {
-				temperature = <2800>;
-				hysteresis = <0>;
-				type = "passive";
-			};
-		};
-	};
-	vbat_too_low {
-		polling-delay-passive = <0>;
-		polling-delay = <0>;
-		thermal-governor = "low_limits_cap";
-		thermal-sensors = <&bcl_sensor 4>;
-		wake-capable-sensor;
-		tracks-low;
-
-		trips {
-			low-vbat {
-				temperature = <2600>;
-				hysteresis = <0>;
-				type = "passive";
-			};
-		};
-	};
-	soc {
-		polling-delay-passive = <100>;
-		polling-delay = <0>;
-		thermal-governor = "low_limits_cap";
-		thermal-sensors = <&bcl_sensor 5>;
-		wake-capable-sensor;
-		tracks-low;
-
-		trips {
-			low_soc: low-soc {
-				temperature = <10>;
-				hysteresis = <0>;
-				type = "passive";
-			};
-		};
-		cooling-maps {
-			soc_cpu4 {
-				trip = <&low_soc>;
-				cooling-device =
-					<&CPU4 THERMAL_MAX_LIMIT
-						THERMAL_MAX_LIMIT>;
-			};
-			soc_cpu5 {
-				trip = <&low_soc>;
-				cooling-device =
-					<&CPU5 THERMAL_MAX_LIMIT
-						THERMAL_MAX_LIMIT>;
-			};
-			soc_map6 {
-				trip = <&low_soc>;
-				cooling-device =
-					<&CPU6 THERMAL_MAX_LIMIT
-						THERMAL_MAX_LIMIT>;
-			};
-			soc_map7 {
-				trip = <&low_soc>;
 				cooling-device =
 					<&CPU7 THERMAL_MAX_LIMIT
 						THERMAL_MAX_LIMIT>;
