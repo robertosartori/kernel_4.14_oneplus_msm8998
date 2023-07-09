@@ -787,11 +787,11 @@ static void adapter_update_work_func(struct work_struct *work)
 	}
 	pr_info("%s begin\n", __func__);
 	opchg_set_data_active(chip);
-	if (snoc_clk) {
+	if (!IS_ERR(snoc_clk)) {
 		clk_set_rate(snoc_clk, 200000000);
 		clk_prepare_enable(snoc_clk);
 	}
-	if (cnoc_clk) {
+	if (!IS_ERR(cnoc_clk)) {
 		clk_set_rate(cnoc_clk, 75000000);
 		clk_prepare_enable(cnoc_clk);
 	}
