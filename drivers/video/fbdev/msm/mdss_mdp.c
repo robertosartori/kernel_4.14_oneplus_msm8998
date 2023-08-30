@@ -3000,6 +3000,7 @@ static int mdss_mdp_probe(struct platform_device *pdev)
 	struct mdss_data_type *mdata;
 	uint32_t intf_sel = 0;
 	uint32_t split_display = 0;
+	uint32_t mdp_danger_status = 0;
 	int num_of_display_on = 0;
 	int i = 0;
 
@@ -3203,8 +3204,15 @@ static int mdss_mdp_probe(struct platform_device *pdev)
 	intf_sel = readl_relaxed(mdata->mdp_base +
 		MDSS_MDP_REG_DISP_INTF_SEL);
 #else
-	/* Handoff is disabled, turn off clk/regulators */
-	intf_sel = 0;
+	mdp_danger_status = readl_relaxed(mdata->mdp_base + MDSS_MDP_DANGER_STATUS);
+	if (mdp_danger_status != 0) {
+		/* Reset MDP */
+		pr_err("slow boot: mdp_danger_status 0x%x", mdp_danger_status);
+		intf_sel = 0;
+	} else {
+		intf_sel = readl_relaxed(mdata->mdp_base +
+			MDSS_MDP_REG_DISP_INTF_SEL);
+	}
 #endif
 
 	split_display = readl_relaxed(mdata->mdp_base +
