@@ -29,6 +29,7 @@
 #include <linux/msm_bus_rules.h>
 #include "msm_bus_core.h"
 #include "msm_bus_adhoc.h"
+#include <trace/events/trace_msm_bus.h>
 
 #define MAX_BUFF_SIZE 4096
 #define FILL_LIMIT 128
