@@ -25,6 +25,7 @@
 #include <linux/pwm.h>
 #include <linux/err.h>
 #include <linux/string.h>
+#include <linux/clk.h>
 
 #include "mdss_dsi.h"
 #include "mdss_dba_utils.h"
@@ -1178,6 +1179,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 end:
 	mdss_dsi_panel_set_active_panel_modes(ctrl);
+	// Turn on the core MDP clock
+	clk_prepare_enable(ctrl->shared_data->mdp_core_clk);
 	pr_debug("%s:-\n", __func__);
 	return ret;
 }
@@ -1255,6 +1258,8 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	}
 
 end:
+	// Turn off the core MDP clock
+	clk_disable_unprepare(ctrl->shared_data->mdp_core_clk);
 	pr_debug("%s:-\n", __func__);
 	return 0;
 }
