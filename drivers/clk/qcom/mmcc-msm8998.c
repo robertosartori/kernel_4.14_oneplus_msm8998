@@ -1098,14 +1098,14 @@ static struct freq_tbl ftbl_video_subcore_clk_src[] = {
 	{ }
 };
 
-static struct freq_tbl ftbl_video_subcore_clk_src_vq[] = {
-	F( 200000000, P_GPLL0,      3,    0,     0),
-	F( 269330000, P_MMPLL0_OUT_EVEN,     3,    0,     0),
-	F( 355200000, P_MMPLL6_OUT_EVEN,   2.5,    0,     0),
-	F( 444000000, P_MMPLL6_OUT_EVEN,     2,    0,     0),
-	F( 533000000, P_MMPLL3_OUT_EVEN,     2,    0,     0),
-	{ }
-};
+  static struct freq_tbl ftbl_video_subcore_clk_src_vq[] = {
+        F_SLEW( 200000000, P_GPLL0,      3,    0,     0, 400000000),
+        F_SLEW( 269330000, P_MMPLL0_OUT_EVEN,     3,    0,     0, 538660000),
+        F_SLEW( 355200000, P_MMPLL6_OUT_EVEN,   2.5,    0,     0, 710400000),
+        F_SLEW( 444000000, P_MMPLL6_OUT_EVEN,     2,    0,     0, 888000000),
+       F_SLEW( 533000000, P_MMPLL6_OUT_EVEN,     2,    0,     0, 1066000000),
+        { }
+ };
 
 static struct clk_rcg2 video_subcore0_clk_src = {
 	.cmd_rcgr = 0x01060,
