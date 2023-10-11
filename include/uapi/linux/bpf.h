@@ -742,7 +742,7 @@ union bpf_attr {
 	FN(get_netns_cookie), /* tbi*/          \
 	FN(get_current_ancestor_cgroup_id), /* tbi*/    \
 	FN(sk_assign), /* tbi*/                 \
-	FN(ktime_get_boot_ns), /* tbi*/
+	FN(ktime_get_boot_ns),
 
 /* integer value in 'imm' field of BPF_CALL instruction selects which helper
  * function eBPF program intends to call
