@@ -645,6 +645,80 @@ union bpf_attr {
 	FN(redirect_map),		\
 	FN(sk_redirect_map),		\
 	FN(sock_map_update),		\
+	/* tbi is 'to be implemented */ 		\
+	/* when support is added to a function, remove the 'tbi' */ \
+	FN(xdp_adjust_meta), /* tbi*/   	\
+	FN(perf_event_read_value), /* tbi*/     \
+	FN(perf_prog_read_value), /* tbi*/      \
+	FN(getsockopt), /* tbi*/                \
+	FN(override_return), /* tbi*/           \
+	FN(sock_ops_cb_flags_set), /* tbi*/     \
+	FN(msg_redirect_map), /* tbi*/          \
+	FN(msg_apply_bytes), /* tbi*/           \
+	FN(msg_cork_bytes), /* tbi*/            \
+	FN(msg_pull_data), /* tbi*/             \
+	FN(bind), /* tbi*/                      \
+	FN(xdp_adjust_tail), /* tbi*/           \
+	FN(skb_get_xfrm_state), /* tbi*/        \
+	FN(get_stack), /* tbi*/                 \
+	FN(skb_load_bytes_relative), /* tbi*/   \
+	FN(fib_lookup), /* tbi*/                \
+	FN(sock_hash_update), /* tbi*/          \
+	FN(msg_redirect_hash), /* tbi*/         \
+	FN(sk_redirect_hash), /* tbi*/          \
+	FN(lwt_push_encap), /* tbi*/            \
+	FN(lwt_seg6_store_bytes), /* tbi*/      \
+	FN(lwt_seg6_adjust_srh), /* tbi*/       \
+	FN(lwt_seg6_action), /* tbi*/           \
+	FN(rc_repeat), /* tbi*/                 \
+	FN(rc_keydown), /* tbi*/                \
+	FN(skb_cgroup_id), /* tbi*/             \
+	FN(get_current_cgroup_id), /* tbi*/     \
+	FN(get_local_storage), /* tbi*/         \
+	FN(sk_select_reuseport), /* tbi*/       \
+	FN(skb_ancestor_cgroup_id), /* tbi*/    \
+	FN(sk_lookup_tcp), /* tbi*/             \
+	FN(sk_lookup_udp), /* tbi*/             \
+	FN(sk_release), /* tbi*/                \
+	FN(map_push_elem), /* tbi*/             \
+	FN(map_pop_elem), /* tbi*/              \
+	FN(map_peek_elem), /* tbi*/             \
+	FN(msg_push_data), /* tbi*/             \
+	FN(msg_pop_data), /* tbi*/              \
+	FN(rc_pointer_rel), /* tbi*/            \
+	FN(spin_lock), /* tbi*/                 \
+	FN(spin_unlock), /* tbi*/               \
+	FN(sk_fullsock), /* tbi*/               \
+	FN(tcp_sock), /* tbi*/                  \
+	FN(skb_ecn_set_ce), /* tbi*/            \
+	FN(get_listener_sock), /* tbi*/         \
+	FN(skc_lookup_tcp), /* tbi*/            \
+	FN(tcp_check_syncookie), /* tbi*/       \
+	FN(sysctl_get_name), /* tbi*/           \
+	FN(sysctl_get_current_value), /* tbi*/  \
+	FN(sysctl_get_new_value), /* tbi*/      \
+	FN(sysctl_set_new_value), /* tbi*/      \
+	FN(strtol), /* tbi*/                    \
+	FN(strtoul), /* tbi*/                   \
+	FN(sk_storage_get), /* tbi*/            \
+	FN(sk_storage_delete), /* tbi*/         \
+	FN(send_signal), /* tbi*/               \
+	FN(tcp_gen_syncookie), /* tbi*/         \
+	FN(skb_output), /* tbi*/                \
+	FN(probe_read_user),   /* tbi*/         \
+	FN(probe_read_kernel), /* tbi*/         \
+	FN(probe_read_user_str), /* tbi*/       \
+	FN(probe_read_kernel_str), /* tbi*/     \
+	FN(tcp_send_ack), /* tbi*/              \
+	FN(send_signal_thread), /* tbi*/        \
+	FN(jiffies64), /* tbi*/                 \
+	FN(read_branch_records), /* tbi*/       \
+	FN(get_ns_current_pid_tgid), /* tbi*/   \
+	FN(xdp_output), /* tbi*/                \
+	FN(get_netns_cookie), /* tbi*/          \
+	FN(get_current_ancestor_cgroup_id), /* tbi*/    \
+	FN(sk_assign), /* tbi*/                 \
+	FN(ktime_get_boot_ns), /* tbi*/
 
 /* integer value in 'imm' field of BPF_CALL instruction selects which helper
  * function eBPF program intends to call
