@@ -685,7 +685,7 @@ union bpf_attr {
 	FN(xdp_adjust_tail), /* tbi*/           \
 	FN(skb_get_xfrm_state), /* tbi*/        \
 	FN(get_stack), /* tbi*/                 \
-	FN(skb_load_bytes_relative), /* tbi*/   \
+	FN(skb_load_bytes_relative),		\
 	FN(fib_lookup), /* tbi*/                \
 	FN(sock_hash_update), /* tbi*/          \
 	FN(msg_redirect_hash), /* tbi*/         \
