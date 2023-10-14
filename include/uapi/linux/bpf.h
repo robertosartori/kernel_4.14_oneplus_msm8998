@@ -764,7 +764,7 @@ union bpf_attr {
 	FN(msg_apply_bytes), /* tbi*/           \
 	FN(msg_cork_bytes), /* tbi*/            \
 	FN(msg_pull_data), /* tbi*/             \
-	FN(bind), /* tbi*/                      \
+	FN(bind),                               \
 	FN(xdp_adjust_tail), /* tbi*/           \
 	FN(skb_get_xfrm_state), /* tbi*/        \
 	FN(get_stack), /* tbi*/                 \
