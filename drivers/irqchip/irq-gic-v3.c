@@ -1076,8 +1076,8 @@ static void gic_send_sgi(u64 cluster_id, u16 tlist, unsigned int irq)
 
 static void gic_raise_softirq(const struct cpumask *mask, unsigned int irq)
 {
-	gic_cpu_sys_reg_init();
 	int cpu;
+	gic_cpu_sys_reg_init();
 
 	if (WARN_ON(irq >= 16))
 		return;
