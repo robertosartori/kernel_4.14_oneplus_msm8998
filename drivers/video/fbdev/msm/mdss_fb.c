@@ -3128,6 +3128,10 @@ static int mdss_fb_open(struct fb_info *info, int user)
 	mfd->ref_cnt++;
 	pr_debug("mfd refcount:%d file:%pK\n", mfd->ref_cnt, info->file);
 
+#ifdef CONFIG_ARCH_MSM8998
+	fb_blank_powerdown(0);
+#endif
+
 	return 0;
 
 blank_error:
