@@ -44,6 +44,9 @@
 
 #include <linux/kthread.h>
 #include <linux/freezer.h>
+#if defined(CONFIG_ARCH_MSM8998) && defined(CONFIG_FB_MSM_MDSS)
+#include <linux/fb.h>
+#endif
 
 #include "ext4.h"
 #include "ext4_extents.h"	/* Needed for trace points definition */
@@ -5972,6 +5975,12 @@ static int ext4_get_next_id(struct super_block *sb, struct kqid *qid)
 static struct dentry *ext4_mount(struct file_system_type *fs_type, int flags,
 		       const char *dev_name, void *data)
 {
+#if defined(CONFIG_ARCH_MSM8998) && defined(CONFIG_FB_MSM_MDSS)
+	if (strstr(dev_name, "userdata") != NULL) {
+		printk(KERN_WARNING "Triggering framebuffer shutdown");
+		fb_blank_powerdown(0);
+	}
+#endif
 	return mount_bdev(fs_type, flags, dev_name, data, ext4_fill_super);
 }
 

@@ -26,6 +26,9 @@
 #include <linux/f2fs_fs.h>
 #include <linux/sysfs.h>
 #include <linux/quota.h>
+#if defined(CONFIG_ARCH_MSM8998) && defined(CONFIG_FB_MSM_MDSS)
+#include <linux/fb.h>
+#endif
 
 #include "f2fs.h"
 #include "node.h"
@@ -3232,6 +3235,12 @@ free_sbi:
 static struct dentry *f2fs_mount(struct file_system_type *fs_type, int flags,
 			const char *dev_name, void *data)
 {
+#if defined(CONFIG_ARCH_MSM8998) && defined(CONFIG_FB_MSM_MDSS)
+	if (strstr(dev_name, "userdata") != NULL) {
+		printk(KERN_WARNING "Triggering framebuffer shutdown");
+		fb_blank_powerdown(0);
+	}
+#endif
 	return mount_bdev(fs_type, flags, dev_name, data, f2fs_fill_super);
 }
 
