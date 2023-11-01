@@ -821,6 +821,11 @@ extern int fb_find_mode(struct fb_var_screeninfo *var,
 			const struct fb_videomode *default_mode,
 			unsigned int default_bpp);
 
+#ifdef CONFIG_FB_MSM_MDSS
+/* Shutdown the framebuffer #fb_index */
+extern void fb_blank_powerdown(int fb_index);
+#endif /* CONFIG_FB_MSM_MDSS */
+
 /* Convenience logging macros */
 #define fb_err(fb_info, fmt, ...)					\
 	pr_err("fb%d: " fmt, (fb_info)->node, ##__VA_ARGS__)

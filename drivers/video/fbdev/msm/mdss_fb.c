@@ -84,6 +84,8 @@
 static struct fb_info *fbi_list[MAX_FBI_LIST];
 static int fbi_list_index;
 
+static bool fb_reset_needed = false;
+
 static u32 mdss_fb_pseudo_palette[16] = {
 	0x00000000, 0xffffffff, 0xffffffff, 0xffffffff,
 	0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
@@ -1684,6 +1686,8 @@ static int mdss_fb_probe(struct platform_device *pdev)
 			pr_err("failed to register input handler\n");
 
 	INIT_DELAYED_WORK(&mfd->idle_notify_work, __mdss_fb_idle_notify_work);
+
+	fb_reset_needed = (mfd->mdp.mdp_danger_status == 0) ? false : true;
 
 	return rc;
 }
@@ -5637,3 +5641,13 @@ void mdss_fb_idle_pc(struct msm_fb_data_type *mfd)
 		sysfs_notify(&mfd->fbi->dev->kobj, NULL, "idle_power_collapse");
 	}
 }
+
+void fb_blank_powerdown(int fb_index) {
+	if (fb_reset_needed) {
+		pr_err("Shutting down framebuffer %i", fb_index);
+		mdss_fb_blank_sub(FB_BLANK_UNBLANK, fbi_list[fb_index], true);
+		mdss_fb_blank_sub(FB_BLANK_POWERDOWN, fbi_list[fb_index], true);
+		fb_reset_needed = false;
+	};
+}
+EXPORT_SYMBOL(fb_blank_powerdown);
