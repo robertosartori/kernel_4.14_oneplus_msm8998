@@ -2929,15 +2929,26 @@ static ssize_t mdss_mdp_show_twm(struct device *dev,
 	return ret;
 }
 
+static ssize_t mdss_mdp_show_mdp_init_status(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	ssize_t ret = 0;
+	ret = snprintf(buf, PAGE_SIZE, "%d\n", mdp5.mdp_danger_status);
+	return ret;
+
+}
+
 static DEVICE_ATTR(caps, 0444, mdss_mdp_show_capabilities, NULL);
 static DEVICE_ATTR(bw_mode_bitmap, 0664,
 		mdss_mdp_read_max_limit_bw, mdss_mdp_store_max_limit_bw);
 static DEVICE_ATTR(twm_enable, 0664, mdss_mdp_show_twm, mdss_mdp_store_twm);
+static DEVICE_ATTR(mdp_init_status, 0664, mdss_mdp_show_mdp_init_status, NULL);
 
 static struct attribute *mdp_fs_attrs[] = {
 	&dev_attr_caps.attr,
 	&dev_attr_bw_mode_bitmap.attr,
 	&dev_attr_twm_enable.attr,
+	&dev_attr_mdp_init_status.attr,
 	NULL
 };
 
@@ -3192,6 +3203,8 @@ static int mdss_mdp_probe(struct platform_device *pdev)
 		mdata->default_robust_lut = readl_relaxed(mdata->mdp_base +
 			MMSS_MDP_ROBUST_LUT);
 	}
+
+	mdp5.mdp_danger_status = readl_relaxed(mdata->mdp_base + MDSS_MDP_DANGER_STATUS);
 
 	/*
 	 * Read the DISP_INTF_SEL register to check if display was enabled in

@@ -249,6 +249,7 @@ struct msm_mdp_interface {
 		bool disable_panel);
 	bool (*is_twm_en)(void);
 	void *private1;
+	uint32_t mdp_danger_status;
 };
 
 #define IS_CALIB_MODE_BL(mfd) (((mfd)->calib_mode) & MDSS_CALIB_MODE_BL)
