@@ -5600,6 +5600,12 @@ void mdss_fb_report_panel_dead(struct msm_fb_data_type *mfd)
 	kobject_uevent_env(&mfd->fbi->dev->kobj,
 		KOBJ_CHANGE, envp);
 	pr_err("Panel has gone bad, sending uevent - %s\n", envp[0]);
+
+	/* Some HALs don't support resetting the framebuffer, so do it ourselves */
+	/* the UNBLANK will clear the panel_dead variable */
+	mdss_fb_blank_sub(FB_BLANK_UNBLANK, fbi_list[0], true);
+	mdss_fb_blank_sub(FB_BLANK_POWERDOWN, fbi_list[0], true);
+	mdss_fb_blank_sub(FB_BLANK_UNBLANK, fbi_list[0], true);
 }
 
 
