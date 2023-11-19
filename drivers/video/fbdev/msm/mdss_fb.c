@@ -2187,7 +2187,7 @@ static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 	if (!mfd)
 		return -EINVAL;
 
-	if (!mdss_fb_is_power_on(mfd) || !mfd->mdp.off_fnc)
+	if (!mdss_fb_is_power_on(mfd) || !mfd->mdp.off_fnc || mdss_fb_is_power_on_lp(mfd))
 		return 0;
 
 	cur_power_state = mfd->panel_power_state;
