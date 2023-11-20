@@ -918,6 +918,7 @@ static ssize_t mdss_fb_set_hbm_mode(struct device *dev,
 {
 	struct fb_info *fbi = dev_get_drvdata(dev);
 	struct msm_fb_data_type *mfd = fbi->par;
+	struct mdss_mdp_ctl *ctl = NULL;
 	int rc = 0;
 	int level = 0;
 
@@ -926,6 +927,18 @@ static ssize_t mdss_fb_set_hbm_mode(struct device *dev,
 		pr_err("kstrtoint failed. rc=%d\n", rc);
 		return rc;
 	}
+
+	ctl = mfd_to_ctl(mfd);
+	if(!ctl) {
+		pr_debug("%s, Display is off\n",__func__);
+		return count;
+	}
+
+	if (ctl->power_state != 1) {
+		pr_debug("%s, Dsi is not power on\n",__func__);
+		return count;
+	}
+
 	rc = mdss_fb_send_panel_event(mfd, MDSS_EVENT_PANEL_SET_HBM_MODE,
 		(void *)(unsigned long)level);
 	if (rc)
