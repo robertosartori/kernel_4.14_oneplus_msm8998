@@ -1517,18 +1517,6 @@ static int rpm_smd_clk_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static int rpm_smd_clk_suspend(struct platform_device *pdev, pm_message_t state)
-{
-	clk_disable_unprepare(msm8998_bi_tcxo.hw.clk);
-	return 0;
-}
-
-static int rpm_smd_clk_resume(struct platform_device *pdev)
-{
-	clk_prepare_enable(msm8998_bi_tcxo.hw.clk);
-	return 0;
-}
-
 static struct platform_driver rpm_smd_clk_driver = {
 	.driver = {
 		.name = "qcom-clk-smd-rpm",
@@ -1536,8 +1524,6 @@ static struct platform_driver rpm_smd_clk_driver = {
 	},
 	.probe = rpm_smd_clk_probe,
 	.remove = rpm_smd_clk_remove,
-	.suspend = rpm_smd_clk_suspend,
-	.resume = rpm_smd_clk_resume,
 };
 
 static int __init rpm_smd_clk_init(void)
