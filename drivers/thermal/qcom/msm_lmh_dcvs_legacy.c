@@ -53,6 +53,8 @@
 #define LIMITS_CLUSTER_0            0x6370302D
 #define LIMITS_CLUSTER_1            0x6370312D
 
+#define LIMITS_FREQ_CAP		0x46434150
+
 #define LIMITS_DOMAIN_MAX           0x444D4158
 #define LIMITS_DOMAIN_MIN           0x444D494E
 
@@ -87,12 +89,13 @@ struct limits_dcvs_hw {
 	void *int_clr_reg;
 	void *min_freq_reg;
 	cpumask_t core_map;
-	struct timer_list poll_timer;
+	struct delayed_work freq_poll_work;
 	unsigned long max_freq;
 	unsigned long min_freq;
 	unsigned long hw_freq_limit;
 	struct list_head list;
-	atomic_t is_irq_enabled;
+	bool is_irq_enabled;
+	struct mutex access_lock;
 };
 
 static bool lmh_enabled = false;
@@ -112,10 +115,8 @@ static int limits_dcvs_get_freq_limits(uint32_t cpu, unsigned long *max_freq,
 		return -ENODEV;
 	}
 
-	rcu_read_lock();
 	dev_pm_opp_find_freq_floor(cpu_dev, &freq_ceil);
 	dev_pm_opp_find_freq_ceil(cpu_dev, &freq_floor);
-	rcu_read_unlock();
 
 	*max_freq = freq_ceil / 1000;
 	*min_freq = freq_floor / 1000;
@@ -140,7 +141,6 @@ static unsigned long limits_mitigation_notify(struct limits_dcvs_hw *hw)
 	}
 
 	freq_val = FREQ_KHZ_TO_HZ(max_limit);
-	rcu_read_lock();
 	opp_entry = dev_pm_opp_find_freq_floor(cpu_dev, &freq_val);
 	/*
 	 * Hardware mitigation frequency can be lower than the lowest
@@ -154,7 +154,6 @@ static unsigned long limits_mitigation_notify(struct limits_dcvs_hw *hw)
 			dev_err(cpu_dev, "frequency:%lu. opp error:%ld\n",
 					freq_val, PTR_ERR(opp_entry));
 	}
-	rcu_read_unlock();
 	max_limit = FREQ_HZ_TO_KHZ(freq_val);
 
 	sched_update_cpu_freq_min_max(&hw->core_map, 0, max_limit);
@@ -164,33 +163,37 @@ notify_exit:
 	return max_limit;
 }
 
-static void limits_dcvs_poll(unsigned long data)
+static void limits_dcvs_poll(struct work_struct *work)
 {
 	unsigned long max_limit = 0;
-	struct limits_dcvs_hw *hw = (struct limits_dcvs_hw *)data;
+	struct limits_dcvs_hw *hw = container_of(work,
+					struct limits_dcvs_hw,
+					freq_poll_work.work);
 
+	mutex_lock(&hw->access_lock);
 	if (hw->max_freq == UINT_MAX)
 		limits_dcvs_get_freq_limits(cpumask_first(&hw->core_map),
 			&hw->max_freq, &hw->min_freq);
 	max_limit = limits_mitigation_notify(hw);
 	if (max_limit >= hw->max_freq) {
-		del_timer(&hw->poll_timer);
 		writel_relaxed(0xFF, hw->int_clr_reg);
-		atomic_set(&hw->is_irq_enabled, 1);
+		hw->is_irq_enabled = true;
 		enable_irq(hw->irq_num);
 	} else {
-		mod_timer(&hw->poll_timer, jiffies + msecs_to_jiffies(
-			LIMITS_POLLING_DELAY_MS));
+		mod_delayed_work(system_highpri_wq, &hw->freq_poll_work,
+			 msecs_to_jiffies(LIMITS_POLLING_DELAY_MS));
 	}
+	mutex_unlock(&hw->access_lock);
 }
 
 static void lmh_dcvs_notify(struct limits_dcvs_hw *hw)
 {
-	if (atomic_dec_and_test(&hw->is_irq_enabled)) {
+	if (hw->is_irq_enabled) {
+		hw->is_irq_enabled = false;
 		disable_irq_nosync(hw->irq_num);
 		limits_mitigation_notify(hw);
-		mod_timer(&hw->poll_timer, jiffies + msecs_to_jiffies(
-			LIMITS_POLLING_DELAY_MS));
+		mod_delayed_work(system_highpri_wq, &hw->freq_poll_work,
+			 msecs_to_jiffies(LIMITS_POLLING_DELAY_MS));
 	}
 }
 
@@ -198,37 +201,44 @@ static irqreturn_t lmh_dcvs_handle_isr(int irq, void *data)
 {
 	struct limits_dcvs_hw *hw = data;
 
+	mutex_lock(&hw->access_lock);
 	lmh_dcvs_notify(hw);
+	mutex_unlock(&hw->access_lock);
 
 	return IRQ_HANDLED;
 }
 
 static int limits_dcvs_write(uint32_t node_id, uint32_t fn,
-			      uint32_t setting, uint32_t val)
+			      uint32_t setting, uint32_t val, uint32_t val1,
+				  bool enable_val1)
 {
 	int ret;
 	struct scm_desc desc_arg;
 	uint32_t *payload = NULL;
+	uint32_t payload_len;
 
-	payload = kzalloc(sizeof(uint32_t) * 5, GFP_KERNEL);
+	payload_len = ((enable_val1) ? 6 : 5) * sizeof(uint32_t);
+	payload = kcalloc((enable_val1) ? 6 : 5, sizeof(uint32_t), GFP_KERNEL);
 	if (!payload)
 		return -ENOMEM;
 
 	payload[0] = fn; /* algorithm */
 	payload[1] = 0; /* unused sub-algorithm */
 	payload[2] = setting;
-	payload[3] = 1; /* number of values */
+	payload[3] = enable_val1 ? 2 : 1; /* number of values */
 	payload[4] = val;
+	if (enable_val1)
+		payload[5] = val1;
 
 	desc_arg.args[0] = SCM_BUFFER_PHYS(payload);
-	desc_arg.args[1] = sizeof(uint32_t) * 5;
+	desc_arg.args[1] = payload_len;
 	desc_arg.args[2] = LIMITS_NODE_DCVS;
 	desc_arg.args[3] = node_id;
 	desc_arg.args[4] = 0; /* version */
 	desc_arg.arginfo = SCM_ARGS(5, SCM_RO, SCM_VAL, SCM_VAL,
 					SCM_VAL, SCM_VAL);
 
-	dmac_flush_range(payload, (void *)payload + 5 * (sizeof(uint32_t)));
+	dmac_flush_range(payload, (void *)payload + payload_len);
 	ret = scm_call2(SCM_SIP_FNID(SCM_SVC_LMH, LIMITS_DCVSH), &desc_arg);
 
 	kfree(payload);
@@ -267,16 +277,16 @@ static int lmh_set_trips(void *data, int low, int high)
 	hw->temp_limits[LIMITS_TRIP_ARM] = (uint32_t)low;
 
 	ret =  limits_dcvs_write(hw->affinity, LIMITS_SUB_FN_THERMAL,
-				  LIMITS_ARM_THRESHOLD, low);
+				  LIMITS_ARM_THRESHOLD, low, 0, 0);
 	if (ret)
 		return ret;
 	ret =  limits_dcvs_write(hw->affinity, LIMITS_SUB_FN_THERMAL,
-				  LIMITS_HI_THRESHOLD, high);
+				  LIMITS_HI_THRESHOLD, high, 0, 0);
 	if (ret)
 		return ret;
 	ret =  limits_dcvs_write(hw->affinity, LIMITS_SUB_FN_THERMAL,
 				  LIMITS_LOW_THRESHOLD,
-				  high - LIMITS_LOW_THRESHOLD_OFFSET);
+				  high - LIMITS_LOW_THRESHOLD_OFFSET, 0, 0);
 	if (ret)
 		return ret;
 
@@ -325,12 +335,19 @@ static int enable_lmh(void)
 static int lmh_set_max_limit(int cpu, u32 freq)
 {
 	struct limits_dcvs_hw *hw = get_dcvsh_hw_from_cpu(cpu);
+	int ret = 0;
 
 	if (!hw)
 		return -EINVAL;
 
-	return limits_dcvs_write(hw->affinity, LIMITS_SUB_FN_GENERAL,
-				  LIMITS_DOMAIN_MAX, freq);
+	mutex_lock(&hw->access_lock);
+	ret = limits_dcvs_write(hw->affinity, LIMITS_SUB_FN_THERMAL,
+				  LIMITS_FREQ_CAP, freq,
+				  freq >= hw->max_freq ? 0 : 1, 1);
+	lmh_dcvs_notify(hw);
+	mutex_unlock(&hw->access_lock);
+
+	return ret;
 }
 
 static int lmh_set_min_limit(int cpu, u32 freq)
@@ -340,13 +357,16 @@ static int lmh_set_min_limit(int cpu, u32 freq)
 	if (!hw)
 		return -EINVAL;
 
+	mutex_lock(&hw->access_lock);
 	if (freq != hw->min_freq)
 		writel_relaxed(0x01, hw->min_freq_reg);
 	else
 		writel_relaxed(0x00, hw->min_freq_reg);
+	mutex_unlock(&hw->access_lock);
 
 	return 0;
 }
+
 static struct cpu_cooling_ops cd_ops = {
 	.ceil_limit = lmh_set_max_limit,
 	.floor_limit = lmh_set_min_limit,
@@ -410,23 +430,23 @@ static int limits_dcvs_probe(struct platform_device *pdev)
 
 	/* Enable the thermal algorithm early */
 	ret = limits_dcvs_write(hw->affinity, LIMITS_SUB_FN_THERMAL,
-		 LIMITS_ALGO_MODE_ENABLE, 1);
+		 LIMITS_ALGO_MODE_ENABLE, 1, 0, 0);
 	if (ret)
 		return ret;
 
 	/* Enable the LMH outer loop algorithm */
 	ret = limits_dcvs_write(hw->affinity, LIMITS_SUB_FN_CRNT,
-		 LIMITS_ALGO_MODE_ENABLE, 1);
+		 LIMITS_ALGO_MODE_ENABLE, 1, 0, 0);
 	if (ret)
 		return ret;
 	/* Enable the Reliability algorithm */
 	ret = limits_dcvs_write(hw->affinity, LIMITS_SUB_FN_REL,
-		 LIMITS_ALGO_MODE_ENABLE, 1);
+		 LIMITS_ALGO_MODE_ENABLE, 1, 0, 0);
 	if (ret)
 		return ret;
 	/* Enable the BCL algorithm */
 	ret = limits_dcvs_write(hw->affinity, LIMITS_SUB_FN_BCL,
-		 LIMITS_ALGO_MODE_ENABLE, 1);
+		 LIMITS_ALGO_MODE_ENABLE, 1, 0, 0);
 	if (ret)
 		return ret;
 
@@ -487,9 +507,8 @@ static int limits_dcvs_probe(struct platform_device *pdev)
 		pr_err("min frequency enable register remap failed\n");
 		return -ENOMEM;
 	}
-	init_timer_deferrable(&hw->poll_timer);
-	hw->poll_timer.data = (unsigned long)hw;
-	hw->poll_timer.function = limits_dcvs_poll;
+	mutex_init(&hw->access_lock);
+	INIT_DEFERRABLE_WORK(&hw->freq_poll_work, limits_dcvs_poll);
 
 	hw->irq_num = of_irq_get(pdev->dev.of_node, 0);
 	if (hw->irq_num < 0) {
@@ -497,7 +516,7 @@ static int limits_dcvs_probe(struct platform_device *pdev)
 		pr_err("Error getting IRQ number. err:%d\n", ret);
 		return ret;
 	}
-	atomic_set(&hw->is_irq_enabled, 1);
+	hw->is_irq_enabled = true;
 	ret = devm_request_threaded_irq(&pdev->dev, hw->irq_num, NULL,
 		lmh_dcvs_handle_isr, IRQF_TRIGGER_HIGH | IRQF_ONESHOT
 		| IRQF_NO_SUSPEND, hw->sensor_name, hw);
