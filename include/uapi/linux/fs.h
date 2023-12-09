@@ -43,6 +43,8 @@
 #define RENAME_EXCHANGE		(1 << 1)	/* Exchange source and dest */
 #define RENAME_WHITEOUT		(1 << 2)	/* Whiteout source */
 
+#define __FSCRYPT_MODE_MAX                      9
+#define FSCRYPT_KEY_SPEC_TYPE_IDENTIFIER        2
 struct file_clone_range {
 	__s64 src_fd;
 	__u64 src_offset;
@@ -259,13 +261,24 @@ struct fsxattr {
  */
 /* Policy provided via an ioctl on the topmost directory */
 #define FS_KEY_DESCRIPTOR_SIZE	8
-
+#define FSCRYPT_KEY_DESCRIPTOR_SIZE FS_KEY_DESCRIPTOR_SIZE
 #define FS_POLICY_FLAGS_PAD_4		0x00
 #define FS_POLICY_FLAGS_PAD_8		0x01
 #define FS_POLICY_FLAGS_PAD_16		0x02
 #define FS_POLICY_FLAGS_PAD_32		0x03
 #define FS_POLICY_FLAGS_PAD_MASK	0x03
 #define FS_POLICY_FLAGS_VALID		0x03
+
+/* Encryption policy flags */
+#define FSCRYPT_POLICY_FLAGS_PAD_4              0x00
+#define FSCRYPT_POLICY_FLAGS_PAD_8              0x01
+#define FSCRYPT_POLICY_FLAGS_PAD_16             0x02
+#define FSCRYPT_POLICY_FLAGS_PAD_32             0x03
+#define FSCRYPT_POLICY_FLAGS_PAD_MASK           0x03
+#define FSCRYPT_POLICY_FLAG_DIRECT_KEY          0x04
+#define FSCRYPT_POLICY_FLAG_IV_INO_LBLK_64      0x08
+#define FSCRYPT_POLICY_FLAG_IV_INO_LBLK_32      0x10
+#define FSCRYPT_POLICY_FLAGS_VALID              0x1F
 
 /* Encryption algorithms */
 #define FS_ENCRYPTION_MODE_INVALID		0
@@ -279,30 +292,140 @@ struct fsxattr {
 #define FS_ENCRYPTION_MODE_SPECK128_256_CTS	8
 #define FS_ENCRYPTION_MODE_PRIVATE		127
 
-struct fscrypt_policy {
-	__u8 version;
-	__u8 contents_encryption_mode;
-	__u8 filenames_encryption_mode;
-	__u8 flags;
-	__u8 master_key_descriptor[FS_KEY_DESCRIPTOR_SIZE];
+
+/*
+ * Legacy policy version; ad-hoc KDF and no key verification.
+ * For new encrypted directories, use fscrypt_policy_v2 instead.
+ *
+ * Careful: the .version field for this is actually 0, not 1.
+ */
+#define FSCRYPT_POLICY_V1               0
+struct fscrypt_policy_v1 {
+        __u8 version;
+        __u8 contents_encryption_mode;
+        __u8 filenames_encryption_mode;
+        __u8 flags;
+        __u8 master_key_descriptor[FSCRYPT_KEY_DESCRIPTOR_SIZE];
 };
-
-#define FS_IOC_SET_ENCRYPTION_POLICY	_IOR('f', 19, struct fscrypt_policy)
-#define FS_IOC_GET_ENCRYPTION_PWSALT	_IOW('f', 20, __u8[16])
-#define FS_IOC_GET_ENCRYPTION_POLICY	_IOW('f', 21, struct fscrypt_policy)
-
-/* Parameters for passing an encryption key into the kernel keyring */
+#define fscrypt_policy  fscrypt_policy_v1
+/*
+ * Process-subscribed "logon" key description prefix and payload format.
+ * Deprecated; prefer FS_IOC_ADD_ENCRYPTION_KEY instead.
+ */
 #define FS_KEY_DESC_PREFIX		"fscrypt:"
-#define FS_KEY_DESC_PREFIX_SIZE		8
 
-/* Structure that userspace passes to the kernel keyring */
-#define FS_MAX_KEY_SIZE			64
+#define FSCRYPT_KEY_DESC_PREFIX_SIZE	8
+#define FS_KEY_DESC_PREFIX_SIZE FSCRYPT_KEY_DESC_PREFIX_SIZE
+#define FSCRYPT_MAX_KEY_SIZE		64
+#define FS_MAX_KEY_SIZE FSCRYPT_MAX_KEY_SIZE
+
+#define FSCRYPT_KEY_IDENTIFIER_SIZE     16
 
 struct fscrypt_key {
 	__u32 mode;
 	__u8 raw[FS_MAX_KEY_SIZE];
 	__u32 size;
 };
+
+/*
+ * Keys are specified by an arbitrary 8-byte key "descriptor",
+ * matching fscrypt_policy::master_key_descriptor.
+ */
+#define FSCRYPT_KEY_SPEC_TYPE_DESCRIPTOR	1
+
+/*
+ * New policy version with HKDF and key verification (recommended).
+ */
+#define FSCRYPT_POLICY_V2               2
+struct fscrypt_policy_v2 {
+        __u8 version;
+        __u8 contents_encryption_mode;
+        __u8 filenames_encryption_mode;
+        __u8 flags;
+        __u8 __reserved[4];
+        __u8 master_key_identifier[FSCRYPT_KEY_IDENTIFIER_SIZE];
+};
+
+/* Struct passed to FS_IOC_GET_ENCRYPTION_POLICY_EX */
+struct fscrypt_get_policy_ex_arg {
+        __u64 policy_size; /* input/output */
+        union {
+                __u8 version;
+                struct fscrypt_policy_v1 v1;
+                struct fscrypt_policy_v2 v2;
+        } policy; /* output */
+};
+
+/*
+ * Specifies a key.  This doesn't contain the actual key itself; this is just
+ * the "name" of the key.
+ */
+struct fscrypt_key_specifier {
+	__u32 type;	/* one of FSCRYPT_KEY_SPEC_TYPE_* */
+	__u32 __reserved;
+	union {
+		__u8 __reserved[32]; /* reserve some extra space */
+		__u8 descriptor[FSCRYPT_KEY_DESCRIPTOR_SIZE];
+		__u8 identifier[FSCRYPT_KEY_IDENTIFIER_SIZE];
+	} u;
+};
+
+/*
+ * Payload of Linux keyring key of type "fscrypt-provisioning", referenced by
+ * fscrypt_add_key_arg::key_id as an alternative to fscrypt_add_key_arg::raw.
+ */
+struct fscrypt_provisioning_key_payload {
+        __u32 type;
+        __u32 __reserved;
+        __u8 raw[];
+};
+
+/* Struct passed to FS_IOC_ADD_ENCRYPTION_KEY */
+struct fscrypt_add_key_arg {
+        struct fscrypt_key_specifier key_spec;
+        __u32 raw_size;
+        __u32 key_id;
+        __u32 __reserved[7];
+        /* N.B.: "temporary" flag, not reserved upstream */
+#define __FSCRYPT_ADD_KEY_FLAG_HW_WRAPPED               0x00000001
+        __u32 __flags;
+        __u8 raw[];
+};
+
+/* Struct passed to FS_IOC_REMOVE_ENCRYPTION_KEY */
+struct fscrypt_remove_key_arg {
+        struct fscrypt_key_specifier key_spec;
+#define FSCRYPT_KEY_REMOVAL_STATUS_FLAG_FILES_BUSY      0x00000001
+#define FSCRYPT_KEY_REMOVAL_STATUS_FLAG_OTHER_USERS     0x00000002
+        __u32 removal_status_flags;     /* output */
+        __u32 __reserved[5];
+};
+
+/* Struct passed to FS_IOC_GET_ENCRYPTION_KEY_STATUS */
+struct fscrypt_get_key_status_arg {
+        /* input */
+        struct fscrypt_key_specifier key_spec;
+        __u32 __reserved[6];
+
+        /* output */
+#define FSCRYPT_KEY_STATUS_ABSENT               1
+#define FSCRYPT_KEY_STATUS_PRESENT              2
+#define FSCRYPT_KEY_STATUS_INCOMPLETELY_REMOVED 3
+        __u32 status;
+#define FSCRYPT_KEY_STATUS_FLAG_ADDED_BY_SELF   0x00000001
+        __u32 status_flags;
+        __u32 user_count;
+        __u32 __out_reserved[13];
+};
+
+#define FS_IOC_SET_ENCRYPTION_POLICY            _IOR('f', 19, struct fscrypt_policy)
+#define FS_IOC_GET_ENCRYPTION_PWSALT            _IOW('f', 20, __u8[16])
+#define FS_IOC_GET_ENCRYPTION_POLICY            _IOW('f', 21, struct fscrypt_policy)
+#define FS_IOC_GET_ENCRYPTION_POLICY_EX         _IOWR('f', 22, __u8[9]) /* size + version */
+#define FS_IOC_ADD_ENCRYPTION_KEY               _IOWR('f', 23, struct fscrypt_add_key_arg)
+#define FS_IOC_REMOVE_ENCRYPTION_KEY            _IOWR('f', 24, struct fscrypt_remove_key_arg)
+#define FS_IOC_REMOVE_ENCRYPTION_KEY_ALL_USERS  _IOWR('f', 25, struct fscrypt_remove_key_arg)
+#define FS_IOC_GET_ENCRYPTION_KEY_STATUS        _IOWR('f', 26, struct fscrypt_get_key_status_arg)
 
 /*
  * Inode flags (FS_IOC_GETFLAGS / FS_IOC_SETFLAGS)
