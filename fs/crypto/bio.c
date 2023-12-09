@@ -110,7 +110,7 @@ int fscrypt_zeroout_range(const struct inode *inode, pgoff_t lblk,
 	if (IS_ERR(ctx))
 		return PTR_ERR(ctx);
 
-	ciphertext_page = fscrypt_alloc_bounce_page(ctx, GFP_NOWAIT);
+	ciphertext_page = fscrypt_alloc_bounce_page(GFP_NOWAIT);
 	if (IS_ERR(ciphertext_page)) {
 		err = PTR_ERR(ciphertext_page);
 		goto errout;

@@ -50,7 +50,8 @@ struct fscrypt_ctx {
 
 static inline bool fscrypt_has_encryption_key(const struct inode *inode)
 {
-	return (inode->i_crypt_info != NULL);
+	/* pairs with cmpxchg_release() in fscrypt_get_encryption_info() */
+	return READ_ONCE(inode->i_crypt_info) != NULL;
 }
 
 static inline bool fscrypt_dummy_context_enabled(struct inode *inode)
@@ -93,12 +94,16 @@ static inline void fscrypt_set_encrypted_dentry(struct dentry *dentry)
 /* policy.c */
 extern int fscrypt_ioctl_set_policy(struct file *, const void __user *);
 extern int fscrypt_ioctl_get_policy(struct file *, void __user *);
+extern int fscrypt_ioctl_get_policy_ex(struct file *filp, void __user *arg);
 extern int fscrypt_has_permitted_context(struct inode *, struct inode *);
 extern int fscrypt_inherit_context(struct inode *, struct inode *,
 					void *, bool);
+
 /* keyinfo.c */
 extern int fscrypt_get_encryption_info(struct inode *);
 extern void fscrypt_put_encryption_info(struct inode *);
+void fscrypt_free_inode(struct inode *inode);
+int fscrypt_drop_inode(struct inode *inode);
 
 /* fname.c */
 extern int fscrypt_setup_filename(struct inode *, const struct qstr *,
@@ -112,8 +117,10 @@ static inline void fscrypt_free_filename(struct fscrypt_name *fname)
 extern int fscrypt_fname_alloc_buffer(const struct inode *, u32,
 				struct fscrypt_str *);
 extern void fscrypt_fname_free_buffer(struct fscrypt_str *);
-extern int fscrypt_fname_disk_to_usr(struct inode *, u32, u32,
-			const struct fscrypt_str *, struct fscrypt_str *);
+extern int fscrypt_fname_disk_to_usr(const struct inode *inode,
+                              u32 hash, u32 minor_hash,
+                              const struct fscrypt_str *iname,
+                              struct fscrypt_str *oname);
 
 #define FSCRYPT_FNAME_MAX_UNDIGESTED_SIZE	32
 
@@ -215,5 +222,12 @@ extern int __fscrypt_encrypt_symlink(struct inode *inode, const char *target,
 extern const char *fscrypt_get_symlink(struct inode *inode, const void *caddr,
 				       unsigned int max_size,
 				       struct delayed_call *done);
+
+/* keyring.c */
+extern void fscrypt_sb_free(struct super_block *sb);
+extern int fscrypt_ioctl_add_key(struct file *filp, void __user *arg);
+extern int fscrypt_ioctl_remove_key(struct file *filp, void __user *arg);
+int fscrypt_ioctl_remove_key_all_users(struct file *filp, void __user *arg);
+int fscrypt_ioctl_get_key_status(struct file *filp, void __user *arg);
 
 #endif	/* _LINUX_FSCRYPT_SUPP_H */

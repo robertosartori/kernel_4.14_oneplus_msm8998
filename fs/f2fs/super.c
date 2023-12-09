@@ -889,6 +889,10 @@ static int f2fs_drop_inode(struct inode *inode)
 		return 0;
 	}
 	ret = generic_drop_inode(inode);
+
+	if (!ret)
+		ret = fscrypt_drop_inode(inode);
+
 	trace_f2fs_drop_inode(inode, ret);
 	return ret;
 }
@@ -958,6 +962,9 @@ static void f2fs_dirty_inode(struct inode *inode, int flags)
 static void f2fs_i_callback(struct rcu_head *head)
 {
 	struct inode *inode = container_of(head, struct inode, i_rcu);
+
+	fscrypt_free_inode(inode);
+
 	kmem_cache_free(f2fs_inode_cachep, F2FS_I(inode));
 }
 

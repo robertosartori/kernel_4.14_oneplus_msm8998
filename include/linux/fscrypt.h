@@ -45,9 +45,9 @@ struct fscrypt_name {
 #define fname_len(p)		((p)->disk_name.len)
 
 /* Maximum value for the third parameter of fscrypt_operations.set_context(). */
-#define FSCRYPT_SET_CONTEXT_MAX_SIZE	28
+#define FSCRYPT_SET_CONTEXT_MAX_SIZE	40
 
-#if __FS_HAS_ENCRYPTION
+#if IS_ENABLED(CONFIG_F2FS_FS_ENCRYPTION) || IS_ENABLED(CONFIG_EXT4_FS_ENCRYPTION)
 #include <linux/fscrypt_supp.h>
 #else
 #include <linux/fscrypt_notsupp.h>
