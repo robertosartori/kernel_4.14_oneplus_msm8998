@@ -3099,8 +3099,8 @@
 		compatible = "qcom,msm-hw-limits";
 		interrupts = <GIC_SPI 37 IRQ_TYPE_LEVEL_HIGH>;
 		qcom,affinity = <0>;
-		reg = <0x17D78800 0x1000>,
-			<0x17D43000 0x1000>;
+		reg = <0x179CE800 0x1000>,
+			<0x179C1400 0x1000>;
 		#thermal-sensor-cells = <0>;
 		qcom,plat-mitigation-disable;
 		qcom,legacy-lmh-enable;
@@ -3110,8 +3110,8 @@
 		compatible = "qcom,msm-hw-limits";
 		interrupts = <GIC_SPI 38 IRQ_TYPE_LEVEL_HIGH>;
 		qcom,affinity = <1>;
-		reg = <0x17D70800 0x1000>,
-			<0x17D45800 0x1000>;
+		reg = <0x179CC800 0x1000>,
+			<0x179C3400 0x1000>;
 		#thermal-sensor-cells = <0>;
 		qcom,plat-mitigation-disable;
 		qcom,legacy-lmh-enable;
