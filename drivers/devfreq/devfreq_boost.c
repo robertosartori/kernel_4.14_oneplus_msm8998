@@ -31,6 +31,7 @@ struct boost_dev {
 struct df_boost_drv {
 	struct boost_dev devices[DEVFREQ_MAX];
 	struct notifier_block msm_drm_notif;
+	unsigned long last_input_jiffies;
 };
 
 static void devfreq_input_unboost(struct work_struct *work);
@@ -50,17 +51,32 @@ static void devfreq_max_unboost(struct work_struct *work);
 
 static struct df_boost_drv df_boost_drv_g __read_mostly = {
 	BOOST_DEV_INIT(df_boost_drv_g, DEVFREQ_MSM_CPUBW,
-		       CONFIG_DEVFREQ_MSM_CPUBW_BOOST_FREQ)
+		       CONFIG_DEVFREQ_MSM_CPUBW_BOOST_FREQ),
+	BOOST_DEV_INIT(df_boost_drv_g, DEVFREQ_MSM_LLCCBW,
+		       CONFIG_DEVFREQ_MSM_LLCCBW_BOOST_FREQ)
 };
+
+extern int kp_active_mode(void);
 
 static void __devfreq_boost_kick(struct boost_dev *b)
 {
-	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state))
+	unsigned int period = CONFIG_DEVFREQ_INPUT_BOOST_DURATION_MS;
+
+	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state) || kp_active_mode() == 1)
 		return;
 
+	switch (kp_active_mode()) {
+	case 2:
+		period = CONFIG_DEVFREQ_INPUT_BOOST_DURATION_MS * 1.5;
+		break;
+	case 3:
+		period = CONFIG_DEVFREQ_INPUT_BOOST_DURATION_MS * 2;
+		break;
+	}
+	
 	set_bit(INPUT_BOOST, &b->state);
 	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
-		msecs_to_jiffies(CONFIG_DEVFREQ_INPUT_BOOST_DURATION_MS)))
+		msecs_to_jiffies(period)))
 		wake_up(&b->boost_waitq);
 }
 
@@ -77,7 +93,7 @@ static void __devfreq_boost_kick_max(struct boost_dev *b,
 	unsigned long boost_jiffies = msecs_to_jiffies(duration_ms);
 	unsigned long curr_expires, new_expires;
 
-	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state))
+	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state) || kp_active_mode() == 1)
 		return;
 
 	do {
@@ -95,6 +111,15 @@ static void __devfreq_boost_kick_max(struct boost_dev *b,
 			      boost_jiffies))
 		wake_up(&b->boost_waitq);
 }
+
+bool df_boost_within_input(unsigned long timeout_ms)
+{
+	struct df_boost_drv *d = &df_boost_drv_g;
+
+	return time_before(jiffies, d->last_input_jiffies +
+			   msecs_to_jiffies(timeout_ms));
+}
+
 
 void devfreq_boost_kick_max(enum df_device device, unsigned int duration_ms)
 {
@@ -215,6 +240,8 @@ static void devfreq_boost_input_event(struct input_handle *handle,
 
 	for (i = 0; i < DEVFREQ_MAX; i++)
 		__devfreq_boost_kick(d->devices + i);
+
+	d->last_input_jiffies = jiffies;
 }
 
 static int devfreq_boost_input_connect(struct input_handler *handler,
@@ -299,8 +326,9 @@ static int __init devfreq_boost_init(void)
 	for (i = 0; i < DEVFREQ_MAX; i++) {
 		struct boost_dev *b = d->devices + i;
 
-		thread[i] = kthread_run(devfreq_boost_thread, b,
-					"devfreq_boostd/%d", i);
+		thread[i] = kthread_run_perf_critical(cpu_perf_mask,
+						      devfreq_boost_thread, b,
+						      "devfreq_boostd/%d", i);
 		if (IS_ERR(thread[i])) {
 			ret = PTR_ERR(thread[i]);
 			pr_err("Failed to create kthread, err: %d\n", ret);
@@ -308,6 +336,7 @@ static int __init devfreq_boost_init(void)
 		}
 	}
 
+	d->last_input_jiffies = jiffies;
 	devfreq_boost_input_handler.private = d;
 	ret = input_register_handler(&devfreq_boost_input_handler);
 	if (ret) {
