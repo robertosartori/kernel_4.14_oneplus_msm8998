@@ -263,6 +263,21 @@ config DEVFREQ_GOV_CDSPL3
 	  CDSP resource manager will use this governor to vote for L3 clock
 	  for IO-coherent traffic generated from CDSP
 
+config QCOM_DEVFREQ_ICC
+	bool "Qualcomm Technologies Inc. DEVFREQ device for device master <-> slave IB/AB BW voting"
+	depends on ARCH_QCOM
+	select DEVFREQ_GOV_PERFORMANCE
+	select DEVFREQ_GOV_POWERSAVE
+	select DEVFREQ_GOV_USERSPACE
+	select DEVFREQ_GOV_CPUFREQ
+	select INTERCONNECT
+	default n
+	help
+	  Different devfreq governors use this devfreq device to make CPU to
+	  DDR IB/AB bandwidth votes. This driver provides a SoC topology
+	  agnostic interface to so that some of the devfreq governors can be
+	  shared across SoCs.
+
 config DEVFREQ_BOOST
 	bool "Devfreq Boost"
 	help
