@@ -869,6 +869,13 @@ void op_adapter_init(struct op_adapter_chip *chip)
 #define DASH_NOTIFY_UPDATE_DASH_PRESENT	_IOW(DASH_IOC_MAGIC, 14, int)
 
 static long  dash_dev_ioctl(struct file *filp, unsigned int cmd,
+                unsigned long arg)
+{
+	/* Disable DASH charge */
+	return 0;
+};
+
+static long  dash_dev_ioctl_og(struct file *filp, unsigned int cmd,
 		unsigned long arg)
 {
 	struct fastchg_device_info *di = filp->private_data;
