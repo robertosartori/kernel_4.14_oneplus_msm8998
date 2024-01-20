@@ -149,7 +149,7 @@ lmac_peer_id_msb
 			This LMAC/peer-based routing is not supported in
 			Hastings80 and HastingsPrime.
 			
-			<legal all>
+			<legal 0>
 
 use_flow_id_toeplitz_clfy
 			
@@ -370,7 +370,7 @@ reserved_0b
 			This LMAC/peer-based routing is not supported in
 			Hastings80 and HastingsPrime.
 			
-			<legal all>
+			<legal 0>
 */
 #define RXPT_CLASSIFY_INFO_0_LMAC_PEER_ID_MSB_OFFSET                 0x00000000
 #define RXPT_CLASSIFY_INFO_0_LMAC_PEER_ID_MSB_LSB                    5

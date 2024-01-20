@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018, 2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2018 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -579,31 +579,6 @@ QDF_STATUS pmo_ucfg_psoc_user_space_resume_req(struct wlan_objmgr_psoc *psoc,
 		enum qdf_suspend_type type);
 
 /**
- * ucfg_pmo_suspend_all_components() -  Suspend all components
- * @psoc: objmgr psoc handle
- * @type: type of suspend
- *
- * Suspend all components registered to pmo
- *
- * Return: QDF status
- */
-
-QDF_STATUS ucfg_pmo_suspend_all_components(struct wlan_objmgr_psoc *psoc,
-					   enum qdf_suspend_type type);
-
-/**
- * ucfg_pmo_resume_all_components() -  Resume all components
- * @psoc: objmgr psoc handle
- * @type: type of suspend from which resume needed
- *
- * Resume all components registered to pmo
- *
- * Return: QDF status
- */
-QDF_STATUS ucfg_pmo_resume_all_components(struct wlan_objmgr_psoc *psoc,
-					  enum qdf_suspend_type type);
-
-/**
  * pmo_ucfg_psoc_bus_suspend_req(): handles bus suspend for psoc
  * @psoc: objmgr psoc
  * @type: is this suspend part of runtime suspend or system suspend?
@@ -746,18 +721,6 @@ QDF_STATUS pmo_ucfg_config_listen_interval(struct wlan_objmgr_vdev *vdev,
  */
 QDF_STATUS pmo_ucfg_config_modulated_dtim(struct wlan_objmgr_vdev *vdev,
 				       uint32_t mod_dtim);
-/**
- * ucfg_pmo_tgt_psoc_send_idle_roam_suspend_mode() - Send suspend mode to
- * firmware
- * @psoc: pointer to psoc object
- * @val: Set suspend mode on/off sent from userspace
- *
- * Return: QDF_STATUS_SUCCESS if suspend mode is sent to fw else return
- * corresponding QDF_STATUS failure code.
- */
-QDF_STATUS
-ucfg_pmo_tgt_psoc_send_idle_roam_suspend_mode(struct wlan_objmgr_psoc *psoc,
-					      uint8_t val);
 #else
 static inline uint32_t
 ucfg_pmo_get_apf_instruction_size(struct wlan_objmgr_psoc *psoc)
@@ -1112,20 +1075,6 @@ pmo_ucfg_psoc_user_space_resume_req(
 }
 
 static inline QDF_STATUS
-ucfg_pmo_suspend_all_components(struct wlan_objmgr_psoc *psoc,
-				enum qdf_suspend_type type)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline QDF_STATUS
-ucfg_pmo_resume_all_components(struct wlan_objmgr_psoc *psoc,
-			       enum qdf_suspend_type type)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline QDF_STATUS
 pmo_ucfg_psoc_bus_suspend_req(
 		struct wlan_objmgr_psoc *psoc,
 		enum qdf_suspend_type type,
@@ -1252,13 +1201,6 @@ pmo_ucfg_config_listen_interval(struct wlan_objmgr_vdev *vdev,
 static inline QDF_STATUS
 pmo_ucfg_config_modulated_dtim(struct wlan_objmgr_vdev *vdev,
 			       uint32_t mod_dtim)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static inline QDF_STATUS
-ucfg_pmo_tgt_psoc_send_idle_roam_suspend_mode(struct wlan_objmgr_psoc *psoc,
-					      uint8_t val)
 {
 	return QDF_STATUS_SUCCESS;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018, 2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2018 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -397,18 +397,6 @@ QDF_STATUS pmo_ucfg_add_wow_user_pattern(struct wlan_objmgr_vdev *vdev,
 	return pmo_core_add_wow_user_pattern(vdev, ptrn);
 }
 
-QDF_STATUS ucfg_pmo_suspend_all_components(struct wlan_objmgr_psoc *psoc,
-					   enum qdf_suspend_type type)
-{
-	return pmo_suspend_all_components(psoc, type);
-}
-
-QDF_STATUS ucfg_pmo_resume_all_components(struct wlan_objmgr_psoc *psoc,
-					  enum qdf_suspend_type type)
-{
-	return pmo_resume_all_components(psoc, type);
-}
-
 QDF_STATUS
 ucfg_pmo_del_wow_pattern(struct wlan_objmgr_vdev *vdev)
 {
@@ -474,9 +462,3 @@ QDF_STATUS pmo_ucfg_config_modulated_dtim(struct wlan_objmgr_vdev *vdev,
 	return pmo_core_config_modulated_dtim(vdev, mod_dtim);
 }
 
-QDF_STATUS
-ucfg_pmo_tgt_psoc_send_idle_roam_suspend_mode(struct wlan_objmgr_psoc *psoc,
-					      uint8_t val)
-{
-	return pmo_tgt_psoc_send_idle_roam_monitor(psoc, val);
-}

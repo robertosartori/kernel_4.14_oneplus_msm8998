@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2018, 2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2018 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -234,6 +234,7 @@ static int wlan_add_user_log_time_stamp(char *tbuf, size_t tbuf_sz, uint64_t ts)
 	return scnprintf(tbuf, tbuf_sz, "[%.6s][%llu]%s",
 			 current_process_name(), (unsigned long long)ts,
 			 time_buf);
+
 }
 #else
 static int wlan_add_user_log_time_stamp(char *tbuf, size_t tbuf_sz, uint64_t ts)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2018, 2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2018 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -116,8 +116,8 @@ lim_process_deauth_frame(tpAniSirGlobal pMac, uint8_t *pRxPacketInfo,
 	}
 #ifdef WLAN_FEATURE_11W
 	/* PMF: If this session is a PMF session, then ensure that this frame was protected */
-	if (psessionEntry->limRmfEnabled
-	    && (WMA_GET_RX_DPU_FEEDBACK(pRxPacketInfo) &
+	if (is_mgmt_protected(psessionEntry->smeSessionId, (const uint8_t *)pHdr->sa) &&
+	    (WMA_GET_RX_DPU_FEEDBACK(pRxPacketInfo) &
 		DPU_FEEDBACK_UNPROTECTED_ERROR)) {
 		pe_debug("received an unprotected deauth from AP");
 		/*
@@ -146,11 +146,18 @@ lim_process_deauth_frame(tpAniSirGlobal pMac, uint8_t *pRxPacketInfo,
 	/* Get reasonCode from Deauthentication frame body */
 	reasonCode = sir_read_u16(pBody);
 
-	pe_nofl_info("Deauth RX: vdev %d from %pM for %pM RSSI = %d reason %d mlm state = %d, sme state = %d systemrole = %d ",
-		     psessionEntry->smeSessionId, pHdr->sa, pHdr->da, frame_rssi,
-		     reasonCode, psessionEntry->limMlmState,
-		     psessionEntry->limSmeState,
-		     GET_LIM_SYSTEM_ROLE(psessionEntry));
+	pe_info("Rx Deauth frame SN=%d for Addr: " MAC_ADDRESS_STR
+			"(mlmST = %s, smeST = %d s_role = %d "
+			"RSSI = %d) with rc %d [%s] from "
+			MAC_ADDRESS_STR,
+			((pHdr->seqControl.seqNumHi << 4) |
+			pHdr->seqControl.seqNumLo),
+			MAC_ADDR_ARRAY(pHdr->da),
+			lim_mlm_state_str(psessionEntry->limMlmState),
+			psessionEntry->limSmeState,
+			GET_LIM_SYSTEM_ROLE(psessionEntry), frame_rssi,
+			reasonCode, lim_dot11_reason_str(reasonCode),
+			MAC_ADDR_ARRAY(pHdr->sa));
 
 	lim_diag_event_report(pMac, WLAN_PE_DIAG_DEAUTH_FRAME_EVENT,
 		psessionEntry, 0, reasonCode);
@@ -299,9 +306,6 @@ lim_process_deauth_frame(tpAniSirGlobal pMac, uint8_t *pRxPacketInfo,
 		}
 	}
 
-	lim_extract_ies_from_deauth_disassoc(pMac, roamSessionId,
-					     (uint8_t *)pHdr,
-					WMA_GET_RX_MPDU_LEN(pRxPacketInfo));
 	lim_perform_deauth(pMac, psessionEntry, reasonCode, pHdr->sa,
 			   frame_rssi);
 
@@ -324,7 +328,6 @@ void lim_perform_deauth(tpAniSirGlobal mac_ctx, tpPESession pe_session,
 	tLimMlmAssocCnf mlmAssocCnf;
 	uint16_t aid;
 	tpDphHashNode sta_ds;
-	tpSirAssocRsp assoc_rsp;
 
 	sta_ds = dph_lookup_hash_entry(mac_ctx, addr, &aid,
 				       &pe_session->dph.dphHashTable);
@@ -540,10 +543,6 @@ void lim_perform_deauth(tpAniSirGlobal mac_ctx, tpPESession pe_session,
 			lim_delete_pre_auth_node(mac_ctx, addr);
 
 		if (pe_session->limAssocResponseData) {
-			assoc_rsp = (tpSirAssocRsp) pe_session->
-					limAssocResponseData;
-			qdf_mem_free(assoc_rsp->sha384_ft_subelem.gtk);
-			qdf_mem_free(assoc_rsp->sha384_ft_subelem.igtk);
 			qdf_mem_free(pe_session->limAssocResponseData);
 			pe_session->limAssocResponseData = NULL;
 		}

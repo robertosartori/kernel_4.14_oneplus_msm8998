@@ -80,10 +80,6 @@
 #include <htt_internal.h>
 #include <ol_txrx_ipa.h>
 #include "wlan_roam_debug.h"
-#ifdef DP_SUPPORT_RECOVERY_NOTIFY
-#include <qdf_notifier.h>
-#include <qdf_hang_event_notifier.h>
-#endif
 
 #define DPT_DEBUGFS_PERMS	(QDF_FILE_USR_READ |	\
 				QDF_FILE_USR_WRITE |	\
@@ -129,78 +125,6 @@ extern void ol_txrx_get_pn_info(void *ppeer, uint8_t **last_pn_valid,
 
 /* thresh for peer's cached buf queue beyond which the elements are dropped */
 #define OL_TXRX_CACHED_BUFQ_THRESH 128
-
-#ifdef DP_SUPPORT_RECOVERY_NOTIFY
-static
-int ol_peer_recovery_notifier_cb(struct notifier_block *block,
-				 unsigned long state, void *data)
-{
-	struct qdf_notifer_data *notif_data = data;
-	qdf_notif_block *notif_block;
-	struct ol_txrx_peer_t *peer;
-	struct peer_hang_data hang_data = {0};
-	enum peer_debug_id_type dbg_id;
-
-	if (!data || !block)
-		return -EINVAL;
-
-	notif_block = qdf_container_of(block, qdf_notif_block, notif_block);
-
-	peer = notif_block->priv_data;
-	if (!peer)
-		return -EINVAL;
-
-	if (notif_data->offset >= QDF_WLAN_MAX_HOST_OFFSET)
-		return NOTIFY_STOP_MASK;
-
-	QDF_HANG_EVT_SET_HDR(&hang_data.tlv_header,
-			     HANG_EVT_TAG_DP_PEER_INFO,
-			     QDF_HANG_GET_STRUCT_TLVLEN(struct peer_hang_data));
-
-	qdf_mem_copy(&hang_data.peer_mac_addr, &peer->mac_addr.raw,
-		     QDF_MAC_ADDR_SIZE);
-
-	for (dbg_id = 0; dbg_id < PEER_DEBUG_ID_MAX; dbg_id++)
-		if (qdf_atomic_read(&peer->access_list[dbg_id]))
-			hang_data.peer_timeout_bitmask |= (1 << dbg_id);
-
-	qdf_mem_copy(notif_data->hang_data + notif_data->offset,
-		     &hang_data, sizeof(struct peer_hang_data));
-	notif_data->offset += sizeof(struct peer_hang_data);
-
-	return 0;
-}
-
-static qdf_notif_block ol_peer_recovery_notifier = {
-	.notif_block.notifier_call = ol_peer_recovery_notifier_cb,
-};
-
-static
-QDF_STATUS ol_register_peer_recovery_notifier(struct ol_txrx_peer_t *peer)
-{
-	ol_peer_recovery_notifier.priv_data = peer;
-
-	return qdf_hang_event_register_notifier(&ol_peer_recovery_notifier);
-}
-
-static
-QDF_STATUS ol_unregister_peer_recovery_notifier(void)
-{
-	return qdf_hang_event_unregister_notifier(&ol_peer_recovery_notifier);
-}
-#else
-static inline
-QDF_STATUS ol_register_peer_recovery_notifier(struct ol_txrx_peer_t *peer)
-{
-	return QDF_STATUS_SUCCESS;
-}
-
-static
-QDF_STATUS ol_unregister_peer_recovery_notifier(void)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
 
 #if defined(CONFIG_HL_SUPPORT) && defined(FEATURE_WLAN_TDLS)
 
@@ -1682,41 +1606,6 @@ void htt_pkt_log_init(struct cdp_pdev *pdev_handle, void *ol_sc) { }
 static void htt_pktlogmod_exit(ol_txrx_pdev_handle handle)  { }
 #endif
 
-#ifdef QCA_LL_PDEV_TX_FLOW_CONTROL
-/**
- * ol_txrx_pdev_set_threshold() - set pdev pool stop/start threshold
- * @pdev: txrx pdev
- *
- * Return: void
- */
-static void ol_txrx_pdev_set_threshold(struct ol_txrx_pdev_t *pdev)
-{
-	uint32_t stop_threshold;
-	uint32_t start_threshold;
-	uint16_t desc_pool_size = pdev->tx_desc.pool_size;
-
-	stop_threshold = ol_cfg_get_tx_flow_stop_queue_th(pdev->ctrl_pdev);
-	start_threshold = stop_threshold +
-		ol_cfg_get_tx_flow_start_queue_offset(pdev->ctrl_pdev);
-	pdev->tx_desc.start_th = (start_threshold * desc_pool_size) / 100;
-	pdev->tx_desc.stop_th = (stop_threshold * desc_pool_size) / 100;
-	pdev->tx_desc.stop_priority_th =
-		(TX_PRIORITY_TH * pdev->tx_desc.stop_th) / 100;
-	if (pdev->tx_desc.stop_priority_th >= MAX_TSO_SEGMENT_DESC)
-		pdev->tx_desc.stop_priority_th -= MAX_TSO_SEGMENT_DESC;
-
-	pdev->tx_desc.start_priority_th =
-		(TX_PRIORITY_TH * pdev->tx_desc.start_th) / 100;
-	if (pdev->tx_desc.start_priority_th >= MAX_TSO_SEGMENT_DESC)
-		pdev->tx_desc.start_priority_th -= MAX_TSO_SEGMENT_DESC;
-	pdev->tx_desc.status = FLOW_POOL_ACTIVE_UNPAUSED;
-}
-#else
-static inline void ol_txrx_pdev_set_threshold(struct ol_txrx_pdev_t *pdev)
-{
-}
-#endif
-
 /**
  * ol_txrx_pdev_post_attach() - attach txrx pdev
  * @pdev: txrx pdev
@@ -1737,6 +1626,8 @@ ol_txrx_pdev_post_attach(struct cdp_pdev *ppdev)
 	union ol_tx_desc_list_elem_t *c_element;
 	unsigned int sig_bit;
 	uint16_t desc_per_page;
+	uint32_t stop_threshold;
+	uint32_t start_threshold;
 
 	if (!osc) {
 		ret = -EINVAL;
@@ -1898,8 +1789,21 @@ ol_txrx_pdev_post_attach(struct cdp_pdev *ppdev)
 		   "%s first tx_desc:0x%pK Last tx desc:0x%pK\n", __func__,
 		   (uint32_t *) pdev->tx_desc.freelist,
 		   (uint32_t *) (pdev->tx_desc.freelist + desc_pool_size));
+	stop_threshold = ol_cfg_get_tx_flow_stop_queue_th(pdev->ctrl_pdev);
+	start_threshold = stop_threshold +
+		ol_cfg_get_tx_flow_start_queue_offset(pdev->ctrl_pdev);
+	pdev->tx_desc.start_th = (start_threshold * desc_pool_size) / 100;
+	pdev->tx_desc.stop_th = (stop_threshold * desc_pool_size) / 100;
+	pdev->tx_desc.stop_priority_th =
+		(TX_PRIORITY_TH * pdev->tx_desc.stop_th) / 100;
+	if (pdev->tx_desc.stop_priority_th >= MAX_TSO_SEGMENT_DESC)
+		pdev->tx_desc.stop_priority_th -= MAX_TSO_SEGMENT_DESC;
 
-	ol_txrx_pdev_set_threshold(pdev);
+	pdev->tx_desc.start_priority_th =
+		(TX_PRIORITY_TH * pdev->tx_desc.start_th) / 100;
+	if (pdev->tx_desc.start_priority_th >= MAX_TSO_SEGMENT_DESC)
+		pdev->tx_desc.start_priority_th -= MAX_TSO_SEGMENT_DESC;
+	pdev->tx_desc.status = FLOW_POOL_ACTIVE_UNPAUSED;
 
 	/* check what format of frames are expected to be delivered by the OS */
 	pdev->frame_format = ol_cfg_frame_type(pdev->ctrl_pdev);
@@ -2400,8 +2304,6 @@ static void ol_txrx_pdev_pre_detach(struct cdp_pdev *ppdev, int force)
 	OL_RX_REORDER_TRACE_DETACH(pdev);
 	OL_RX_PN_TRACE_DETACH(pdev);
 
-	htt_pktlogmod_exit(pdev);
-
 	/*
 	 * WDI event detach
 	 */
@@ -2443,6 +2345,8 @@ static void ol_txrx_pdev_detach(struct cdp_pdev *ppdev, int force)
 		return;
 	}
 
+	htt_pktlogmod_exit(pdev);
+
 	qdf_spin_lock_bh(&pdev->req_list_spinlock);
 	if (pdev->req_list_depth > 0)
 		ol_txrx_err(
@@ -2476,6 +2380,7 @@ static void ol_txrx_pdev_detach(struct cdp_pdev *ppdev, int force)
 
 	htt_pdev_free(pdev->htt_pdev);
 	ol_txrx_peer_find_detach(pdev);
+	qdf_flush_work(&pdev->peer_unmap_timer_work);
 	ol_txrx_tso_stats_deinit(pdev);
 	ol_txrx_fw_stats_desc_pool_deinit(pdev);
 
@@ -2483,7 +2388,6 @@ static void ol_txrx_pdev_detach(struct cdp_pdev *ppdev, int force)
 	ol_txrx_pdev_grp_stat_destroy(pdev);
 
 	ol_txrx_debugfs_exit(pdev);
-	ol_unregister_peer_recovery_notifier();
 
 	qdf_mem_free(pdev);
 }
@@ -3173,7 +3077,8 @@ ol_txrx_peer_attach(struct cdp_vdev *pvdev, uint8_t *peer_mac_addr)
 #ifdef QCA_SUPPORT_PEER_DATA_RX_RSSI
 	peer->rssi_dbm = HTT_RSSI_INVALID;
 #endif
-	if (QDF_GLOBAL_MONITOR_MODE == cds_get_conparam()) {
+	if ((QDF_GLOBAL_MONITOR_MODE == cds_get_conparam()) &&
+	    !pdev->self_peer) {
 		pdev->self_peer = peer;
 		/*
 		 * No Tx in monitor mode, otherwise results in target assert.
@@ -3779,22 +3684,6 @@ static inline void ol_txrx_peer_free_tids(ol_txrx_peer_handle peer)
 }
 
 /**
- * ol_txrx_peer_drop_pending_frames() - drop pending frames in the RX queue
- * @peer: peer handle
- *
- * Drop pending packets pertaining to the peer from the RX thread queue.
- *
- * Return: None
- */
-static void ol_txrx_peer_drop_pending_frames(struct ol_txrx_peer_t *peer)
-{
-	p_cds_sched_context sched_ctx = get_cds_sched_ctxt();
-
-	if (sched_ctx)
-		cds_drop_rxpkt_by_staid(sched_ctx, peer->local_id);
-}
-
-/**
  * ol_txrx_peer_release_ref() - release peer reference
  * @peer: peer handle
  *
@@ -3896,10 +3785,6 @@ int ol_txrx_peer_release_ref(ol_txrx_peer_handle peer,
 				    &peer->mac_addr.raw, peer, 0,
 				    qdf_atomic_read(&peer->ref_cnt));
 		peer_id = peer->local_id;
-
-		/* Drop all pending frames in the rx thread queue */
-		ol_txrx_peer_drop_pending_frames(peer);
-
 		/* remove the reference to the peer from the hash table */
 		ol_txrx_peer_find_hash_remove(pdev, peer);
 
@@ -3980,8 +3865,9 @@ int ol_txrx_peer_release_ref(ol_txrx_peer_handle peer,
 				  debug_id,
 				  qdf_atomic_read(&peer->access_list[debug_id]),
 				  peer, rc,
-				  qdf_atomic_read(&peer->fw_create_pending) ==
-				  1 ? "(No Maps received)" : "");
+				  qdf_atomic_read(&peer->fw_create_pending)
+									== 1 ?
+				  "(No Maps received)" : "");
 
 		ol_txrx_peer_tx_queue_free(pdev, peer);
 
@@ -4005,7 +3891,9 @@ int ol_txrx_peer_release_ref(ol_txrx_peer_handle peer,
 		qdf_spin_unlock_bh(&pdev->peer_ref_mutex);
 		if (!ref_silent)
 			ol_txrx_info_high("[%d][%d]: ref delete peer %pK ref_cnt -> %d",
-					  debug_id, access_list, peer, rc);
+					  debug_id,
+					  access_list,
+					  peer, rc);
 	}
 	return rc;
 ERR_STATE:
@@ -4078,6 +3966,16 @@ static QDF_STATUS ol_txrx_clear_peer(struct cdp_pdev *ppdev, uint8_t sta_id)
 	return status;
 }
 
+void peer_unmap_timer_work_function(void *param)
+{
+	WMA_LOGI("Enter: %s", __func__);
+	/* Added for debugging only */
+	ol_txrx_dump_peer_access_list(param);
+	ol_txrx_peer_release_ref(param, PEER_DEBUG_ID_OL_UNMAP_TIMER_WORK);
+	wlan_roam_debug_dump_table();
+	cds_trigger_recovery(QDF_PEER_UNMAP_TIMEDOUT);
+}
+
 /**
  * peer_unmap_timer_handler() - peer unmap timer function
  * @data: peer object pointer
@@ -4087,9 +3985,7 @@ static QDF_STATUS ol_txrx_clear_peer(struct cdp_pdev *ppdev, uint8_t sta_id)
 void peer_unmap_timer_handler(void *data)
 {
 	ol_txrx_peer_handle peer = (ol_txrx_peer_handle)data;
-
-	if (!peer)
-		return;
+	ol_txrx_pdev_handle txrx_pdev = cds_get_context(QDF_MODULE_ID_TXRX);
 
 	ol_txrx_err("all unmap events not received for peer %pK, ref_cnt %d",
 		    peer, qdf_atomic_read(&peer->ref_cnt));
@@ -4098,9 +3994,16 @@ void peer_unmap_timer_handler(void *data)
 		    peer->mac_addr.raw[0], peer->mac_addr.raw[1],
 		    peer->mac_addr.raw[2], peer->mac_addr.raw[3],
 		    peer->mac_addr.raw[4], peer->mac_addr.raw[5]);
-	ol_register_peer_recovery_notifier(peer);
-
-	cds_trigger_recovery(QDF_PEER_UNMAP_TIMEDOUT);
+	if (!cds_is_driver_recovering() && !cds_is_fw_down()) {
+		qdf_create_work(0, &txrx_pdev->peer_unmap_timer_work,
+				peer_unmap_timer_work_function,
+				peer);
+		/* Make sure peer is present before scheduling work */
+		ol_txrx_peer_get_ref(peer, PEER_DEBUG_ID_OL_UNMAP_TIMER_WORK);
+		qdf_sched_work(0, &txrx_pdev->peer_unmap_timer_work);
+	} else {
+		ol_txrx_err("Recovery is in progress, ignore!");
+	}
 }
 
 
@@ -6248,10 +6151,8 @@ static void ol_txrx_post_data_stall_event(
 	data_stall_info->recovery_type = recovery_type;
 
 	if (data_stall_info->data_stall_type ==
-				DATA_STALL_LOG_FW_RX_REFILL_FAILED) {
+				DATA_STALL_LOG_FW_RX_REFILL_FAILED)
 		htt_log_rx_ring_info(pdev->htt_pdev);
-		htt_rx_refill_failure(pdev->htt_pdev);
-	}
 
 	sys_build_message_header(SYS_MSG_ID_DATA_STALL_MSG, &msg);
 	/* Save callback and data */
@@ -6735,8 +6636,6 @@ static struct cdp_cfg_ops ol_ops_cfg = {
 		ol_txrx_set_new_htt_msg_format,
 	.set_peer_unmap_conf_support = ol_txrx_set_peer_unmap_conf_support,
 	.get_peer_unmap_conf_support = ol_txrx_get_peer_unmap_conf_support,
-	.set_tx_compl_tsf64 = ol_txrx_set_tx_compl_tsf64,
-	.get_tx_compl_tsf64 = ol_txrx_get_tx_compl_tsf64,
 };
 
 static struct cdp_peer_ops ol_ops_peer = {
@@ -6811,35 +6710,6 @@ static struct cdp_raw_ops ol_ops_raw = {
 	/* EMPTY FOR MCL */
 };
 
-#ifdef WLAN_FEATURE_PKT_CAPTURE
-/**
- * ol_txrx_pktcapture_record_channel() - Update Channel Information
- * for packet capture mode
- * @soc: pointer to cdp_soc_t
- * @pdev_id: pdev id
- * @mon_ch: channel
- *
- * Return: None
- */
-static void
-ol_txrx_pktcapture_record_channel(struct cdp_soc_t *soc,
-				  uint8_t pdev_id, int mon_ch)
-{
-	struct ol_txrx_pdev_t *pdev = cds_get_context(QDF_MODULE_ID_TXRX);
-
-	if (!pdev) {
-		qdf_print("%s: pdev is NULL\n", __func__);
-		return;
-	}
-
-	htt_rx_mon_note_capture_channel(pdev->htt_pdev, mon_ch);
-}
-
-static struct cdp_pktcapture_ops ol_ops_pkt_capture = {
-	.txrx_pktcapture_record_channel = ol_txrx_pktcapture_record_channel,
-};
-#endif /* #ifdef WLAN_FEATURE_PKT_CAPTURE */
-
 static struct cdp_ops ol_txrx_ops = {
 	.cmn_drv_ops = &ol_ops_cmn,
 	.ctrl_ops = &ol_ops_ctrl,
@@ -6864,10 +6734,7 @@ static struct cdp_ops ol_txrx_ops = {
 	.throttle_ops = &ol_ops_throttle,
 	.mob_stats_ops = &ol_ops_mob_stats,
 	.delay_ops = &ol_ops_delay,
-	.pmf_ops = &ol_ops_pmf,
-#ifdef WLAN_FEATURE_PKT_CAPTURE
-	.pktcapture_ops = &ol_ops_pkt_capture,
-#endif
+	.pmf_ops = &ol_ops_pmf
 };
 
 /*
@@ -6933,36 +6800,3 @@ void ol_txrx_set_peer_unmap_conf_support(bool val)
 	}
 	pdev->enable_peer_unmap_conf_support = val;
 }
-
-#ifdef WLAN_FEATURE_TSF_PLUS
-bool ol_txrx_get_tx_compl_tsf64(void)
-{
-	struct ol_txrx_pdev_t *pdev = cds_get_context(QDF_MODULE_ID_TXRX);
-
-	if (!pdev) {
-		qdf_print("%s: pdev is NULL\n", __func__);
-		return false;
-	}
-	return pdev->enable_tx_compl_tsf64;
-}
-
-void ol_txrx_set_tx_compl_tsf64(bool val)
-{
-	struct ol_txrx_pdev_t *pdev = cds_get_context(QDF_MODULE_ID_TXRX);
-
-	if (!pdev) {
-		qdf_print("%s: pdev is NULL\n", __func__);
-		return;
-	}
-	pdev->enable_tx_compl_tsf64 = val;
-}
-#else
-bool ol_txrx_get_tx_compl_tsf64(void)
-{
-	return false;
-}
-
-void ol_txrx_set_tx_compl_tsf64(bool val)
-{
-}
-#endif

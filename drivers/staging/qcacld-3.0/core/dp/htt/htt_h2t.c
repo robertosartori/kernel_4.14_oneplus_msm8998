@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2018, 2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2018 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -44,7 +44,6 @@
 
 #include <htt_internal.h>
 #include <wlan_policy_mgr_api.h>
-#include <ol_htt_rx_api.h>
 
 #define HTT_MSG_BUF_SIZE(msg_bytes) \
 	((msg_bytes) + HTC_HEADER_LEN + HTC_HDR_ALIGNMENT_PADDING)
@@ -57,13 +56,8 @@
 #ifdef ATH_11AC_TXCOMPACT
 #define HTT_SEND_HTC_PKT(pdev, pkt)                              \
 do {                                                             \
-	if (htc_send_pkt(pdev->htc_pdev, &pkt->htc_pkt) ==       \
-	    QDF_STATUS_SUCCESS) {                                \
+	if (htc_send_pkt(pdev->htc_pdev, &pkt->htc_pkt) == QDF_STATUS_SUCCESS) \
 		htt_htc_misc_pkt_list_add(pdev, pkt);            \
-	} else {                                                 \
-		qdf_nbuf_free((qdf_nbuf_t)(pkt->htc_pkt.pNetBufContext));   \
-		htt_htc_pkt_free(pdev, pkt);                     \
-	}                                                        \
 } while (0)
 #else
 #define HTT_SEND_HTC_PKT(pdev, ppkt) \
@@ -205,12 +199,8 @@ QDF_STATUS htt_h2t_frag_desc_bank_cfg_msg(struct htt_pdev_t *pdev)
 
 	rc = htc_send_pkt(pdev->htc_pdev, &pkt->htc_pkt);
 #ifdef ATH_11AC_TXCOMPACT
-	if (rc == QDF_STATUS_SUCCESS) {
+	if (rc == QDF_STATUS_SUCCESS)
 		htt_htc_misc_pkt_list_add(pdev, pkt);
-	} else {
-		qdf_nbuf_free(msg);
-		htt_htc_pkt_free(pdev, pkt);
-	}
 #endif
 
 	return rc;
@@ -536,7 +526,6 @@ QDF_STATUS htt_h2t_rx_ring_cfg_msg_ll(struct htt_pdev_t *pdev)
 			  __func__, __LINE__);
 	}
 
-	htt_rx_enable_ppdu_end(&enable_ppdu_end);
 	HTT_RX_RING_CFG_ENABLED_802_11_HDR_SET(*msg_word, enable_hdr);
 	HTT_RX_RING_CFG_ENABLED_MSDU_PAYLD_SET(*msg_word, 1);
 	HTT_RX_RING_CFG_ENABLED_PPDU_START_SET(*msg_word, enable_ppdu_start);
@@ -738,12 +727,8 @@ htt_h2t_rx_ring_cfg_msg_hl(struct htt_pdev_t *pdev)
 	SET_HTC_PACKET_NET_BUF_CONTEXT(&pkt->htc_pkt, msg);
 
 #ifdef ATH_11AC_TXCOMPACT
-	if (htc_send_pkt(pdev->htc_pdev, &pkt->htc_pkt) == QDF_STATUS_SUCCESS) {
+	if (htc_send_pkt(pdev->htc_pdev, &pkt->htc_pkt) == QDF_STATUS_SUCCESS)
 		htt_htc_misc_pkt_list_add(pdev, pkt);
-	} else {
-		qdf_nbuf_free(msg);
-		htt_htc_pkt_free(pdev, pkt);
-	}
 #else
 	htc_send_pkt(pdev->htc_pdev, &pkt->htc_pkt);
 #endif
@@ -853,12 +838,8 @@ htt_h2t_dbg_stats_get(struct htt_pdev_t *pdev,
 	SET_HTC_PACKET_NET_BUF_CONTEXT(&pkt->htc_pkt, msg);
 
 #ifdef ATH_11AC_TXCOMPACT
-	if (htc_send_pkt(pdev->htc_pdev, &pkt->htc_pkt) == QDF_STATUS_SUCCESS) {
+	if (htc_send_pkt(pdev->htc_pdev, &pkt->htc_pkt) == QDF_STATUS_SUCCESS)
 		htt_htc_misc_pkt_list_add(pdev, pkt);
-	} else {
-		qdf_nbuf_free(msg);
-		htt_htc_pkt_free(pdev, pkt);
-	}
 #else
 	htc_send_pkt(pdev->htc_pdev, &pkt->htc_pkt);
 #endif
@@ -982,12 +963,8 @@ htt_h2t_aggr_cfg_msg(struct htt_pdev_t *pdev,
 	SET_HTC_PACKET_NET_BUF_CONTEXT(&pkt->htc_pkt, msg);
 
 #ifdef ATH_11AC_TXCOMPACT
-	if (htc_send_pkt(pdev->htc_pdev, &pkt->htc_pkt) == QDF_STATUS_SUCCESS) {
+	if (htc_send_pkt(pdev->htc_pdev, &pkt->htc_pkt) == QDF_STATUS_SUCCESS)
 		htt_htc_misc_pkt_list_add(pdev, pkt);
-	} else {
-		qdf_nbuf_free(msg);
-		htt_htc_pkt_free(pdev, pkt);
-	}
 #else
 	htc_send_pkt(pdev->htc_pdev, &pkt->htc_pkt);
 #endif

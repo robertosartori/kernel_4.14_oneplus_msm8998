@@ -78,7 +78,7 @@
 
 static struct target_if_ctx *g_target_if_ctx;
 
-struct target_if_ctx *target_if_get_ctx(void)
+struct target_if_ctx *target_if_get_ctx()
 {
 	return g_target_if_ctx;
 }
@@ -353,9 +353,6 @@ static void target_if_target_tx_ops_register(
 	target_tx_ops->tgt_is_tgt_type_qca9888 =
 		target_is_tgt_type_qca9888;
 
-	target_tx_ops->tgt_is_tgt_type_adrastea =
-		target_is_tgt_type_adrastea;
-
 	target_tx_ops->tgt_get_tgt_type =
 		lmac_get_tgt_type;
 
@@ -577,9 +574,4 @@ bool target_is_tgt_type_qca9984(uint32_t target_type)
 bool target_is_tgt_type_qca9888(uint32_t target_type)
 {
 	return target_type == TARGET_TYPE_QCA9888;
-}
-
-bool target_is_tgt_type_adrastea(uint32_t target_type)
-{
-	return target_type == TARGET_TYPE_ADRASTEA;
 }

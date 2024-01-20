@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018,2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2018 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -788,9 +788,9 @@ static void wlan_ipa_uc_set_quota(struct wlan_ipa_priv *ipa_ctx,
 	qdf_mutex_acquire(&ipa_ctx->ipa_lock);
 	if (false == ipa_ctx->resource_loading) {
 		qdf_mutex_release(&ipa_ctx->ipa_lock);
+	} else {
 		cdp_ipa_uc_set_quota(ipa_ctx->dp_soc, ipa_ctx->dp_pdev,
 				     quota_bytes);
-	} else {
 		qdf_mutex_release(&ipa_ctx->ipa_lock);
 	}
 }
@@ -940,9 +940,6 @@ static void __wlan_ipa_wdi_meter_notifier_cb(qdf_ipa_wdi_meter_evt_type_t evt,
 			QDF_IPA_SET_WIFI_QUOTA_SET_VALID(ipa_set_quota)	=
 				ipa_ctx->ipa_quota_rsp.success;
 		}
-		break;
-
-	default:
 		break;
 	}
 }

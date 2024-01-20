@@ -166,11 +166,6 @@ static QDF_STATUS wifi_pos_process_set_cap_req(struct wlan_objmgr_psoc *psoc,
 	struct wifi_pos_user_defined_caps *caps =
 				(struct wifi_pos_user_defined_caps *)req->buf;
 
-	if (!wifi_pos_obj) {
-		wifi_pos_err("wifi_pos priv obj is null");
-		return QDF_STATUS_E_INVAL;
-	}
-
 	wifi_pos_debug("Received set cap req pid(%d), len(%d)",
 			req->pid, req->buf_len);
 
@@ -191,11 +186,6 @@ static QDF_STATUS wifi_pos_process_get_cap_req(struct wlan_objmgr_psoc *psoc,
 	struct wifi_pos_oem_get_cap_rsp cap_rsp = { { {0} } };
 	struct wifi_pos_psoc_priv_obj *wifi_pos_obj =
 					wifi_pos_get_psoc_priv_obj(psoc);
-
-	if (!wifi_pos_obj) {
-		wifi_pos_err("wifi_pos priv obj is null");
-		return QDF_STATUS_E_INVAL;
-	}
 
 	wifi_pos_debug("Received get cap req pid(%d), len(%d)",
 			req->pid, req->buf_len);
@@ -295,11 +285,6 @@ static QDF_STATUS wifi_pos_process_ch_info_req(struct wlan_objmgr_psoc *psoc,
 	struct wifi_pos_psoc_priv_obj *wifi_pos_obj =
 					wifi_pos_get_psoc_priv_obj(psoc);
 
-	if (!wifi_pos_obj) {
-		wifi_pos_err("wifi_pos priv obj is null");
-		return QDF_STATUS_E_INVAL;
-	}
-
 	wifi_pos_debug("Received ch info req pid(%d), len(%d)",
 			req->pid, req->buf_len);
 
@@ -384,11 +369,6 @@ static QDF_STATUS wifi_pos_process_app_reg_req(struct wlan_objmgr_psoc *psoc,
 	struct wifi_pos_psoc_priv_obj *wifi_pos_obj =
 			wifi_pos_get_psoc_priv_obj(psoc);
 
-	if (!wifi_pos_obj) {
-		wifi_pos_err("wifi_pos priv obj is null");
-		return QDF_STATUS_E_INVAL;
-	}
-
 	wifi_pos_err("Received App Req Req pid(%d), len(%d)",
 			req->pid, req->buf_len);
 
@@ -404,10 +384,8 @@ static QDF_STATUS wifi_pos_process_app_reg_req(struct wlan_objmgr_psoc *psoc,
 	}
 
 	wifi_pos_debug("Valid App Req Req from pid(%d)", req->pid);
-	qdf_spin_lock_bh(&wifi_pos_obj->wifi_pos_lock);
 	wifi_pos_obj->is_app_registered = true;
 	wifi_pos_obj->app_pid = req->pid;
-	qdf_spin_unlock_bh(&wifi_pos_obj->wifi_pos_lock);
 
 	vdev_idx = 0;
 	wlan_objmgr_iterate_obj_list(psoc, WLAN_VDEV_OP,

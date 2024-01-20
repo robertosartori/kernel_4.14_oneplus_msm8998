@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2018, 2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2018 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -38,7 +38,6 @@
 #include "sme_power_save.h"
 #include "nan_api.h"
 #include "wmi_unified.h"
-#include "wmi_unified_param.h"
 
 struct wmi_twt_enable_complete_event_param;
 /*--------------------------------------------------------------------------
@@ -204,34 +203,6 @@ typedef void (*lost_link_info_cb)(hdd_handle_t hdd_handle,
 typedef void (*hidden_ssid_cb)(hdd_handle_t hdd_handle,
 				uint8_t vdev_id);
 
-/**
- * typedef sme_get_isolation_cb - get isolation callback fun
- * @param: isolation result reported by firmware
- * @pcontext: Opaque context that the client can use to associate the
- *    callback with the request
- */
-typedef void (*sme_get_isolation_cb)(struct sir_isolation_resp *param,
-				     void *pcontext);
-/**
- * typedef bcn_report_cb - recv bcn callback fun
- * @hdd_handle: HDD handle registered with SME
- * @beacon_report: Beacon report structure
- */
-typedef void (*beacon_report_cb)(hdd_handle_t hdd_handle,
-				 struct wlan_beacon_report *beacon_report);
-
-/**
- * beacon_pause_cb : scan start callback fun
- * @hdd_handler: HDD handler
- * @vdev_id: vdev id
- * @type: scan event type
- * @is_disconnected: Driver is in dis connected state or not
- */
-typedef void (*beacon_pause_cb)(hdd_handle_t hdd_handle,
-				uint8_t vdev_id,
-				enum scan_event_type type,
-				bool is_disconnected);
-
 typedef struct tagSmeStruct {
 	eSmeState state;
 	qdf_mutex_t lkSmeGlobalLock;
@@ -280,8 +251,6 @@ typedef struct tagSmeStruct {
 	void (*pget_peer_info_ext_ind_cb)(struct sir_peer_info_ext_resp *param,
 		void *pcontext);
 	void *pget_peer_info_ext_cb_context;
-	sme_get_isolation_cb get_isolation_cb;
-	void *get_isolation_cb_context;
 #ifdef FEATURE_WLAN_EXTSCAN
 	void (*pExtScanIndCb)(void *, const uint16_t, void *);
 #endif /* FEATURE_WLAN_EXTSCAN */
@@ -342,24 +311,6 @@ typedef struct tagSmeStruct {
 						  void *context,
 						  wmi_mws_coex_cmd_id cmd_id);
 #endif /* WLAN_MWS_INFO_DEBUGFS */
-
-#ifdef WLAN_BCN_RECV_FEATURE
-	beacon_report_cb beacon_report_cb;
-	beacon_pause_cb beacon_pause_cb;
-#endif
-#ifdef FEATURE_OEM_DATA
-	void (*oem_data_event_handler_cb)
-			(const struct oem_data *oem_event_data,
-			 uint8_t vdev_id);
-	uint8_t oem_data_vdev_id;
-#endif
-#ifdef WLAN_FEATURE_ROAM_OFFLOAD
-	sme_get_raom_scan_ch_Callback roam_scan_ch_callback;
-	void *roam_scan_ch_get_context;
-#endif
-#if defined(CLD_PM_QOS) && defined(WLAN_FEATURE_LL_MODE)
-	void (*beacon_latency_event_cb)(uint32_t latency_level);
-#endif
 } tSmeStruct, *tpSmeStruct;
 
 #endif /* #if !defined( __SMEINTERNAL_H ) */

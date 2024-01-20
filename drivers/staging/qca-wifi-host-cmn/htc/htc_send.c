@@ -572,6 +572,9 @@ static QDF_STATUS htc_issue_packets(HTC_TARGET *target,
 			 * frames, since data frames were already mapped as they
 			 * entered into the driver.
 			 */
+			pPacket->PktInfo.AsTx.Flags |=
+				HTC_TX_PACKET_FLAG_FIXUP_NETBUF;
+
 			ret = qdf_nbuf_map(target->osdev,
 				GET_HTC_PACKET_NET_BUF_CONTEXT(pPacket),
 				QDF_DMA_TO_DEVICE);
@@ -583,8 +586,6 @@ static QDF_STATUS htc_issue_packets(HTC_TARGET *target,
 				status = QDF_STATUS_E_FAILURE;
 				break;
 			}
-			pPacket->PktInfo.AsTx.Flags |=
-				HTC_TX_PACKET_FLAG_FIXUP_NETBUF;
 		}
 
 		if (!pEndpoint->async_update) {
@@ -1036,10 +1037,8 @@ static enum HTC_SEND_QUEUE_RESULT htc_try_send(HTC_TARGET *target,
 				/* pop off caller's queue */
 				pPacket = htc_packet_dequeue(pCallersSendQueue);
 				A_ASSERT(pPacket != NULL);
-				if (pPacket)
-					/* insert into local queue */
-					HTC_PACKET_ENQUEUE(&sendQueue,
-							   pPacket);
+				/* insert into local queue */
+				HTC_PACKET_ENQUEUE(&sendQueue, pPacket);
 			}
 
 			/* the caller's queue has all the packets that won't fit

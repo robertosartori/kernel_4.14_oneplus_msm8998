@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2018, 2021 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4297,7 +4297,6 @@ uint32_t dot11f_unpack_ie_ese_version(tpAniSirGlobal pCtx,
 
 #define SigIeESEVersion (0x0035)
 
-
 uint32_t dot11f_unpack_ie_ext_cap(tpAniSirGlobal pCtx,
 				 uint8_t *pBuf,
 				 uint8_t ielen,
@@ -8337,7 +8336,7 @@ uint32_t dot11f_unpack_ie_esp_information(tpAniSirGlobal pCtx,
 	uint32_t status = DOT11F_PARSE_SUCCESS;
 	(void) pBuf; (void)ielen; /* Shutup the compiler */
 	if (pDst->present)
-		return DOT11F_DUPLICATE_IE;
+		status = DOT11F_DUPLICATE_IE;
 	pDst->present = 1;
 	pDst->num_data = (uint8_t)(ielen);
 	if (ielen > 96) {
@@ -8362,7 +8361,7 @@ uint32_t dot11f_unpack_ie_ext_chan_switch_ann(tpAniSirGlobal pCtx,
 	uint32_t status = DOT11F_PARSE_SUCCESS;
 	(void) pBuf; (void)ielen; /* Shutup the compiler */
 	if (pDst->present)
-		return DOT11F_DUPLICATE_IE;
+		status = DOT11F_DUPLICATE_IE;
 	pDst->present = 1;
 	if (unlikely(ielen < 1)) {
 		pDst->present = 0;
@@ -8410,7 +8409,7 @@ uint32_t dot11f_unpack_ie_fils_assoc_delay_info(tpAniSirGlobal pCtx,
 	uint32_t status = DOT11F_PARSE_SUCCESS;
 	(void) pBuf; (void)ielen; /* Shutup the compiler */
 	if (pDst->present)
-		return DOT11F_DUPLICATE_IE;
+		status = DOT11F_DUPLICATE_IE;
 	pDst->present = 1;
 	if (unlikely(ielen < 1)) {
 		pDst->present = 0;
@@ -8677,7 +8676,7 @@ uint32_t dot11f_unpack_ie_he_cap(tpAniSirGlobal pCtx,
 	uint8_t tmp81__;
 	(void) pBuf; (void)ielen; /* Shutup the compiler */
 	if (pDst->present)
-		return DOT11F_DUPLICATE_IE;
+		status = DOT11F_DUPLICATE_IE;
 	pDst->present = 1;
 	if (unlikely(ielen < 4)) {
 		pDst->present = 0;
@@ -8897,7 +8896,7 @@ uint32_t dot11f_unpack_ie_he_op(tpAniSirGlobal pCtx,
 	uint32_t tmp82__;
 	(void) pBuf; (void)ielen; /* Shutup the compiler */
 	if (pDst->present)
-		return DOT11F_DUPLICATE_IE;
+		status = DOT11F_DUPLICATE_IE;
 	pDst->present = 1;
 	if (unlikely(ielen < 4)) {
 		pDst->present = 0;
@@ -9111,7 +9110,7 @@ uint32_t dot11f_unpack_ie_mu_edca_param_set(tpAniSirGlobal pCtx,
 	uint8_t tmp92__;
 	(void) pBuf; (void)ielen; /* Shutup the compiler */
 	if (pDst->present)
-		return DOT11F_DUPLICATE_IE;
+		status = DOT11F_DUPLICATE_IE;
 	pDst->present = 1;
 	if (unlikely(ielen < 1)) {
 		pDst->present = 0;
@@ -9275,7 +9274,7 @@ uint32_t dot11f_unpack_ie_roaming_consortium_sel(tpAniSirGlobal pCtx,
 	uint32_t status = DOT11F_PARSE_SUCCESS;
 	(void) pBuf; (void)ielen; /* Shutup the compiler */
 	if (pDst->present)
-		return DOT11F_DUPLICATE_IE;
+		status = DOT11F_DUPLICATE_IE;
 	pDst->present = 1;
 	pDst->num_data = (uint8_t)(ielen);
 	DOT11F_MEMCPY(pCtx, pDst->data, pBuf, (ielen));
@@ -9524,9 +9523,6 @@ static const tIEDefn IES_AssocRequest[] = {
 	offsetof(tDot11fIEMobilityDomain, present), 0, "MobilityDomain",
 	0, 5, 5, SigIeMobilityDomain, {0, 0, 0, 0, 0},
 	0, DOT11F_EID_MOBILITYDOMAIN, 0, 0, },
-	{ offsetof(tDot11fAssocRequest, FTInfo), offsetof(tDot11fIEFTInfo,
-	present), 0, "FTInfo", 0, 84, 222, SigIeFTInfo, {0, 0, 0, 0, 0},
-	0, DOT11F_EID_FTINFO, 0, 0, },
 	{ offsetof(tDot11fAssocRequest, SuppOperatingClasses),
 	offsetof(tDot11fIESuppOperatingClasses, present), 0,
 	"SuppOperatingClasses", 0, 3, 34, SigIeSuppOperatingClasses,
@@ -11281,7 +11277,7 @@ static const tIEDefn IES_RadioMeasurementRequest[] = {
 	{ offsetof(tDot11fRadioMeasurementRequest, MeasurementRequest),
 	offsetof(tDot11fIEMeasurementRequest, present),
 	offsetof(tDot11fRadioMeasurementRequest, num_MeasurementRequest),
-	"MeasurementRequest", 5, 6, 18, SigIeMeasurementRequest, {0, 0, 0, 0, 0},
+	"MeasurementRequest", 2, 6, 18, SigIeMeasurementRequest, {0, 0, 0, 0, 0},
 	0, DOT11F_EID_MEASUREMENTREQUEST, 0, 1, },
 	{0, 0, 0, NULL, 0, 0, 0, 0, {0, 0, 0, 0, 0}, 0, 0xff, 0, },};
 
@@ -15753,6 +15749,8 @@ uint32_t dot11f_get_packed_ie_he_op(tpAniSirGlobal pCtx,
 				*pnNeeded += 1;
 				break;
 			}
+		} else {
+			break;
 		}
 		if (pIe->mbssid_ap) {
 			switch (pIe->mbssid_ap) {
@@ -15760,6 +15758,8 @@ uint32_t dot11f_get_packed_ie_he_op(tpAniSirGlobal pCtx,
 				*pnNeeded += 1;
 				break;
 			}
+		} else {
+			break;
 		}
 		break;
 	}
@@ -26298,6 +26298,8 @@ uint32_t dot11f_pack_ie_he_op(tpAniSirGlobal pCtx,
 				pBuf += 1;
 				break;
 			}
+		} else {
+			break;
 		}
 		if (pSrc->mbssid_ap) {
 			switch (pSrc->mbssid_ap) {
@@ -26307,6 +26309,8 @@ uint32_t dot11f_pack_ie_he_op(tpAniSirGlobal pCtx,
 				/* fieldsEndFlag = 1 */
 				break;
 			}
+		} else {
+			break;
 		}
 		break;
 	}

@@ -1254,30 +1254,6 @@ int pld_athdiag_write(struct device *dev, uint32_t offset,
 }
 
 /**
- * pld_smmu_get_domain() - Get SMMU domain
- * @dev: device
- *
- * Return: Pointer to the domain
- */
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
-void *pld_smmu_get_domain(struct device *dev)
-{
-	void *ptr = NULL;
-	enum pld_bus_type type = pld_get_bus_type(dev);
-
-	switch (type) {
-	case PLD_BUS_TYPE_SNOC:
-		ptr = pld_snoc_smmu_get_domain(dev);
-		break;
-	default:
-		pr_err("Invalid device type %d\n", type);
-		break;
-	}
-
-	return ptr;
-}
-#else
-/**
  * pld_smmu_get_mapping() - Get SMMU mapping context
  * @dev: device
  *
@@ -1302,7 +1278,6 @@ void *pld_smmu_get_mapping(struct device *dev)
 
 	return ptr;
 }
-#endif
 
 /**
  * pld_smmu_map() - Map SMMU
@@ -1336,40 +1311,6 @@ int pld_smmu_map(struct device *dev, phys_addr_t paddr,
 
 	return ret;
 }
-
-#ifdef CONFIG_SMMU_S1_UNMAP
-/**
- * pld_smmu_unmap() - Unmap SMMU
- * @dev: device
- * @iova_addr: IOVA address to be unmapped
- * @size: size to be unmapped
- *
- * Return: 0 for success
- *         Non zero failure code for errors
- */
-int pld_smmu_unmap(struct device *dev,
-		   uint32_t iova_addr, size_t size)
-{
-	int ret = 0;
-	enum pld_bus_type type = pld_get_bus_type(dev);
-
-	switch (type) {
-	case PLD_BUS_TYPE_SNOC:
-		ret = pld_snoc_smmu_unmap(dev, iova_addr, size);
-		break;
-	case PLD_BUS_TYPE_PCIE:
-		pr_err("Not supported on type %d\n", type);
-		ret = -ENODEV;
-		break;
-	default:
-		pr_err("Invalid device type %d\n", type);
-		ret = -EINVAL;
-		break;
-	}
-
-	return ret;
-}
-#endif
 
 /**
  * pld_get_user_msi_assignment() - Get MSI assignment information
@@ -1638,92 +1579,26 @@ int pld_is_fw_rejuvenate(struct device *dev)
 	return ret;
 }
 
-int pld_idle_shutdown(struct device *dev,
-		      int (*shutdown_cb)(struct device *dev))
-{
-	int errno = -EINVAL;
-	enum pld_bus_type type;
-
-	if (!shutdown_cb)
-		return -EINVAL;
-
-	type = pld_get_bus_type(dev);
-	switch (type) {
-	case PLD_BUS_TYPE_SDIO:
-	case PLD_BUS_TYPE_USB:
-	case PLD_BUS_TYPE_PCIE:
-		errno = shutdown_cb(dev);
-		break;
-	case PLD_BUS_TYPE_SNOC:
-		errno = pld_snoc_idle_shutdown(dev);
-		break;
-	default:
-		pr_err("Invalid device type %d\n", type);
-		break;
-	}
-
-	return errno;
-}
-
-int pld_idle_restart(struct device *dev,
-		     int (*restart_cb)(struct device *dev))
-{
-	int errno = -EINVAL;
-	enum pld_bus_type type;
-
-	if (!restart_cb)
-		return -EINVAL;
-
-	type = pld_get_bus_type(dev);
-	switch (type) {
-	case PLD_BUS_TYPE_SDIO:
-	case PLD_BUS_TYPE_USB:
-	case PLD_BUS_TYPE_PCIE:
-		errno = restart_cb(dev);
-		break;
-	case PLD_BUS_TYPE_SNOC:
-		errno = pld_snoc_idle_restart(dev);
-		break;
-	default:
-		pr_err("Invalid device type %d\n", type);
-		break;
-	}
-
-	return errno;
-}
-
-#ifdef FEATURE_WLAN_TIME_SYNC_FTM
 /**
- * pld_get_audio_wlan_timestamp() - Get audio timestamp
- * @dev: device pointer
- * @type: trigger type
- * @ts: audio timestamp
+ * pld_block_shutdown() - Block/Unblock modem shutdown
+ * @dev: device
+ * @status: status true or false
  *
- * This API can be used to get audio timestamp.
+ * This API will be called to Block/Unblock modem shutdown.
+ * True - Block shutdown
+ * False - Unblock shutdown
  *
- * Return: 0 if trigger to get audio timestamp is successful
- *         Non zero failure code for errors
+ * Return: None
  */
-int pld_get_audio_wlan_timestamp(struct device *dev,
-				 enum pld_wlan_time_sync_trigger_type type,
-				 uint64_t *ts)
+void pld_block_shutdown(struct device *dev, bool status)
 {
-	int ret = 0;
-	enum pld_bus_type bus_type;
+	enum pld_bus_type type = pld_get_bus_type(dev);
 
-	bus_type = pld_get_bus_type(dev);
-	switch (bus_type) {
+	switch (type) {
 	case PLD_BUS_TYPE_SNOC:
-		ret = pld_snoc_get_audio_wlan_timestamp(dev, type, ts);
-		break;
-	case PLD_BUS_TYPE_PCIE:
-	case PLD_BUS_TYPE_SDIO:
-	case PLD_BUS_TYPE_USB:
+		pld_snoc_block_shutdown(status);
 		break;
 	default:
-		ret = -EINVAL;
 		break;
 	}
-	return ret;
 }
-#endif /* FEATURE_WLAN_TIME_SYNC_FTM */

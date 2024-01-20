@@ -65,10 +65,6 @@
 #include <asm/dma-iommu.h>
 #include <linux/iommu.h>
 #endif
-#include <qdf_hang_event_notifier.h>
-#include <qdf_notifier.h>
-#include <qwlan_version.h>
-#include <qdf_trace.h>
 /* Preprocessor Definitions and Constants */
 
 /* Preprocessor Definitions and Constants */
@@ -89,13 +85,6 @@ static struct ol_if_ops  dp_ol_if_ops = {
 	.rx_mic_error = wma_rx_mic_error_ind
     /* TODO: Add any other control path calls required to OL_IF/WMA layer */
 };
-
-struct cds_hang_event_fixed_param {
-	uint32_t tlv_header;
-	uint32_t recovery_reason;
-	char driver_version[11];
-	char hang_event_version[3];
-} qdf_packed;
 
 static void cds_trigger_recovery_work(void *param);
 
@@ -188,7 +177,7 @@ QDF_STATUS cds_init(void)
 	qdf_mc_timer_manager_init();
 	qdf_event_list_init();
 	qdf_cpuhp_init();
-	qdf_register_self_recovery_callback(cds_trigger_recovery_psoc);
+	qdf_register_self_recovery_callback(__cds_trigger_recovery);
 	qdf_register_fw_down_callback(cds_is_fw_down);
 	qdf_register_ssr_protect_callbacks(cds_ssr_protect,
 					   cds_ssr_unprotect);
@@ -214,8 +203,6 @@ QDF_STATUS cds_init(void)
 
 	return QDF_STATUS_SUCCESS;
 deinit:
-	qdf_cpuhp_deinit();
-	qdf_event_list_destroy();
 	qdf_mc_timer_manager_exit();
 	qdf_mem_exit();
 	qdf_lock_stats_deinit();
@@ -314,7 +301,6 @@ cds_cfg_update_ac_specs_params(struct txrx_pdev_cfg_param_t *olcfg,
 	}
 }
 
-#if defined(QCA_LL_TX_FLOW_CONTROL_V2) || defined(QCA_LL_PDEV_TX_FLOW_CONTROL)
 static inline void
 cds_cdp_set_flow_control_params(struct cds_config_info *cds_cfg,
 				struct txrx_pdev_cfg_param_t *cdp_cfg)
@@ -323,12 +309,6 @@ cds_cdp_set_flow_control_params(struct cds_config_info *cds_cfg,
 	cdp_cfg->tx_flow_start_queue_offset =
 				 cds_cfg->tx_flow_start_queue_offset;
 }
-#else
-static inline void
-cds_cdp_set_flow_control_params(struct cds_config_info *cds_cfg,
-				struct txrx_pdev_cfg_param_t *cdp_cfg)
-{}
-#endif
 
 /**
  * cds_cdp_cfg_attach() - attach data path config module
@@ -356,7 +336,7 @@ static void cds_cdp_cfg_attach(struct cds_config_info *cds_cfg)
 	gp_cds_context->cfg_ctx = cdp_cfg_attach(soc, gp_cds_context->qdf_ctx,
 					(void *)(&cdp_cfg));
 	if (!gp_cds_context->cfg_ctx) {
-		WMA_LOGD("%s: failed to init cfg handle", __func__);
+		WMA_LOGP("%s: failed to init cfg handle", __func__);
 		return;
 	}
 
@@ -456,47 +436,6 @@ cds_set_ac_specs_params(struct cds_config_info *cds_cfg)
 		cds_cfg->ac_specs[i] = cds_ctx->ac_specs[i];
 	}
 }
-
-static int cds_hang_event_notifier_call(struct notifier_block *block,
-					unsigned long state,
-					void *data)
-{
-	struct qdf_notifer_data *cds_hang_data = data;
-	uint32_t total_len;
-	struct cds_hang_event_fixed_param *cmd;
-	uint8_t *cds_hang_evt_buff;
-
-	if (!cds_hang_data)
-		return NOTIFY_STOP_MASK;
-
-	cds_hang_evt_buff = cds_hang_data->hang_data;
-
-	if (!cds_hang_evt_buff)
-		return NOTIFY_STOP_MASK;
-
-	if (cds_hang_data->offset >= QDF_WLAN_MAX_HOST_OFFSET)
-		return NOTIFY_STOP_MASK;
-
-	total_len = sizeof(*cmd);
-
-	cds_hang_evt_buff = cds_hang_data->hang_data + cds_hang_data->offset;
-	cmd = (struct cds_hang_event_fixed_param *)cds_hang_evt_buff;
-	QDF_HANG_EVT_SET_HDR(&cmd->tlv_header, HANG_EVT_TAG_CDS,
-			     QDF_HANG_GET_STRUCT_TLVLEN(*cmd));
-
-	cmd->recovery_reason = gp_cds_context->recovery_reason;
-
-	qdf_mem_copy(&cmd->driver_version, QWLAN_VERSIONSTR, 11);
-
-	qdf_mem_copy(&cmd->hang_event_version, QDF_HANG_EVENT_VERSION, 3);
-
-	cds_hang_data->offset += total_len;
-	return NOTIFY_OK;
-}
-
-static qdf_notif_block cds_hang_event_notifier = {
-	.notif_block.notifier_call = cds_hang_event_notifier_call,
-};
 
 /**
  * cds_open() - open the CDS Module
@@ -712,8 +651,6 @@ QDF_STATUS cds_open(struct wlan_objmgr_psoc *psoc)
 		goto deregister_modules;
 	}
 
-	qdf_hang_event_register_notifier(&cds_hang_event_notifier);
-
 	return QDF_STATUS_SUCCESS;
 
 deregister_modules:
@@ -866,6 +803,7 @@ QDF_STATUS cds_pre_enable(void)
 	status = wma_wait_for_ready_event(gp_cds_context->wma_context);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		cds_err("Failed to wait for ready event; status: %u", status);
+		cds_trigger_recovery(QDF_REASON_UNSPECIFIED);
 		goto stop_wmi;
 	}
 
@@ -892,7 +830,6 @@ stop_wmi:
 	}
 	htc_stop(gp_cds_context->htc_ctx);
 
-	wma_wmi_work_close();
 exit_with_status:
 	return status;
 }
@@ -1109,7 +1046,7 @@ QDF_STATUS cds_post_disable(void)
 	 * - Clean up CE tasklets.
 	 */
 
-	cds_debug("send deinit sequence to firmware");
+	cds_info("send deinit sequence to firmware");
 	if (!(cds_is_driver_recovering() || cds_is_driver_in_bad_state()))
 		cds_suspend_target(wma_handle);
 	hif_disable_isr(hif_ctx);
@@ -1145,7 +1082,6 @@ QDF_STATUS cds_close(struct wlan_objmgr_psoc *psoc)
 {
 	QDF_STATUS qdf_status;
 
-	qdf_hang_event_unregister_notifier(&cds_hang_event_notifier);
 	qdf_status = cds_sched_close();
 	QDF_ASSERT(QDF_IS_STATUS_SUCCESS(qdf_status));
 	if (QDF_IS_STATUS_ERROR(qdf_status))
@@ -1701,9 +1637,6 @@ QDF_STATUS cds_get_vdev_types(enum QDF_OPMODE mode, uint32_t *type,
 	case QDF_NDI_MODE:
 		*type = WMI_VDEV_TYPE_NDI;
 		break;
-	case QDF_NAN_DISC_MODE:
-		*type = WMI_VDEV_TYPE_NAN;
-		break;
 	default:
 		cds_err("Invalid device mode %d", mode);
 		status = QDF_STATUS_E_INVAL;
@@ -1751,24 +1684,6 @@ bool cds_is_packet_log_enabled(void)
 	}
 	return hdd_ctx->config->enablePacketLog;
 }
-
-/**
- * cds_get_packet_log_buffer_size() - get packet log buffer size
- *
- * Return: packet log buffer size in MB
- */
-uint8_t cds_get_packet_log_buffer_size(void)
-{
-	struct hdd_context *hdd_ctx;
-
-	hdd_ctx = gp_cds_context->hdd_context;
-	if ((NULL == hdd_ctx) || (NULL == hdd_ctx->config)) {
-		cds_alert("Hdd Context is Null");
-		return 0;
-	}
-	return hdd_ctx->config->pktlog_buf_size;
-}
-
 #endif
 
 static int cds_force_assert_target_via_pld(qdf_device_t qdf)
@@ -1952,13 +1867,6 @@ void __cds_trigger_recovery(enum qdf_hang_reason reason, const char *func,
 
 	cds_trigger_recovery_handler(func, line);
 }
-
-void cds_trigger_recovery_psoc(void *psoc, enum qdf_hang_reason reason,
-			       const char *func, const uint32_t line)
-{
-	__cds_trigger_recovery(reason, func, line);
-}
-
 
 /**
  * cds_get_recovery_reason() - get self recovery reason
@@ -2443,7 +2351,7 @@ QDF_STATUS cds_flush_logs(uint32_t is_fatal,
 		  is_fatal, indicator, reason_code);
 
 	if (dump_mac_trace)
-		qdf_trace_dump_all(p_cds_context->mac_context, 0, 0, 100, 0);
+		qdf_trace_dump_all(p_cds_context->mac_context, 0, 0, 500, 0);
 
 	if (WLAN_LOG_INDICATOR_HOST_ONLY == indicator) {
 		cds_wlan_flush_host_logs_for_fatal();
@@ -2726,8 +2634,8 @@ void cds_svc_fw_shutdown_ind(struct device *dev)
 inline void cds_pkt_stats_to_logger_thread(void *pl_hdr, void *pkt_dump,
 						void *data)
 {
-	if (cds_get_ring_log_level(RING_ID_PER_PACKET_STATS) !=
-						WLAN_LOG_LEVEL_ACTIVE)
+	if (cds_get_ring_log_level(RING_ID_PER_PACKET_STATS) <
+						WLAN_LOG_LEVEL_REPRO)
 		return;
 
 	wlan_pkt_stats_to_logger_thread(pl_hdr, pkt_dump, data);
@@ -2851,54 +2759,6 @@ void cds_incr_arp_stats_tx_tgt_acked(void)
 }
 
 #ifdef ENABLE_SMMU_S1_TRANSLATION
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
-QDF_STATUS cds_smmu_mem_map_setup(qdf_device_t osdev, bool ipa_present)
-{
-	struct iommu_domain *domain;
-	bool ipa_smmu_enabled;
-	bool wlan_smmu_enabled;
-
-	domain = pld_smmu_get_domain(osdev->dev);
-	if (domain) {
-		int attr = 0;
-		int errno = iommu_domain_get_attr(domain,
-						  DOMAIN_ATTR_S1_BYPASS, &attr);
-
-		wlan_smmu_enabled = !errno && !attr;
-	} else {
-		cds_info("No SMMU mapping present");
-		wlan_smmu_enabled = false;
-	}
-
-	if (!wlan_smmu_enabled) {
-		osdev->smmu_s1_enabled = false;
-		goto exit_with_success;
-	}
-
-	if (!ipa_present) {
-		osdev->smmu_s1_enabled = true;
-		goto exit_with_success;
-	}
-
-	ipa_smmu_enabled = qdf_get_ipa_smmu_enabled();
-
-	osdev->smmu_s1_enabled = ipa_smmu_enabled && wlan_smmu_enabled;
-	if (ipa_smmu_enabled != wlan_smmu_enabled) {
-		cds_err("SMMU mismatch; IPA:%s, WLAN:%s",
-			ipa_smmu_enabled ? "enabled" : "disabled",
-			wlan_smmu_enabled ? "enabled" : "disabled");
-		return QDF_STATUS_E_FAILURE;
-	}
-
-exit_with_success:
-	osdev->domain = domain;
-
-	cds_info("SMMU S1 %s", osdev->smmu_s1_enabled ? "enabled" : "disabled");
-
-	return QDF_STATUS_SUCCESS;
-}
-
-#else
 QDF_STATUS cds_smmu_mem_map_setup(qdf_device_t osdev, bool ipa_present)
 {
 	struct dma_iommu_mapping *mapping;
@@ -2944,7 +2804,6 @@ exit_with_success:
 
 	return QDF_STATUS_SUCCESS;
 }
-#endif
 
 #ifdef IPA_OFFLOAD
 int cds_smmu_map_unmap(bool map, uint32_t num_buf, qdf_mem_info_t *buf_arr)
@@ -2959,21 +2818,12 @@ int cds_smmu_map_unmap(bool map, uint32_t num_buf, qdf_mem_info_t *buf_arr)
 #endif
 
 #else
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
-QDF_STATUS cds_smmu_mem_map_setup(qdf_device_t osdev, bool ipa_present)
-{
-	osdev->smmu_s1_enabled = false;
-	osdev->domain = NULL;
-	return QDF_STATUS_SUCCESS;
-}
-#else
 QDF_STATUS cds_smmu_mem_map_setup(qdf_device_t osdev, bool ipa_present)
 {
 	osdev->smmu_s1_enabled = false;
 	osdev->iommu_mapping = NULL;
 	return QDF_STATUS_SUCCESS;
 }
-#endif
 
 int cds_smmu_map_unmap(bool map, uint32_t num_buf, qdf_mem_info_t *buf_arr)
 {

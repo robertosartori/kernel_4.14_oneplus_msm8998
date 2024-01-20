@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018, 2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2018 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -383,26 +383,32 @@ static int hdd_ipa_aggregated_rx_ind(qdf_nbuf_t skb)
 }
 #endif
 
-void hdd_ipa_send_nbuf_to_network(qdf_nbuf_t nbuf, qdf_netdev_t dev)
+void hdd_ipa_send_skb_to_network(qdf_nbuf_t skb, qdf_netdev_t dev)
 {
 	struct hdd_adapter *adapter = (struct hdd_adapter *) netdev_priv(dev);
 	int result;
 	unsigned int cpu_index;
+	uint8_t staid;
 	uint32_t enabled;
 
 	if (hdd_validate_adapter(adapter)) {
-		kfree_skb(nbuf);
+		kfree_skb(skb);
 		return;
 	}
 
 	if (cds_is_driver_unloading()) {
-		kfree_skb(nbuf);
+		kfree_skb(skb);
 		return;
 	}
 
 	if (adapter->device_mode == QDF_SAP_MODE) {
 		/* Send DHCP Indication to FW */
-		hdd_softap_inspect_dhcp_packet(adapter, nbuf, QDF_RX);
+		struct qdf_mac_addr *src_mac =
+			(struct qdf_mac_addr *)(skb->data +
+			QDF_NBUF_SRC_MAC_OFFSET);
+		if (QDF_STATUS_SUCCESS ==
+			hdd_softap_get_sta_id(adapter, src_mac, &staid))
+			hdd_inspect_dhcp_packet(adapter, staid, skb, QDF_RX);
 	}
 
 	/*
@@ -413,9 +419,9 @@ void hdd_ipa_send_nbuf_to_network(qdf_nbuf_t nbuf, qdf_netdev_t dev)
 	if (!enabled)
 		hdd_ipa_set_wake_up_idle(true);
 
-	nbuf->dev = adapter->dev;
-	nbuf->protocol = eth_type_trans(nbuf, nbuf->dev);
-	nbuf->ip_summed = CHECKSUM_NONE;
+	skb->dev = adapter->dev;
+	skb->protocol = eth_type_trans(skb, skb->dev);
+	skb->ip_summed = CHECKSUM_NONE;
 
 	cpu_index = wlan_hdd_get_cpu();
 
@@ -427,32 +433,28 @@ void hdd_ipa_send_nbuf_to_network(qdf_nbuf_t nbuf, qdf_netdev_t dev)
 	 */
 	if (adapter->device_mode == QDF_STA_MODE) {
 		++adapter->stats.rx_packets;
-		adapter->stats.rx_bytes += nbuf->len;
+		adapter->stats.rx_bytes += skb->len;
 	}
 
-	qdf_dp_trace_set_track(nbuf, QDF_RX);
+	qdf_dp_trace_set_track(skb, QDF_RX);
 
-	hdd_event_eapol_log(nbuf, QDF_RX);
+	hdd_event_eapol_log(skb, QDF_RX);
 	qdf_dp_trace_log_pkt(adapter->session_id,
-			     nbuf, QDF_RX, QDF_TRACE_DEFAULT_PDEV_ID);
-	DPTRACE(qdf_dp_trace(nbuf,
+			     skb, QDF_RX, QDF_TRACE_DEFAULT_PDEV_ID);
+	DPTRACE(qdf_dp_trace(skb,
 			     QDF_DP_TRACE_RX_HDD_PACKET_PTR_RECORD,
 			     QDF_TRACE_DEFAULT_PDEV_ID,
-			     qdf_nbuf_data_addr(nbuf),
-			     sizeof(qdf_nbuf_data(nbuf)), QDF_RX));
-	DPTRACE(qdf_dp_trace_data_pkt(nbuf, QDF_TRACE_DEFAULT_PDEV_ID,
+			     qdf_nbuf_data_addr(skb),
+			     sizeof(qdf_nbuf_data(skb)), QDF_RX));
+	DPTRACE(qdf_dp_trace_data_pkt(skb, QDF_TRACE_DEFAULT_PDEV_ID,
 				      QDF_DP_TRACE_RX_PACKET_RECORD, 0,
 				      QDF_RX));
 
-	result = hdd_ipa_aggregated_rx_ind(nbuf);
-	if (result == NET_RX_SUCCESS) {
+	result = hdd_ipa_aggregated_rx_ind(skb);
+	if (result == NET_RX_SUCCESS)
 		++adapter->hdd_stats.tx_rx_stats.rx_delivered[cpu_index];
-	} else {
+	else
 		++adapter->hdd_stats.tx_rx_stats.rx_refused[cpu_index];
-		DPTRACE(qdf_dp_log_proto_pkt_info(NULL, NULL, 0, 0, QDF_RX,
-						  QDF_TRACE_DEFAULT_MSDU_ID,
-						  QDF_TX_RX_STATUS_DROP));
-	}
 
 	/*
 	 * Restore PF_WAKE_UP_IDLE flag in the task structure

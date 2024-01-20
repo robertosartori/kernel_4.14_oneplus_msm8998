@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2018, 2021 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -9442,7 +9442,6 @@ typedef struct sDot11fAssocRequest{
 	tDot11fIERSNOpaque                     RSNOpaque;
 	tDot11fIEExtSuppRates                  ExtSuppRates;
 	tDot11fIEMobilityDomain                MobilityDomain;
-	tDot11fIEFTInfo                        FTInfo;
 	tDot11fIESuppOperatingClasses          SuppOperatingClasses;
 	tDot11fIEWAPIOpaque                    WAPIOpaque;
 	tDot11fIEWAPI                          WAPI;
@@ -10347,7 +10346,7 @@ typedef struct sDot11fRadioMeasurementRequest{
 	tDot11fFfDialogToken               DialogToken;
 	tDot11fFfNumOfRepetitions          NumOfRepetitions;
 	uint16_t                           num_MeasurementRequest;
-	tDot11fIEMeasurementRequest        MeasurementRequest[5];
+	tDot11fIEMeasurementRequest        MeasurementRequest[2];
 } tDot11fRadioMeasurementRequest;
 
 #define DOT11F_RADIOMEASUREMENTREQUEST (25)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2018 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -53,7 +53,7 @@
 #include <ol_txrx.h>
 #include <pktlog_ac_fmt.h>
 #include <cdp_txrx_handle.h>
-#include <wlan_pkt_capture_ucfg_api.h>
+
 #ifdef TX_CREDIT_RECLAIM_SUPPORT
 
 #define OL_TX_CREDIT_RECLAIM(pdev)					\
@@ -614,176 +614,23 @@ void ol_tx_flow_pool_unlock(struct ol_tx_desc_t *tx_desc)
 }
 #endif
 
-#ifdef WLAN_FEATURE_PKT_CAPTURE
-#define RESERVE_BYTES 100
-/**
- * ol_tx_pkt_capture_tx_completion_process(): process tx packets
- * for pkt capture mode
- * @pdev: device handler
- * @tx_desc: tx desc
- * @payload: tx data header
- * @tid:  tid number
- * @status: Tx status
- *
- * Return: none
- */
-static void
-ol_tx_pkt_capture_tx_completion_process(
-			ol_txrx_pdev_handle pdev,
-			struct ol_tx_desc_t *tx_desc,
-			struct htt_tx_data_hdr_information *payload_hdr,
-			uint8_t tid, uint8_t status)
-{
-	qdf_nbuf_t netbuf;
-	int nbuf_len;
-	struct qdf_tso_seg_elem_t *tso_seg = NULL;
-	struct ol_txrx_peer_t *peer;
-	uint8_t bssid[QDF_MAC_ADDR_SIZE];
-	uint8_t pkt_type = 0;
-
-	qdf_assert(tx_desc);
-
-	ol_tx_flow_pool_lock(tx_desc);
-	/*
-	 * In cases when vdev has gone down and tx completion
-	 * are received, leads to NULL vdev access.
-	 * So, check for NULL before dereferencing it.
-	 */
-	if (!tx_desc->vdev) {
-		ol_tx_flow_pool_unlock(tx_desc);
-		return;
-	}
-
-	ol_tx_flow_pool_unlock(tx_desc);
-
-	if (tx_desc->pkt_type == OL_TX_FRM_TSO) {
-		if (!tx_desc->tso_desc)
-			return;
-
-		tso_seg = tx_desc->tso_desc;
-		nbuf_len = tso_seg->seg.total_len;
-	} else {
-		int i, extra_frag_len = 0;
-
-		i = QDF_NBUF_CB_TX_NUM_EXTRA_FRAGS(tx_desc->netbuf);
-		if (i > 0)
-			extra_frag_len =
-			QDF_NBUF_CB_TX_EXTRA_FRAG_LEN(tx_desc->netbuf);
-		nbuf_len = qdf_nbuf_len(tx_desc->netbuf) - extra_frag_len;
-	}
-
-	qdf_spin_lock_bh(&pdev->peer_ref_mutex);
-	peer = TAILQ_FIRST(&tx_desc->vdev->peer_list);
-	qdf_spin_unlock_bh(&pdev->peer_ref_mutex);
-	if (!peer)
-		return;
-
-	qdf_spin_lock_bh(&peer->peer_info_lock);
-	qdf_mem_copy(bssid, &peer->mac_addr.raw, QDF_MAC_ADDR_SIZE);
-	qdf_spin_unlock_bh(&peer->peer_info_lock);
-
-	netbuf = qdf_nbuf_alloc(NULL,
-				roundup(nbuf_len + RESERVE_BYTES, 4),
-				RESERVE_BYTES, 4, false);
-	if (!netbuf)
-		return;
-
-	qdf_nbuf_put_tail(netbuf, nbuf_len);
-
-	if (tx_desc->pkt_type == OL_TX_FRM_TSO) {
-		uint8_t frag_cnt, num_frags = 0;
-		int frag_len = 0;
-		uint32_t tcp_seq_num;
-		uint16_t ip_len;
-
-		qdf_spin_lock_bh(&pdev->tso_seg_pool.tso_mutex);
-
-		if (tso_seg->seg.num_frags > 0)
-			num_frags = tso_seg->seg.num_frags - 1;
-
-		/*Num of frags in a tso seg cannot be less than 2 */
-		if (num_frags < 1) {
-			qdf_print("ERROR: num of frags in tso segment is %d\n",
-				  (num_frags + 1));
-			qdf_nbuf_free(netbuf);
-			qdf_spin_unlock_bh(&pdev->tso_seg_pool.tso_mutex);
-			return;
-		}
-
-		tcp_seq_num = tso_seg->seg.tso_flags.tcp_seq_num;
-		tcp_seq_num = qdf_cpu_to_be32(tcp_seq_num);
-
-		ip_len = tso_seg->seg.tso_flags.ip_len;
-		ip_len = qdf_cpu_to_be16(ip_len);
-
-		for (frag_cnt = 0; frag_cnt <= num_frags; frag_cnt++) {
-			qdf_mem_copy(qdf_nbuf_data(netbuf) + frag_len,
-				     tso_seg->seg.tso_frags[frag_cnt].vaddr,
-				     tso_seg->seg.tso_frags[frag_cnt].length);
-			frag_len += tso_seg->seg.tso_frags[frag_cnt].length;
-		}
-
-		qdf_spin_unlock_bh(&pdev->tso_seg_pool.tso_mutex);
-
-		qdf_mem_copy((qdf_nbuf_data(netbuf) + IPV4_PKT_LEN_OFFSET),
-			     &ip_len, sizeof(ip_len));
-		qdf_mem_copy((qdf_nbuf_data(netbuf) + IPV4_TCP_SEQ_NUM_OFFSET),
-			     &tcp_seq_num, sizeof(tcp_seq_num));
-	} else {
-		qdf_mem_copy(qdf_nbuf_data(netbuf),
-			     qdf_nbuf_data(tx_desc->netbuf),
-			     nbuf_len);
-	}
-
-	qdf_nbuf_push_head(
-			netbuf,
-			sizeof(struct htt_tx_data_hdr_information));
-	qdf_mem_copy(qdf_nbuf_data(netbuf), payload_hdr,
-		     sizeof(struct htt_tx_data_hdr_information));
-
-	ucfg_pkt_capture_tx_completion_process(
-				tx_desc->vdev_id,
-				netbuf, pkt_type,
-				tid, status,
-				TXRX_PKTCAPTURE_PKT_FORMAT_8023, bssid,
-				pdev->htt_pdev, payload_hdr->tx_retry_cnt);
-}
-#else
-static void
-ol_tx_pkt_capture_tx_completion_process(
-			ol_txrx_pdev_handle pdev,
-			struct ol_tx_desc_t *tx_desc,
-			struct htt_tx_data_hdr_information *payload_hdr,
-			uint8_t tid, uint8_t status)
-{
-}
-#endif /* WLAN_FEATURE_PKT_CAPTURE */
-
 #ifdef WLAN_FEATURE_TSF_PLUS
 static inline struct htt_tx_compl_ind_append_tx_tstamp *ol_tx_get_txtstamps(
-		u_int32_t *msg_word_header, u_int32_t **msg_word_payload,
-		int num_msdus)
+		u_int32_t *msg_word, int num_msdus)
 {
 	u_int32_t has_tx_tsf;
 	u_int32_t has_retry;
-
 	struct htt_tx_compl_ind_append_tx_tstamp *txtstamp_list = NULL;
 	struct htt_tx_compl_ind_append_retries *retry_list = NULL;
 	int offset_dwords;
 
-	if (num_msdus <= 0)
+	has_tx_tsf = HTT_TX_COMPL_IND_APPEND1_GET(*msg_word);
+	if (num_msdus <= 0 || !has_tx_tsf)
 		return NULL;
 
-	has_tx_tsf = HTT_TX_COMPL_IND_APPEND1_GET(*msg_word_header);
+	offset_dwords = 1 + ((num_msdus + 1) >> 1);
 
-	/* skip header and MSDUx ID part*/
-	offset_dwords = ((num_msdus + 1) >> 1);
-	*msg_word_payload += offset_dwords;
-
-	if (!has_tx_tsf)
-		return NULL;
-
-	has_retry = HTT_TX_COMPL_IND_APPEND_GET(*msg_word_header);
+	has_retry = HTT_TX_COMPL_IND_APPEND_GET(*msg_word);
 	if (has_retry) {
 		int retry_index = 0;
 		int width_for_each_retry =
@@ -791,49 +638,17 @@ static inline struct htt_tx_compl_ind_append_tx_tstamp *ol_tx_get_txtstamps(
 			3) >> 2;
 
 		retry_list = (struct htt_tx_compl_ind_append_retries *)
-			(*msg_word_payload + offset_dwords);
+			(msg_word + offset_dwords);
 		while (retry_list) {
 			if (retry_list[retry_index++].flag == 0)
 				break;
 		}
-		offset_dwords = retry_index * width_for_each_retry;
+		offset_dwords += retry_index * width_for_each_retry;
 	}
-
-	*msg_word_payload +=  offset_dwords;
 	txtstamp_list = (struct htt_tx_compl_ind_append_tx_tstamp *)
-		(*msg_word_payload);
+		(msg_word + offset_dwords);
+
 	return txtstamp_list;
-}
-
-static inline
-struct htt_tx_compl_ind_append_tx_tsf64 *ol_tx_get_txtstamp64s(
-		u_int32_t *msg_word_header, u_int32_t **msg_word_payload,
-		int num_msdus)
-{
-	u_int32_t has_tx_tstamp64;
-	u_int32_t has_rssi;
-	struct htt_tx_compl_ind_append_tx_tsf64 *txtstamp64_list = NULL;
-
-	int offset_dwords = 0;
-
-	if (num_msdus <= 0)
-		return NULL;
-
-	has_tx_tstamp64 = HTT_TX_COMPL_IND_APPEND3_GET(*msg_word_header);
-	if (!has_tx_tstamp64)
-		return NULL;
-
-	/*skip MSDUx ACK RSSI part*/
-	has_rssi = HTT_TX_COMPL_IND_APPEND2_GET(*msg_word_header);
-	if (has_rssi)
-		offset_dwords = ((num_msdus + 1) >> 1);
-
-	*msg_word_payload = *msg_word_payload + offset_dwords;
-	txtstamp64_list =
-		(struct htt_tx_compl_ind_append_tx_tsf64 *)
-		(*msg_word_payload);
-
-	return txtstamp64_list;
 }
 
 static inline void ol_tx_timestamp(ol_txrx_pdev_handle pdev,
@@ -847,16 +662,7 @@ static inline void ol_tx_timestamp(ol_txrx_pdev_handle pdev,
 }
 #else
 static inline struct htt_tx_compl_ind_append_tx_tstamp *ol_tx_get_txtstamps(
-		u_int32_t *msg_word_header, u_int32_t **msg_word_payload,
-		int num_msdus)
-{
-	return NULL;
-}
-
-static inline
-struct htt_tx_compl_ind_append_tx_tsf64 *ol_tx_get_txtstamp64s(
-		u_int32_t *msg_word_header, u_int32_t **msg_word_payload,
-		int num_msdus)
+		u_int32_t *msg_word, int num_msdus)
 {
 	return NULL;
 }
@@ -1010,38 +816,17 @@ ol_tx_completion_handler(ol_txrx_pdev_handle pdev,
 	tp_ol_packetdump_cb packetdump_cb;
 	uint32_t is_tx_desc_freed = 0;
 	struct htt_tx_compl_ind_append_tx_tstamp *txtstamp_list = NULL;
-	struct htt_tx_compl_ind_append_tx_tsf64 *txtstamp64_list = NULL;
-	struct htt_tx_data_hdr_information *pkt_capture_txcomp_hdr_list = NULL;
-	u_int32_t *msg_word_header = (u_int32_t *)msg;
-	/*msg_word skip header*/
-	u_int32_t *msg_word_payload = msg_word_header + 1;
 	u_int32_t *msg_word = (u_int32_t *)msg;
 	u_int16_t *desc_ids = (u_int16_t *)(msg_word + 1);
 	union ol_tx_desc_list_elem_t *lcl_freelist = NULL;
 	union ol_tx_desc_list_elem_t *tx_desc_last = NULL;
 	ol_tx_desc_list tx_descs;
-	uint64_t tx_tsf64;
-	uint8_t tid;
 
 	TAILQ_INIT(&tx_descs);
 
-	tid = HTT_TX_COMPL_IND_TID_GET(*msg_word);
-
 	ol_tx_delay_compute(pdev, status, desc_ids, num_msdus);
-	if (status == htt_tx_status_ok) {
-		txtstamp_list = ol_tx_get_txtstamps(
-			msg_word_header, &msg_word_payload, num_msdus);
-		if (pdev->enable_tx_compl_tsf64)
-			txtstamp64_list = ol_tx_get_txtstamp64s(
-				msg_word_header, &msg_word_payload, num_msdus);
-	}
-
-	if ((ucfg_pkt_capture_get_pktcap_mode() &
-	     PKT_CAPTURE_MODE_DATA_ONLY))
-		pkt_capture_txcomp_hdr_list =
-				ucfg_pkt_capture_tx_get_txcomplete_data_hdr(
-								msg_word,
-								num_msdus);
+	if (status == htt_tx_status_ok)
+		txtstamp_list = ol_tx_get_txtstamps(msg_word, num_msdus);
 
 	for (i = 0; i < num_msdus; i++) {
 		tx_desc_id = desc_ids[i];
@@ -1057,32 +842,17 @@ ol_tx_completion_handler(ol_txrx_pdev_handle pdev,
 		tx_desc->status = status;
 		netbuf = tx_desc->netbuf;
 
-		if (txtstamp64_list) {
-			tx_tsf64 =
-			(u_int64_t)txtstamp64_list[i].tx_tsf64_high << 32 |
-			txtstamp64_list[i].tx_tsf64_low;
-
-			ol_tx_timestamp(pdev, netbuf, tx_tsf64);
-		} else if (txtstamp_list)
+		if (txtstamp_list)
 			ol_tx_timestamp(pdev, netbuf,
 					(u_int64_t)txtstamp_list->timestamp[i]
 					);
-
-		if (pkt_capture_txcomp_hdr_list) {
-			ol_tx_pkt_capture_tx_completion_process(
-						pdev,
-						tx_desc,
-						&pkt_capture_txcomp_hdr_list[i],
-						tid, status);
-		}
 
 		QDF_NBUF_UPDATE_TX_PKT_COUNT(netbuf, QDF_NBUF_TX_PKT_FREE);
 
 		if (QDF_NBUF_CB_GET_PACKET_TYPE(netbuf) ==
 		    QDF_NBUF_CB_PACKET_TYPE_ARP) {
 			if (qdf_nbuf_data_is_arp_req(netbuf))
-				ol_tx_update_arp_stats(tx_desc, netbuf,
-						       status);
+				ol_tx_update_arp_stats(tx_desc, netbuf, status);
 		}
 
 		/* check tx completion notification */

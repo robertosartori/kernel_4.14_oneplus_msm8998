@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2018 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -26,7 +26,6 @@
 #include "wlan_ipa_obj_mgmt_api.h"
 #include "wlan_objmgr_pdev_obj.h"
 #include "qdf_types.h"
-#include "wlan_ipa_main.h"
 
 #ifdef IPA_OFFLOAD
 
@@ -158,8 +157,7 @@ void ucfg_ipa_uc_stat_query(struct wlan_objmgr_pdev *pdev,
  *
  * Return: None
  */
-void ucfg_ipa_reg_sap_xmit_cb(struct wlan_objmgr_pdev *pdev,
-			      wlan_ipa_softap_xmit cb);
+void ucfg_ipa_reg_sap_xmit_cb(struct wlan_objmgr_pdev *pdev, void *cb);
 
 /**
  * ucfg_ipa_reg_send_to_nw_cb() - Register cb to send IPA Rx packet to network
@@ -168,8 +166,7 @@ void ucfg_ipa_reg_sap_xmit_cb(struct wlan_objmgr_pdev *pdev,
  *
  * Return: None
  */
-void ucfg_ipa_reg_send_to_nw_cb(struct wlan_objmgr_pdev *pdev,
-				wlan_ipa_send_to_nw cb);
+void ucfg_ipa_reg_send_to_nw_cb(struct wlan_objmgr_pdev *pdev, void *cb);
 
 /**
  * ucfg_ipa_set_mcc_mode() - Set MCC mode
@@ -294,19 +291,6 @@ int ucfg_ipa_uc_smmu_map(bool map, uint32_t num_buf, qdf_mem_info_t *buf_arr);
 bool ucfg_ipa_is_fw_wdi_activated(struct wlan_objmgr_pdev *pdev);
 
 /**
- * ucfg_ipa_uc_cleanup_sta() - disconnect and cleanup sta iface
- * @pdev: pdev obj
- * @net_dev: Interface net device
- *
- * Send disconnect sta event to IPA driver and cleanup IPA iface,
- * if not yet done
- *
- * Return: void
- */
-void ucfg_ipa_uc_cleanup_sta(struct wlan_objmgr_pdev *pdev,
-			     qdf_netdev_t net_dev);
-
-/**
  * ucfg_ipa_uc_disconnect_ap() - send ap disconnect event
  * @pdev: pdev obj
  * @net_dev: Interface net device
@@ -423,14 +407,12 @@ void ucfg_ipa_uc_stat_query(struct wlan_objmgr_pdev *pdev,
 }
 
 static inline
-void ucfg_ipa_reg_sap_xmit_cb(struct wlan_objmgr_pdev *pdev,
-			      wlan_ipa_softap_xmit cb)
+void ucfg_ipa_reg_sap_xmit_cb(struct wlan_objmgr_pdev *pdev, void *cb)
 {
 }
 
 static inline
-void ucfg_ipa_reg_send_to_nw_cb(struct wlan_objmgr_pdev *pdev,
-				wlan_ipa_send_to_nw cb)
+void ucfg_ipa_reg_send_to_nw_cb(struct wlan_objmgr_pdev *pdev, void *cb)
 {
 }
 
@@ -511,12 +493,6 @@ static inline
 bool ucfg_ipa_is_fw_wdi_activated(struct wlan_objmgr_pdev *pdev)
 {
 	return false;
-}
-
-static inline
-void ucfg_ipa_uc_cleanup_sta(struct wlan_objmgr_pdev *pdev,
-			     qdf_netdev_t net_dev)
-{
 }
 
 static inline

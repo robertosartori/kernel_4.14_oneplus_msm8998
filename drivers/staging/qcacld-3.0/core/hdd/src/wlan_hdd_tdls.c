@@ -40,7 +40,6 @@
 #include "wma_types.h"
 #include "wlan_policy_mgr_api.h"
 #include <qca_vendor.h>
-#include "wlan_hdd_object_manager.h"
 
 /**
  * enum qca_wlan_vendor_tdls_trigger_mode_hdd_map: Maps the user space TDLS
@@ -75,8 +74,6 @@ int wlan_hdd_tdls_get_all_peers(struct hdd_adapter *adapter,
 {
 	int len;
 	struct hdd_context *hdd_ctx;
-	struct wlan_objmgr_vdev *vdev;
-	int ret;
 
 	hdd_enter();
 
@@ -94,15 +91,8 @@ int wlan_hdd_tdls_get_all_peers(struct hdd_adapter *adapter,
 		return len;
 	}
 
-	vdev = hdd_objmgr_get_vdev(adapter);
-	if (!vdev) {
-		len = scnprintf(buf, buflen, "\nVDEV is NULL\n");
-		return len;
-	}
-	ret = wlan_cfg80211_tdls_get_all_peers(vdev, buf, buflen);
-	hdd_objmgr_put_vdev(vdev);
-
-	return ret;
+	return wlan_cfg80211_tdls_get_all_peers(adapter->vdev,
+						buf, buflen);
 }
 
 static const struct nla_policy
@@ -241,14 +231,8 @@ __wlan_hdd_cfg80211_configure_tdls_mode(struct wiphy *wiphy,
 	hdd_debug("TDLS trigger mode %d", trigger_mode);
 
 	if (hdd_ctx->tdls_umac_comp_active) {
-		struct wlan_objmgr_vdev *vdev;
-
-		vdev = hdd_objmgr_get_vdev(adapter);
-		if (!vdev)
-			return -EINVAL;
-		ret = wlan_cfg80211_tdls_configure_mode(vdev,
+		ret = wlan_cfg80211_tdls_configure_mode(adapter->vdev,
 							trigger_mode);
-		hdd_objmgr_put_vdev(vdev);
 		return ret;
 	}
 
@@ -486,20 +470,12 @@ static int __wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy,
 		return -ENOTSUPP;
 	}
 
-	if (hdd_ctx->tdls_umac_comp_active) {
-		struct wlan_objmgr_vdev *vdev;
-		int ret;
-
-		vdev = hdd_objmgr_get_vdev(adapter);
-		if (!vdev)
-			return -EINVAL;
-		ret = wlan_cfg80211_tdls_mgmt(vdev, peer,
-					      action_code, dialog_token,
-					      status_code, peer_capability,
-					      buf, len);
-		hdd_objmgr_put_vdev(vdev);
-		return ret;
-	}
+	if (hdd_ctx->tdls_umac_comp_active)
+		return wlan_cfg80211_tdls_mgmt(hdd_ctx->pdev, dev,
+					       peer,
+					       action_code, dialog_token,
+					       status_code, peer_capability,
+					       buf, len);
 
 	return -EINVAL;
 }
@@ -682,14 +658,8 @@ static int __wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy,
 		return status;
 
 	if (hdd_ctx->tdls_umac_comp_active) {
-		struct wlan_objmgr_vdev *vdev;
-
-		vdev = hdd_objmgr_get_vdev(adapter);
-		if (!vdev)
-			return -EINVAL;
-		status = wlan_cfg80211_tdls_oper(vdev,
-						 peer, oper);
-		hdd_objmgr_put_vdev(vdev);
+		status = wlan_cfg80211_tdls_oper(hdd_ctx->pdev,
+						 dev, peer, oper);
 		hdd_exit();
 		return status;
 	}
@@ -772,17 +742,11 @@ int hdd_set_tdls_offchannel(struct hdd_context *hdd_ctx,
 			    struct hdd_adapter *adapter,
 			    int offchannel)
 {
-	struct wlan_objmgr_vdev *vdev;
 	QDF_STATUS status = QDF_STATUS_E_FAILURE;
 
-	if (hdd_ctx->tdls_umac_comp_active) {
-		vdev = hdd_objmgr_get_vdev(adapter);
-		if (vdev) {
-			status = ucfg_set_tdls_offchannel(vdev,
-							  offchannel);
-			hdd_objmgr_put_vdev(vdev);
-		}
-	}
+	if (hdd_ctx->tdls_umac_comp_active)
+		status = ucfg_set_tdls_offchannel(adapter->vdev,
+						  offchannel);
 	return qdf_status_to_os_return(status);
 }
 
@@ -790,17 +754,11 @@ int hdd_set_tdls_secoffchanneloffset(struct hdd_context *hdd_ctx,
 				     struct hdd_adapter *adapter,
 				     int offchanoffset)
 {
-	struct wlan_objmgr_vdev *vdev;
 	QDF_STATUS status = QDF_STATUS_E_FAILURE;
 
-	if (hdd_ctx->tdls_umac_comp_active) {
-		vdev = hdd_objmgr_get_vdev(adapter);
-		if (vdev) {
-			status = ucfg_set_tdls_secoffchanneloffset(vdev,
-								 offchanoffset);
-			hdd_objmgr_put_vdev(vdev);
-		}
-	}
+	if (hdd_ctx->tdls_umac_comp_active)
+		status = ucfg_set_tdls_secoffchanneloffset(adapter->vdev,
+							   offchanoffset);
 	return qdf_status_to_os_return(status);
 }
 
@@ -808,17 +766,11 @@ int hdd_set_tdls_offchannelmode(struct hdd_context *hdd_ctx,
 				struct hdd_adapter *adapter,
 				int offchanmode)
 {
-	struct wlan_objmgr_vdev *vdev;
 	QDF_STATUS status = QDF_STATUS_E_FAILURE;
 
-	if (hdd_ctx->tdls_umac_comp_active) {
-		vdev = hdd_objmgr_get_vdev(adapter);
-		if (vdev) {
-			status = ucfg_set_tdls_offchan_mode(vdev,
-							    offchanmode);
-			hdd_objmgr_put_vdev(vdev);
-		}
-	}
+	if (hdd_ctx->tdls_umac_comp_active)
+		status = ucfg_set_tdls_offchan_mode(adapter->vdev,
+						    offchanmode);
 	return qdf_status_to_os_return(status);
 }
 
@@ -861,17 +813,8 @@ int wlan_hdd_tdls_antenna_switch(struct hdd_context *hdd_ctx,
 				 struct hdd_adapter *adapter,
 				 uint32_t mode)
 {
-	if (hdd_ctx->tdls_umac_comp_active) {
-		struct wlan_objmgr_vdev *vdev;
-		int ret;
-
-		vdev = hdd_objmgr_get_vdev(adapter);
-		if (!vdev)
-			return -EINVAL;
-		ret = wlan_tdls_antenna_switch(vdev, mode);
-		hdd_objmgr_put_vdev(vdev);
-		return ret;
-	}
+	if (hdd_ctx->tdls_umac_comp_active)
+		return wlan_tdls_antenna_switch(adapter->vdev, mode);
 
 	return 0;
 }

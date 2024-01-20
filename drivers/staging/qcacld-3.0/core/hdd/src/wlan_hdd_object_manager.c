@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018, 2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2018 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -60,8 +60,17 @@ hdd_init_vdev_os_priv(struct hdd_adapter *adapter)
 	/* Initialize the vdev OS private structure*/
 	os_priv->wdev = adapter->dev->ieee80211_ptr;
 	os_priv->legacy_osif_priv = adapter;
+	wlan_cfg80211_tdls_priv_init(os_priv);
 
 	return os_priv;
+}
+
+static void hdd_deinit_vdev_os_priv(struct vdev_osif_priv *os_priv)
+{
+	if (os_priv) {
+		wlan_cfg80211_tdls_priv_deinit(os_priv);
+		qdf_mem_free(os_priv);
+	}
 }
 
 static void hdd_init_psoc_qdf_ctx(struct wlan_objmgr_psoc *psoc)
@@ -230,7 +239,7 @@ int hdd_objmgr_create_and_store_vdev(struct wlan_objmgr_pdev *pdev,
 				     struct hdd_adapter *adapter)
 {
 	QDF_STATUS status;
-	int errno = 0;
+	int errno;
 	struct wlan_objmgr_vdev *vdev;
 	struct vdev_osif_priv *osif_priv;
 	struct wlan_vdev_create_params vdev_params = {0};
@@ -257,8 +266,7 @@ int hdd_objmgr_create_and_store_vdev(struct wlan_objmgr_pdev *pdev,
 	if (!vdev) {
 		hdd_err("Failed to create vdev object");
 		errno = -ENOMEM;
-		qdf_mem_free(osif_priv);
-		return errno;
+		goto osif_priv_free;
 	}
 
 	/*
@@ -282,6 +290,10 @@ int hdd_objmgr_create_and_store_vdev(struct wlan_objmgr_pdev *pdev,
 
 vdev_destroy:
 	wlan_objmgr_vdev_obj_delete(vdev);
+
+osif_priv_free:
+	hdd_deinit_vdev_os_priv(osif_priv);
+
 	return errno;
 }
 
@@ -289,6 +301,7 @@ int hdd_objmgr_release_and_destroy_vdev(struct hdd_adapter *adapter)
 {
 	QDF_STATUS status;
 	struct wlan_objmgr_vdev *vdev;
+	struct vdev_osif_priv *osif_priv;
 
 	qdf_spin_lock_bh(&adapter->vdev_lock);
 	vdev = adapter->vdev;
@@ -299,6 +312,12 @@ int hdd_objmgr_release_and_destroy_vdev(struct hdd_adapter *adapter)
 	QDF_BUG(vdev);
 	if (!vdev)
 		return -EINVAL;
+
+	osif_priv = wlan_vdev_get_ospriv(vdev);
+	wlan_vdev_reset_ospriv(vdev);
+
+	QDF_BUG(osif_priv);
+	hdd_deinit_vdev_os_priv(osif_priv);
 
 	status = wlan_objmgr_vdev_obj_delete(vdev);
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_HDD_ID_OBJ_MGR);
@@ -327,7 +346,7 @@ struct wlan_objmgr_vdev *__hdd_objmgr_get_vdev(struct hdd_adapter *adapter,
 	qdf_spin_unlock_bh(&adapter->vdev_lock);
 
 	if (!vdev)
-		hdd_debug("VDEV is NULL (via %s)", func);
+		hdd_err("VDEV is NULL (via %s)", func);
 
 	return vdev;
 }

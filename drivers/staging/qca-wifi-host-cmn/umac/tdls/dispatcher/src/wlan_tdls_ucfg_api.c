@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -200,8 +200,6 @@ QDF_STATUS ucfg_tdls_update_config(struct wlan_objmgr_psoc *psoc,
 	soc_obj->tdls_del_all_peers = req->tdls_del_all_peers;
 	soc_obj->tdls_update_dp_vdev_flags = req->tdls_update_dp_vdev_flags;
 	soc_obj->tdls_dp_vdev_update = req->tdls_dp_vdev_update;
-	soc_obj->tdls_osif_init_cb = req->tdls_osif_init_cb;
-	soc_obj->tdls_osif_deinit_cb = req->tdls_osif_deinit_cb;
 	tdls_pm_call_backs.tdls_notify_increment_session =
 			tdls_notify_increment_session;
 
@@ -249,7 +247,7 @@ QDF_STATUS ucfg_tdls_psoc_enable(struct wlan_objmgr_psoc *psoc)
 {
 	QDF_STATUS status;
 
-	tdls_debug("psoc tdls enable: 0x%pK", psoc);
+	tdls_notice("psoc tdls enable: 0x%pK", psoc);
 	if (!psoc) {
 		tdls_err("NULL psoc");
 		return QDF_STATUS_E_FAILURE;
@@ -282,7 +280,7 @@ QDF_STATUS ucfg_tdls_psoc_disable(struct wlan_objmgr_psoc *psoc)
 	QDF_STATUS status;
 	struct tdls_soc_priv_obj *soc_obj = NULL;
 
-	tdls_debug("psoc tdls disable: 0x%pK", psoc);
+	tdls_notice("psoc tdls disable: 0x%pK", psoc);
 	if (!psoc) {
 		tdls_err("NULL psoc");
 		return QDF_STATUS_E_FAILURE;
@@ -314,7 +312,7 @@ QDF_STATUS ucfg_tdls_psoc_close(struct wlan_objmgr_psoc *psoc)
 	QDF_STATUS status = QDF_STATUS_SUCCESS;
 	struct tdls_soc_priv_obj *tdls_soc;
 
-	tdls_debug("tdls psoc close");
+	tdls_notice("tdls psoc close");
 	tdls_soc = wlan_objmgr_psoc_get_comp_private_obj(psoc,
 							WLAN_UMAC_COMP_TDLS);
 	if (!tdls_soc) {
@@ -664,14 +662,18 @@ QDF_STATUS ucfg_tdls_responder(struct tdls_set_responder_req *req)
 	return status;
 }
 
-QDF_STATUS ucfg_tdls_teardown_links(struct wlan_objmgr_psoc *psoc)
+QDF_STATUS ucfg_tdls_teardown_links(struct wlan_objmgr_vdev *vdev)
 {
 	QDF_STATUS status;
 	struct scheduler_msg msg = {0, };
 
+	if (!vdev) {
+		tdls_err("vdev is NULL ");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
 	tdls_debug("Enter ");
 
-	msg.bodyptr = psoc;
+	msg.bodyptr = vdev;
 	msg.callback = tdls_process_cmd;
 	msg.flush_callback = ucfg_tdls_post_msg_flush_cb;
 	msg.type = TDLS_CMD_TEARDOWN_LINKS;
@@ -1006,15 +1008,4 @@ dec_ref:
 free:
 	qdf_mem_free(req);
 	return status;
-}
-
-void ucfg_tdls_notify_connect_failure(struct wlan_objmgr_psoc *psoc)
-{
-	return tdls_notify_decrement_session(psoc);
-}
-
-struct wlan_objmgr_vdev *ucfg_get_tdls_vdev(struct wlan_objmgr_psoc *psoc,
-					    wlan_objmgr_ref_dbgid dbg_id)
-{
-	return tdls_get_vdev(psoc, dbg_id);
 }

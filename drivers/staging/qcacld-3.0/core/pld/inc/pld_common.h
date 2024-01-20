@@ -126,7 +126,6 @@ struct pld_platform_cap {
 enum pld_uevent {
 	PLD_RECOVERY,
 	PLD_FW_DOWN,
-	PLD_FW_HANG_EVENT,
 };
 
 /**
@@ -140,10 +139,6 @@ struct pld_uevent_data {
 		struct {
 			bool crashed;
 		} fw_down;
-		struct {
-			void *hang_event_data;
-			u16 hang_event_data_len;
-		} hang_data;
 	};
 };
 
@@ -284,18 +279,6 @@ enum pld_recovery_reason {
 	PLD_REASON_LINK_DOWN
 };
 
-#ifdef FEATURE_WLAN_TIME_SYNC_FTM
-/**
- * enum pld_wlan_time_sync_trigger_type - WLAN time sync trigger type
- * @PLD_TRIGGER_POSITIVE_EDGE: Positive edge trigger
- * @PLD_TRIGGER_NEGATIVE_EDGE: Negative edge trigger
- */
-enum pld_wlan_time_sync_trigger_type {
-	PLD_TRIGGER_POSITIVE_EDGE,
-	PLD_TRIGGER_NEGATIVE_EDGE
-};
-#endif /* FEATURE_WLAN_TIME_SYNC_FTM */
-
 /**
  * struct pld_driver_ops - driver callback functions
  * @probe: required operation, will be called when device is detected
@@ -353,10 +336,6 @@ struct pld_driver_ops {
 			     enum pld_bus_type bus_type);
 	int (*resume_noirq)(struct device *dev,
 			    enum pld_bus_type bus_type);
-	int (*idle_shutdown)(struct device *dev,
-			     enum pld_bus_type bus_type);
-	int (*idle_restart)(struct device *dev,
-			    enum pld_bus_type bus_type);
 };
 
 int pld_init(void);
@@ -377,13 +356,6 @@ void pld_is_pci_link_down(struct device *dev);
 int pld_shadow_control(struct device *dev, bool enable);
 void pld_schedule_recovery_work(struct device *dev,
 				enum pld_recovery_reason reason);
-
-#ifdef FEATURE_WLAN_TIME_SYNC_FTM
-int pld_get_audio_wlan_timestamp(struct device *dev,
-				 enum pld_wlan_time_sync_trigger_type type,
-				 uint64_t *ts);
-#endif /* FEATURE_WLAN_TIME_SYNC_FTM */
-
 #ifdef CONFIG_CNSS_UTILS
 /**
  * pld_set_wlan_unsafe_channel() - Set unsafe channel
@@ -585,23 +557,9 @@ int pld_athdiag_read(struct device *dev, uint32_t offset, uint32_t memtype,
 		     uint32_t datalen, uint8_t *output);
 int pld_athdiag_write(struct device *dev, uint32_t offset, uint32_t memtype,
 		      uint32_t datalen, uint8_t *input);
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
-void *pld_smmu_get_domain(struct device *dev);
-#else
 void *pld_smmu_get_mapping(struct device *dev);
-#endif
 int pld_smmu_map(struct device *dev, phys_addr_t paddr,
 		 uint32_t *iova_addr, size_t size);
-#ifdef CONFIG_SMMU_S1_UNMAP
-int pld_smmu_unmap(struct device *dev,
-		   uint32_t iova_addr, size_t size);
-#else
-static inline int pld_smmu_unmap(struct device *dev,
-				 uint32_t iova_addr, size_t size)
-{
-	return 0;
-}
-#endif
 int pld_get_user_msi_assignment(struct device *dev, char *user_name,
 				int *num_vectors, uint32_t *user_base_data,
 				uint32_t *base_vector);
@@ -611,6 +569,7 @@ void pld_get_msi_address(struct device *dev, uint32_t *msi_addr_low,
 unsigned int pld_socinfo_get_serial_number(struct device *dev);
 int pld_is_qmi_disable(struct device *dev);
 int pld_is_fw_down(struct device *dev);
+void pld_block_shutdown(struct device *dev, bool status);
 int pld_force_assert_target(struct device *dev);
 bool pld_is_fw_dump_skipped(struct device *dev);
 
@@ -674,23 +633,4 @@ static inline int pld_nbuf_pre_alloc_free(struct sk_buff *skb)
 	return 0;
 }
 #endif
-/**
- * pld_idle_shutdown - request idle shutdown callback from platform driver
- * @dev: pointer to struct dev
- * @shutdown_cb: pointer to hdd psoc idle shutdown callback handler
- *
- * Return: 0 for success and non-zero negative error code for failure
- */
-int pld_idle_shutdown(struct device *dev,
-		      int (*shutdown_cb)(struct device *dev));
-
-/**
- * pld_idle_restart - request idle restart callback from platform driver
- * @dev: pointer to struct dev
- * @restart_cb: pointer to hdd psoc idle restart callback handler
- *
- * Return: 0 for success and non-zero negative error code for failure
- */
-int pld_idle_restart(struct device *dev,
-		     int (*restart_cb)(struct device *dev));
 #endif

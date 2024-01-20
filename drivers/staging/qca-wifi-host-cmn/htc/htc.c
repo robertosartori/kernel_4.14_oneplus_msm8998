@@ -19,7 +19,6 @@
 #include "htc_debug.h"
 #include "htc_internal.h"
 #include "htc_credit_history.h"
-#include "htc_hang_event.h"
 #include <hif.h>
 #include <qdf_nbuf.h>           /* qdf_nbuf_t */
 #include <qdf_types.h>          /* qdf_print */
@@ -341,8 +340,6 @@ HTC_HANDLE htc_create(void *ol_sc, struct htc_init_info *pInfo,
 
 	HTC_TRACE("-htc_create: (0x%pK)", target);
 
-	htc_hang_event_notifier_register(target);
-
 	return (HTC_HANDLE) target;
 }
 
@@ -352,7 +349,6 @@ void htc_destroy(HTC_HANDLE HTCHandle)
 
 	AR_DEBUG_PRINTF(ATH_DEBUG_TRC,
 			("+htc_destroy ..  Destroying :0x%pK\n", target));
-	htc_hang_event_notifier_unregister();
 	hif_stop(htc_get_hif_device(HTCHandle));
 	if (target)
 		htc_cleanup(target);
@@ -808,7 +804,6 @@ void htc_stop(HTC_HANDLE HTCHandle)
 
 	AR_DEBUG_PRINTF(ATH_DEBUG_TRC, ("+htc_stop\n"));
 
-	HTC_INFO("%s: endpoints cleanup\n", __func__);
 	/* cleanup endpoints */
 	for (i = 0; i < ENDPOINT_MAX; i++) {
 		pEndpoint = &target->endpoint[i];
@@ -827,7 +822,6 @@ void htc_stop(HTC_HANDLE HTCHandle)
 	 * buffer leak
 	 */
 
-	HTC_INFO("%s: stopping hif layer\n", __func__);
 	hif_stop(target->hif_dev);
 
 #ifdef RX_SG_SUPPORT
@@ -843,13 +837,11 @@ void htc_stop(HTC_HANDLE HTCHandle)
 	 * by TARGET_STATUS_RESET and HTC packets will be left unfreed on
 	 * lookup queue.
 	 */
-	HTC_INFO("%s: flush endpoints Tx lookup queue\n", __func__);
 	for (i = 0; i < ENDPOINT_MAX; i++) {
 		pEndpoint = &target->endpoint[i];
 		if (pEndpoint->service_id == WMI_CONTROL_SVC)
 			htc_flush_endpoint_txlookupQ(target, i, false);
 	}
-	HTC_INFO("%s: resetting endpoints state\n", __func__);
 
 	reset_endpoint_states(target);
 

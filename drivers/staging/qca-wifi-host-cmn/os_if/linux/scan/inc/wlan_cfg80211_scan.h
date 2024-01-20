@@ -155,23 +155,27 @@ struct wlan_cfg80211_inform_bss {
 #ifdef FEATURE_WLAN_SCAN_PNO
 /**
  * wlan_cfg80211_sched_scan_start() - cfg80211 scheduled scan(pno) start
- * @vdev: vdev pointer
+ * @pdev: pdev pointer
+ * @dev: Pointer network device
  * @request: Pointer to cfg80211 scheduled scan start request
  * @scan_backoff_multiplier: multiply scan period by this after max cycles
  *
  * Return: 0 for success, non zero for failure
  */
-int wlan_cfg80211_sched_scan_start(struct wlan_objmgr_vdev *vdev,
-				   struct cfg80211_sched_scan_request *request,
-				   uint8_t scan_backoff_multiplier);
+int wlan_cfg80211_sched_scan_start(struct wlan_objmgr_pdev *pdev,
+	struct net_device *dev,
+	struct cfg80211_sched_scan_request *request,
+	uint8_t scan_backoff_multiplier);
 
 /**
  * wlan_cfg80211_sched_scan_stop() - cfg80211 scheduled scan(pno) stop
- * @vdev: vdev pointer
+ * @pdev: pdev pointer
+ * @dev: Pointer network device
  *
  * Return: 0 for success, non zero for failure
  */
-int wlan_cfg80211_sched_scan_stop(struct wlan_objmgr_vdev *vdev);
+int wlan_cfg80211_sched_scan_stop(struct wlan_objmgr_pdev *pdev,
+	struct net_device *dev);
 #endif
 
 /**
@@ -219,7 +223,7 @@ QDF_STATUS wlan_cfg80211_scan_priv_deinit(
 
 /**
  * wlan_cfg80211_scan() - API to process cfg80211 scan request
- * @vdev: Pointer to vdev
+ * @pdev: Pointer to pdev
  * @request: Pointer to scan request
  * @params: scan params
  *
@@ -229,9 +233,9 @@ QDF_STATUS wlan_cfg80211_scan_priv_deinit(
  *
  * Return: 0 for success, non zero for failure
  */
-int wlan_cfg80211_scan(struct wlan_objmgr_vdev *vdev,
-		       struct cfg80211_scan_request *request,
-		       struct scan_params *params);
+int wlan_cfg80211_scan(struct wlan_objmgr_pdev *pdev,
+		struct cfg80211_scan_request *request,
+		struct scan_params *params);
 
 /**
  * wlan_cfg80211_inform_bss_frame_data() - API to inform beacon to cfg80211
@@ -258,18 +262,6 @@ wlan_cfg80211_inform_bss_frame_data(struct wiphy *wiphy,
  */
 void wlan_cfg80211_inform_bss_frame(struct wlan_objmgr_pdev *pdev,
 	struct scan_cache_entry *scan_params);
-
-/**
- * __wlan_cfg80211_unlink_bss_list() - flush bss from the kernel cache
- * @wiphy: wiphy
- * @bssid: bssid of the BSS to find
- * @ssid: ssid of the BSS to find
- * @ssid_len: ssid len of of the BSS to find
- *
- * Return: None
- */
-void __wlan_cfg80211_unlink_bss_list(struct wiphy *wiphy, uint8_t *bssid,
-				     uint8_t *ssid, uint8_t ssid_len);
 
 /**
  * wlan_cfg80211_get_bss() - Get the bss entry matching the chan, bssid and ssid

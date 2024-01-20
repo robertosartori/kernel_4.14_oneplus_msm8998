@@ -135,7 +135,6 @@ QDF_STATUS ucfg_mc_cp_stats_inc_wake_lock_stats_by_protocol(
 
 	stats = &psoc_mc_stats->wow_stats;
 	switch (protocol) {
-	case QDF_PROTO_ICMP_REQ:
 	case QDF_PROTO_ICMP_RES:
 		stats->icmpv4_count++;
 		break;
@@ -611,19 +610,4 @@ QDF_STATUS ucfg_mc_cp_stats_set_rate_flags(struct wlan_objmgr_vdev *vdev,
 	wlan_cp_stats_vdev_obj_unlock(vdev_cp_stats_priv);
 
 	return QDF_STATUS_SUCCESS;
-}
-
-void ucfg_mc_cp_stats_register_lost_link_info_cb(
-			struct wlan_objmgr_psoc *psoc,
-			void (*lost_link_cp_stats_info_cb)(void *stats_ev))
-{
-	struct psoc_cp_stats *psoc_cp_stats_priv;
-
-	psoc_cp_stats_priv = wlan_cp_stats_get_psoc_stats_obj(psoc);
-	if (!psoc_cp_stats_priv) {
-		cp_stats_err("psoc cp stats object is null");
-		return;
-	}
-
-	psoc_cp_stats_priv->legacy_stats_cb = lost_link_cp_stats_info_cb;
 }

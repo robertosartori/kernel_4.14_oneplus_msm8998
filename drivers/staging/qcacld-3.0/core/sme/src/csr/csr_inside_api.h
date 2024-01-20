@@ -336,12 +336,10 @@ eRoamCmdStatus csr_get_roam_complete_status(tpAniSirGlobal pMac,
 					    uint32_t sessionId);
 /* pBand can be NULL if caller doesn't need to get it */
 QDF_STATUS csr_roam_issue_disassociate_cmd(tpAniSirGlobal pMac,
-					   uint32_t sessionId,
-					   eCsrRoamDisconnectReason reason,
-					   tSirMacReasonCodes mac_reason);
+					uint32_t sessionId,
+					   eCsrRoamDisconnectReason reason);
 QDF_STATUS csr_roam_disconnect_internal(tpAniSirGlobal pMac, uint32_t sessionId,
-					eCsrRoamDisconnectReason reason,
-					tSirMacReasonCodes mac_reason);
+					eCsrRoamDisconnectReason reason);
 /* pCommand may be NULL */
 void csr_roam_remove_duplicate_command(tpAniSirGlobal pMac, uint32_t sessionId,
 				       tSmeCmd *pCommand,
@@ -359,10 +357,9 @@ QDF_STATUS csr_send_mb_disassoc_cnf_msg(tpAniSirGlobal pMac,
 					tpSirSmeDisassocInd pDisassocInd);
 QDF_STATUS csr_send_mb_deauth_cnf_msg(tpAniSirGlobal pMac,
 				      tpSirSmeDeauthInd pDeauthInd);
-QDF_STATUS csr_send_assoc_cnf_msg(tpAniSirGlobal pMac,
-				  tpSirSmeAssocInd pAssocInd,
-				  QDF_STATUS status,
-				  tSirMacStatusCodes mac_status_code);
+QDF_STATUS csr_send_assoc_cnf_msg(tpAniSirGlobal pMac, tpSirSmeAssocInd
+				pAssocInd,
+				  QDF_STATUS status);
 QDF_STATUS csr_send_assoc_ind_to_upper_layer_cnf_msg(tpAniSirGlobal pMac,
 						     tpSirSmeAssocInd pAssocInd,
 						     QDF_STATUS Halstatus,
@@ -725,6 +722,14 @@ QDF_STATUS csr_roam_reassoc(tpAniSirGlobal pMac, uint32_t sessionId,
 			    uint32_t *pRoamId);
 
 /*
+ * csr_roam_reconnect() -
+ * To disconnect and reconnect with the same profile
+ *
+ * Return QDF_STATUS. It returns fail if currently not connected
+ */
+QDF_STATUS csr_roam_reconnect(tpAniSirGlobal pMac, uint32_t sessionId);
+
+/*
  * csr_roam_set_pmkid_cache() -
  * return the PMKID candidate list
  *
@@ -854,18 +859,16 @@ QDF_STATUS csr_apply_channel_and_power_list(tpAniSirGlobal pMac);
 QDF_STATUS csr_roam_connect_to_last_profile(tpAniSirGlobal pMac,
 					uint32_t sessionId);
 
-/**
- * csr_roam_disconnect() - To disconnect from a network
- * @mac: pointer to mac context
- * @session_id: Session ID
- * @reason: CSR disconnect reason code as per @enum eCsrRoamDisconnectReason
- * @mac_reason: Mac Disconnect reason code as per @enum eSirMacReasonCodes
+/*
+ * csr_roam_disconnect() -
+ *  To disconnect from a network
  *
+ * Reason -- To indicate the reason for disconnecting. Currently, only
+ * eCSR_DISCONNECT_REASON_MIC_ERROR is meanful.
  * Return QDF_STATUS
  */
 QDF_STATUS csr_roam_disconnect(tpAniSirGlobal pMac, uint32_t sessionId,
-			       eCsrRoamDisconnectReason reason,
-			       tSirMacReasonCodes mac_reason);
+			       eCsrRoamDisconnectReason reason);
 
 /* This function is used to stop a BSS. It is similar of csr_roamIssueDisconnect
  * but this function doesn't have any logic other than blindly trying to stop
@@ -971,6 +974,8 @@ QDF_STATUS csr_dequeue_roam_command(tpAniSirGlobal pMac,
 				enum csr_roam_reason reason,
 				uint8_t session_id);
 void csr_init_occupied_channels_list(tpAniSirGlobal pMac, uint8_t sessionId);
+bool csr_neighbor_roam_is_new_connected_profile(tpAniSirGlobal pMac,
+						uint8_t sessionId);
 bool csr_neighbor_roam_connected_profile_match(tpAniSirGlobal pMac,
 					       uint8_t sessionId,
 					       struct tag_csrscan_result
@@ -987,41 +992,6 @@ QDF_STATUS csr_roam_del_pmkid_from_cache(tpAniSirGlobal pMac,
 					 uint32_t sessionId,
 					 tPmkidCacheInfo *pmksa,
 					 bool flush_cache);
-
-void csr_roam_del_pmk_cache_entry(struct csr_roam_session *session,
-				  tPmkidCacheInfo *cached_pmksa, u32 del_idx);
-
-#if defined(WLAN_SAE_SINGLE_PMK) && defined(WLAN_FEATURE_ROAM_OFFLOAD)
-/**
- * csr_clear_sae_single_pmk - API to clear single_pmk_info cache
- * @pMac: Mac context
- * @vdev_id: session id
- * @pmksa: pmk info
- *
- * Return : None
- */
-void csr_clear_sae_single_pmk(tpAniSirGlobal pMac, uint8_t vdev_id,
-			      tPmkidCacheInfo *pmksa);
-
-#else
-static inline void
-csr_clear_sae_single_pmk(tpAniSirGlobal pMac, uint8_t vdev_id,
-			 tPmkidCacheInfo *pmksa)
-{
-}
-#endif
-
-/**
- * csr_update_pmk_cache_ft - API to update MDID in PMKSA cache entry
- * @mac_ctx: Mac context
- * @vdev_id: session ID
- * @BSSID: Connecting AP MAC address
- * @mdid: Connecting AP Mobility Domain ID
- *
- * Return: None
- */
-void csr_update_pmk_cache_ft(tpAniSirGlobal mac_ctx,
-			     uint32_t vdev_id, uint8_t *cache_id);
 
 bool csr_elected_country_info(tpAniSirGlobal pMac);
 void csr_add_vote_for_country_info(tpAniSirGlobal pMac, uint8_t *pCountryCode);
@@ -1116,22 +1086,6 @@ bool csr_lookup_pmkid_using_bssid(tpAniSirGlobal mac,
 					struct csr_roam_session *session,
 					tPmkidCacheInfo *pmk_cache,
 					uint32_t *index);
-
-/**
- * csr_is_pmkid_found_for_peer() - check if pmkid sent by peer is present
-				   in PMK cache. Used in SAP mode.
- * @mac: pointer to mac
- * @session: sme session pointer
- * @peer_mac_addr: mac address of the connecting peer
- * @pmkid: pointer to pmkid(s) send by peer
- * @pmkid_count: number of pmkids sent by peer
- *
- * Return: true if pmkid is found else false
- */
-bool csr_is_pmkid_found_for_peer(tpAniSirGlobal mac,
-				 struct csr_roam_session *session,
-				 tSirMacAddr peer_mac_addr,
-				 uint8_t *pmkid, uint16_t pmkid_count);
 #ifdef WLAN_FEATURE_11AX
 void csr_update_session_he_cap(tpAniSirGlobal mac_ctx,
 			struct csr_roam_session *session);

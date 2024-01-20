@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2018 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -22,6 +22,7 @@
 #include "qdf_types.h"
 #include "sir_api.h"
 #include "sir_params.h"
+
 
 /*
  * Validate the OS Type being built
@@ -205,7 +206,6 @@ typedef struct sAniProbeRspStruct {
  * @nss: Return the number of spatial streams supported
  * @stbc_capable: stbc capable
  * @max_amsdu_num: Maximum number of MSDUs in a tx aggregate frame
- * @no_ptk_4_way: Do not need 4-way handshake
  *
  * This structure contains parameter required for
  * add sta request of upper layer.
@@ -313,7 +313,6 @@ typedef struct {
 	uint8_t twt_requestor;
 	uint8_t twt_responder;
 #endif
-	bool no_ptk_4_way;
 } tAddStaParams, *tpAddStaParams;
 
 /**
@@ -442,7 +441,6 @@ typedef struct sLimMlmSetKeysReq {
  * @he_capable: HE Capability
  * @cac_duration_ms: cac duration in milliseconds
  * @dfs_regdomain: dfs region
- * @no_ptk_4_way: Do not need 4-way handshake
  */
 typedef struct {
 	tSirMacAddr bssId;
@@ -523,7 +521,6 @@ typedef struct {
 #endif
 	uint32_t cac_duration_ms;
 	uint32_t dfs_regdomain;
-	bool no_ptk_4_way;
 } tAddBssParams, *tpAddBssParams;
 
 /**
@@ -588,9 +585,7 @@ typedef enum eDelStaReasonCode {
 	HAL_DEL_STA_REASON_CODE_TIM_BASED = 0x2,
 	HAL_DEL_STA_REASON_CODE_RA_BASED = 0x3,
 	HAL_DEL_STA_REASON_CODE_UNKNOWN_A2 = 0x4,
-	HAL_DEL_STA_REASON_CODE_BTM_DISASSOC_IMMINENT = 0x5,
-	HAL_DEL_STA_REASON_CODE_SA_QUERY_TIMEOUT = 0x6,
-	HAL_DEL_STA_REASON_CODE_XRETRY = 0x7,
+	HAL_DEL_STA_REASON_CODE_BTM_DISASSOC_IMMINENT = 0x5
 } tDelStaReasonCode;
 
 typedef enum eSmpsModeValue {
@@ -905,9 +900,6 @@ typedef struct {
  * @dot11_mode: 802.11 mode
  * @cac_duration_ms: cac duration in milliseconds
  * @dfs_regdomain: dfs region
- * @reduced_beacon_interval: reduced beacon interval value
- * @ssid_hidden: the sap ssid is hidden
- * @ssid: sap ssid
  */
 typedef struct {
 	uint8_t channelNumber;
@@ -944,8 +936,6 @@ typedef struct {
 	uint32_t cac_duration_ms;
 	uint32_t dfs_regdomain;
 	uint16_t reduced_beacon_interval;
-	uint8_t ssid_hidden;
-	tSirMacSSid ssid;
 } tSwitchChannelParams, *tpSwitchChannelParams;
 
 typedef void (*tpSetLinkStateCallback)(tpAniSirGlobal pMac, void *msgParam,
@@ -1263,6 +1253,57 @@ struct set_dtim_params {
 
 #ifdef FEATURE_WLAN_TDLS
 
+#define HAL_TDLS_MAX_SUPP_CHANNELS       128
+#define HAL_TDLS_MAX_SUPP_OPER_CLASSES   32
+
+/**
+ * struct tTdlsPeerCapParams - TDLS peer capablities parameters
+ * @isPeerResponder: is peer responder or not
+ * @peerUapsdQueue: peer uapsd queue
+ * @peerMaxSp: peer max SP value
+ * @peerBuffStaSupport: peer buffer sta supported or not
+ * @peerOffChanSupport: peer offchannel support
+ * @peerCurrOperClass: peer current operating class
+ * @selfCurrOperClass: self current operating class
+ * @peerChanLen: peer channel length
+ * @peerChan: peer channel list
+ * @peerOperClassLen: peer operating class length
+ * @peerOperClass: peer operating class
+ * @prefOffChanNum: peer offchannel number
+ * @prefOffChanBandwidth: peer offchannel bandwidth
+ * @opClassForPrefOffChan: operating class for offchannel
+ */
+typedef struct {
+	uint8_t isPeerResponder;
+	uint8_t peerUapsdQueue;
+	uint8_t peerMaxSp;
+	uint8_t peerBuffStaSupport;
+	uint8_t peerOffChanSupport;
+	uint8_t peerCurrOperClass;
+	uint8_t selfCurrOperClass;
+	uint8_t peerChanLen;
+	tSirUpdateChanParam peerChan[HAL_TDLS_MAX_SUPP_CHANNELS];
+	uint8_t peerOperClassLen;
+	uint8_t peerOperClass[HAL_TDLS_MAX_SUPP_OPER_CLASSES];
+	uint8_t prefOffChanNum;
+	uint8_t prefOffChanBandwidth;
+	uint8_t opClassForPrefOffChan;
+} tTdlsPeerCapParams;
+
+/**
+ * struct tTdlsPeerStateParams - TDLS peer state parameters
+ * @vdevId: vdev id
+ * @peerMacAddr: peer mac address
+ * @peerCap: peer capabality
+ */
+typedef struct sTdlsPeerStateParams {
+	uint32_t vdevId;
+	tSirMacAddr peerMacAddr;
+	uint32_t peerState;
+	tTdlsPeerCapParams peerCap;
+	bool resp_reqd;
+} tTdlsPeerStateParams;
+
 /**
  * struct tdls_chan_switch_params - channel switch parameter structure
  * @vdev_id: vdev ID
@@ -1283,6 +1324,7 @@ typedef struct tdls_chan_switch_params_struct {
 } tdls_chan_switch_params;
 
 #endif /* FEATURE_WLAN_TDLS */
+
 /**
  * struct tAbortScanParams - Abort scan parameters
  * @SessionId: PE session id
@@ -1500,16 +1542,6 @@ struct roam_blacklist_timeout {
 struct roam_blacklist_event {
 	uint32_t num_entries;
 	struct roam_blacklist_timeout roam_blacklist[];
-};
-
-/*
- * struct roam_pmkid_req_event - Pmkid event with entries destination structure
- * @num_entries: total entries sent over the event
- * @ap_bssid: bssid list
- */
-struct roam_pmkid_req_event {
-	uint32_t num_entries;
-	struct qdf_mac_addr ap_bssid[];
 };
 
 #endif /* _HALMSGAPI_H_ */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2018 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -41,18 +41,6 @@
  */
 netdev_tx_t hdd_softap_hard_start_xmit(struct sk_buff *skb,
 				       struct net_device *dev);
-
-/**
- * hdd_softap_ipa_start_xmit() - Transmit a frame, request from IPA
- * @nbuf: pointer to buffer/packet
- * @dev: pointer to net_device structure
- *
- * Function registered as a xmit callback in SAP mode,
- * called by IPA if any packet needs to be transmitted.
- *
- * Return: Status of the transmission
- */
-QDF_STATUS hdd_softap_ipa_start_xmit(qdf_nbuf_t nbuf, qdf_netdev_t dev);
 
 /**
  * hdd_softap_tx_timeout() - TX timeout handler
@@ -241,15 +229,17 @@ int hdd_post_dhcp_ind(struct hdd_adapter *adapter,
 		      uint8_t sta_id, uint16_t type);
 
 /**
- * hdd_softap_inspect_dhcp_packet() -  Inspect DHCP packet
+ * hdd_inspect_dhcp_packet() -  Inspect DHCP packet
  * @adapter: pointer to hdd adapter
+ * @sta_id: peer station ID
  * @skb: pointer to OS packet (sk_buff)
  * @dir: direction
  *
  * Return: error number
  */
-int hdd_softap_inspect_dhcp_packet(struct hdd_adapter *adapter,
-				   struct sk_buff *skb,
-				   enum qdf_proto_dir dir);
+int hdd_inspect_dhcp_packet(struct hdd_adapter *adapter,
+			    uint8_t sta_id,
+			    struct sk_buff *skb,
+			    enum qdf_proto_dir dir);
 
 #endif /* end #if !defined(WLAN_HDD_SOFTAP_TX_RX_H) */

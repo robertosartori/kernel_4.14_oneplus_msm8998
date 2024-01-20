@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2018 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -92,14 +92,12 @@ void ucfg_ipa_uc_stat_query(struct wlan_objmgr_pdev *pdev,
 	return ipa_uc_stat_query(pdev, ipa_tx_diff, ipa_rx_diff);
 }
 
-void ucfg_ipa_reg_sap_xmit_cb(struct wlan_objmgr_pdev *pdev,
-			      wlan_ipa_softap_xmit cb)
+void ucfg_ipa_reg_sap_xmit_cb(struct wlan_objmgr_pdev *pdev, void *cb)
 {
 	return ipa_reg_sap_xmit_cb(pdev, cb);
 }
 
-void ucfg_ipa_reg_send_to_nw_cb(struct wlan_objmgr_pdev *pdev,
-				wlan_ipa_send_to_nw cb)
+void ucfg_ipa_reg_send_to_nw_cb(struct wlan_objmgr_pdev *pdev, void *cb)
 {
 	return ipa_reg_send_to_nw_cb(pdev, cb);
 
@@ -175,12 +173,6 @@ int ucfg_ipa_uc_smmu_map(bool map, uint32_t num_buf, qdf_mem_info_t *buf_arr)
 bool ucfg_ipa_is_fw_wdi_activated(struct wlan_objmgr_pdev *pdev)
 {
 	return ipa_is_fw_wdi_activated(pdev);
-}
-
-void ucfg_ipa_uc_cleanup_sta(struct wlan_objmgr_pdev *pdev,
-			     qdf_netdev_t net_dev)
-{
-	return ipa_uc_cleanup_sta(pdev, net_dev);
 }
 
 QDF_STATUS ucfg_ipa_uc_disconnect_ap(struct wlan_objmgr_pdev *pdev,

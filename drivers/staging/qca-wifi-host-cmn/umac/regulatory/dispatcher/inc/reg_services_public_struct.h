@@ -167,9 +167,6 @@ enum channel_enum {
 
 	NUM_CHANNELS,
 
-	MIN_CHANNEL = CHAN_ENUM_1,
-	MAX_CHANNEL = (NUM_CHANNELS - 1),
-
 	MIN_24GHZ_CHANNEL = CHAN_ENUM_1,
 	MAX_24GHZ_CHANNEL = CHAN_ENUM_14,
 	NUM_24GHZ_CHANNELS = (MAX_24GHZ_CHANNEL - MIN_24GHZ_CHANNEL + 1),
@@ -237,9 +234,6 @@ enum channel_enum {
 	CHAN_ENUM_173,
 
 	NUM_CHANNELS,
-
-	MIN_CHANNEL = CHAN_ENUM_1,
-	MAX_CHANNEL = (NUM_CHANNELS - 1),
 
 	MIN_24GHZ_CHANNEL = CHAN_ENUM_1,
 	MAX_24GHZ_CHANNEL = CHAN_ENUM_14,
@@ -1031,22 +1025,6 @@ struct unsafe_ch_list {
 struct avoid_freq_ind_data {
 	struct ch_avoid_ind_type freq_list;
 	struct unsafe_ch_list chan_list;
-};
-
-/**
- * struct reg_ctl_params - reg ctl and regd info
- * @regd: regdomain pair
- * @regd_2g: 2g sub domain code
- * @regd_5g: 5g sub domain code
- * @ctl_2g: 2g ctl info
- * @ctl_5g: 5g ctl info
- */
-struct reg_ctl_params {
-	uint32_t regd;
-	uint16_t regd_2g;
-	uint16_t regd_5g;
-	uint8_t ctl_2g;
-	uint8_t ctl_5g;
 };
 
 #endif

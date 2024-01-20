@@ -108,7 +108,6 @@ static QDF_STATUS wlan_objmgr_vdev_obj_free(struct wlan_objmgr_vdev *vdev)
 
 	qdf_mem_free(vdev->vdev_mlme.bss_chan);
 	qdf_mem_free(vdev->vdev_mlme.des_chan);
-	qdf_mem_free(vdev->vdev_nif.osdev);
 	qdf_mem_free(vdev);
 
 	return QDF_STATUS_SUCCESS;
@@ -769,28 +768,6 @@ QDF_STATUS wlan_objmgr_vdev_peer_detach(struct wlan_objmgr_vdev *vdev,
 	/* decrement vdev ref count after peer released its reference */
 	wlan_objmgr_vdev_release_ref(vdev, WLAN_OBJMGR_ID);
 	return QDF_STATUS_SUCCESS;
-}
-
-struct wlan_objmgr_peer *wlan_objmgr_vdev_try_get_bsspeer(
-					struct wlan_objmgr_vdev *vdev,
-					wlan_objmgr_ref_dbgid id)
-{
-	struct wlan_objmgr_peer *peer;
-	QDF_STATUS status = QDF_STATUS_E_EMPTY;
-
-	if (!vdev)
-		return NULL;
-
-	wlan_vdev_obj_lock(vdev);
-	peer = wlan_vdev_get_bsspeer(vdev);
-	if (peer)
-		status = wlan_objmgr_peer_try_get_ref(peer, id);
-	wlan_vdev_obj_unlock(vdev);
-
-	if (QDF_IS_STATUS_SUCCESS(status))
-		return peer;
-
-	return NULL;
 }
 
 void *wlan_objmgr_vdev_get_comp_private_obj(
