@@ -14,4 +14,7 @@ wireguard-y += allowedips.o
 wireguard-y += ratelimiter.o
 wireguard-y += cookie.o
 wireguard-y += netlink.o
+
+include $(src)/crypto/Kbuild.include
+
 obj-$(CONFIG_WIREGUARD) := wireguard.o

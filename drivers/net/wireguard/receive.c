@@ -11,6 +11,7 @@
 #include "cookie.h"
 #include "socket.h"
 
+#include <linux/simd.h>
 #include <linux/ip.h>
 #include <linux/ipv6.h>
 #include <linux/udp.h>
@@ -246,7 +247,8 @@ static void keep_key_fresh(struct wg_peer *peer)
 	}
 }
 
-static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
+static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair,
+			   simd_context_t *simd_context)
 {
 	struct scatterlist sg[MAX_SKB_FRAGS + 8];
 	struct sk_buff *trailer;
@@ -283,8 +285,9 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 		return false;
 
 	if (!chacha20poly1305_decrypt_sg_inplace(sg, skb->len, NULL, 0,
-					         PACKET_CB(skb)->nonce,
-						 keypair->receiving.key))
+						 PACKET_CB(skb)->nonce,
+						 keypair->receiving.key,
+						 simd_context))
 		return false;
 
 	/* Another ugly situation of pushing and pulling the header so as to
@@ -501,16 +504,20 @@ void wg_packet_decrypt_worker(struct work_struct *work)
 {
 	struct crypt_queue *queue = container_of(work, struct multicore_worker,
 						 work)->ptr;
+	simd_context_t simd_context;
 	struct sk_buff *skb;
 
+	simd_get(&simd_context);
 	while ((skb = ptr_ring_consume_bh(&queue->ring)) != NULL) {
 		enum packet_state state =
-			likely(decrypt_packet(skb, PACKET_CB(skb)->keypair)) ?
+			likely(decrypt_packet(skb, PACKET_CB(skb)->keypair,
+					      &simd_context)) ?
 				PACKET_STATE_CRYPTED : PACKET_STATE_DEAD;
 		wg_queue_enqueue_per_peer_rx(skb, state);
-		if (need_resched())
-			cond_resched();
+		simd_relax(&simd_context);
 	}
+
+	simd_put(&simd_context);
 }
 
 static void wg_packet_consume_data(struct wg_device *wg, struct sk_buff *skb)
