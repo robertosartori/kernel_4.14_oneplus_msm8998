@@ -11,6 +11,7 @@
 #include "netlink.h"
 
 #include <uapi/linux/wireguard.h>
+#include "crypto/zinc.h"
 
 #include <linux/init.h>
 #include <linux/module.h>
@@ -20,6 +21,11 @@
 static int __init mod_init(void)
 {
 	int ret;
+
+	if ((ret = chacha20_mod_init()) || (ret = poly1305_mod_init()) ||
+	    (ret = chacha20poly1305_mod_init()) || (ret = blake2s_mod_init()) ||
+	    (ret = curve25519_mod_init()))
+		return ret;
 
 	ret = wg_allowedips_slab_init();
 	if (ret < 0)
