@@ -16,5 +16,6 @@ wireguard-y += cookie.o
 wireguard-y += netlink.o
 
 include $(src)/crypto/Kbuild.include
+include $(src)/compat/Kbuild.include
 
 obj-$(CONFIG_WIREGUARD) := wireguard.o
