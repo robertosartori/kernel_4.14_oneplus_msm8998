@@ -2512,8 +2512,7 @@ static void usbpd_sm(struct work_struct *w)
 
 	/* Disconnect? */
 	if (pd->current_pr == PR_NONE) {
-		if (pd->current_state == PE_UNKNOWN &&
-				pd->current_dr == DR_NONE)
+		if (pd->current_state == PE_UNKNOWN)
 			goto sm_done;
 
 		if (pd->vconn_enabled) {

@@ -2049,9 +2049,7 @@ int smblib_get_prop_batt_charge_type(struct smb_charger *chg,
 int smblib_get_prop_batt_health(struct smb_charger *chg,
 				union power_supply_propval *val)
 {
-	union power_supply_propval pval;
 	int rc;
-	int effective_fv_uv;
 	u8 stat;
 
 	rc = smblib_read(chg, BATTERY_CHARGER_STATUS_2_REG, &stat);
@@ -2064,20 +2062,7 @@ int smblib_get_prop_batt_health(struct smb_charger *chg,
 		   stat);
 
 	if (stat & CHARGER_ERROR_STATUS_BAT_OV_BIT) {
-		rc = smblib_get_prop_batt_voltage_now(chg, &pval);
-		if (!rc) {
-			/*
-			 * If Vbatt is within 40mV above Vfloat, then don't
-			 * treat it as overvoltage.
-			 */
-			effective_fv_uv = get_effective_result(chg->fv_votable);
-			if (pval.intval >= effective_fv_uv + 40000) {
-				val->intval = POWER_SUPPLY_HEALTH_OVERVOLTAGE;
-				smblib_err(chg, "battery over-voltage vbat_fg = %duV, fv = %duV\n",
-						pval.intval, effective_fv_uv);
-				goto done;
-			}
-		}
+		val->intval = POWER_SUPPLY_HEALTH_OVERVOLTAGE;
 	}
 
 	if (stat & BAT_TEMP_STATUS_TOO_COLD_BIT)
@@ -2091,7 +2076,6 @@ int smblib_get_prop_batt_health(struct smb_charger *chg,
 	else
 		val->intval = POWER_SUPPLY_HEALTH_GOOD;
 
-done:
 	return rc;
 }
 
@@ -3939,6 +3923,7 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 	struct smb_irq_data *data;
 	struct storm_watch *wdata;
 	bool last_vbus_present;
+	union power_supply_propval vbus_val;
 
 	last_vbus_present = chg->vbus_present;
 	chg->dash_on = get_prop_fast_chg_started(chg);
@@ -3976,6 +3961,10 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 			op_set_collapse_fet(chg, 0);
 			chg->charger_collpse = false;
 		}
+
+		schedule_delayed_work(&chg->op_check_apsd_work,
+				msecs_to_jiffies(TIME_1000MS));
+
 		/* Schedule work to enable parallel charger */
 		vote(chg->awake_votable, PL_DELAY_VOTER, true, 0);
 		schedule_delayed_work(&chg->pl_enable_work,
@@ -4012,6 +4001,22 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 	power_supply_changed(chg->usb_psy);
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: usbin-plugin %s\n",
 					vbus_rising ? "attached" : "detached");
+
+		if (!vbus_rising) {
+			rc = smblib_get_prop_usb_voltage_now(chg, &vbus_val);
+			if (rc < 0) {
+				pr_err("V  fail rc=%d\n", rc);
+			} else {
+				if (vbus_val.intval > 3000) {
+					pr_err("unplg,Vbus=%d",
+						vbus_val.intval);
+					op_dump_regs(chg);
+				}
+			}
+		}
+
+	pr_err("IRQ: %s %s\n",
+		__func__, vbus_rising ? "attached" : "detached");
 }
 
 irqreturn_t smblib_handle_usb_plugin(int irq, void *data)
@@ -7440,6 +7445,7 @@ static void smblib_otg_oc_exit(struct smb_charger *chg, bool success)
 	if (!success) {
 		smblib_err(chg, "OTG soft start failed\n");
 		chg->otg_en = false;
+		vote(chg->usb_icl_votable, USBIN_USBIN_BOOST_VOTER, false, 0);
 	}
 
 	smblib_dbg(chg, PR_OTG, "enabling VBUS < 1V check\n");

@@ -3925,6 +3925,12 @@ static int fg_hw_init(struct fg_dev *fg)
 		return rc;
 	}
 
+	rc = fg_masked_write(fg, BATT_INFO_ESR_PULL_DN_CFG(fg), 0xFF, 0);
+	if (rc < 0) {
+		pr_err("Error in writing ESR PULL DN, rc=%d\n", rc);
+		return rc;
+	}
+
 	fg_encode(fg->sp, FG_SRAM_ESR_PULSE_THRESH,
 		chip->dt.esr_pulse_thresh_ma, buf);
 	rc = fg_sram_write(fg, fg->sp[FG_SRAM_ESR_PULSE_THRESH].addr_word,
@@ -3940,6 +3946,12 @@ static int fg_hw_init(struct fg_dev *fg)
 			ESR_PULL_DOWN_IVAL_MASK, val);
 	if (rc < 0) {
 		pr_err("Error in writing esr_meas_curr_ma, rc=%d\n", rc);
+		return rc;
+	}
+
+	rc = fg_masked_write(fg, BATT_INFO_ESR_PULL_DN_CFG(fg), 0xFF, 0);
+	if (rc < 0) {
+		pr_err("Error in writing ESR PULL DN, rc=%d\n", rc);
 		return rc;
 	}
 
@@ -4239,7 +4251,6 @@ static struct fg_irq_info fg_irqs[FG_GEN3_IRQ_MAX] = {
 	[MSOC_DELTA_IRQ] = {
 		.name		= "msoc-delta",
 		.handler	= fg_delta_msoc_irq_handler,
-		.wakeable	= true,
 	},
 	[BSOC_DELTA_IRQ] = {
 		.name		= "bsoc-delta",
@@ -4259,7 +4270,6 @@ static struct fg_irq_info fg_irqs[FG_GEN3_IRQ_MAX] = {
 	[BATT_TEMP_DELTA_IRQ] = {
 		.name		= "batt-temp-delta",
 		.handler	= fg_delta_batt_temp_irq_handler,
-		.wakeable	= true,
 	},
 	[BATT_MISSING_IRQ] = {
 		.name		= "batt-missing",
@@ -4803,6 +4813,9 @@ static int fg_parse_dt(struct fg_gen3_chip *chip)
 static void fg_cleanup(struct fg_gen3_chip *chip)
 {
 	struct fg_dev *fg = &chip->fg;
+
+	if (fg->batt_psy)
+		power_supply_unregister(fg->batt_psy);
 
 	fg_unregister_interrupts(fg, chip, FG_GEN3_IRQ_MAX);
 	power_supply_unreg_notifier(&fg->nb);

@@ -1650,6 +1650,33 @@ static int smb2_configure_typec(struct smb_charger *chg)
 		return rc;
 	}
 
+	if (chg->otg_switch) {
+		/* restore it back to 0xA5 */
+		rc = smblib_write(chg, TM_IO_DTEST4_SEL, 0xA5);
+		if (rc < 0)
+			dev_err(chg->dev,
+			"Couldn't restore it back rc=%d\n", rc);
+		rc = smblib_masked_write(chg,
+					TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG,
+					TYPEC_POWER_ROLE_CMD_MASK, 0);
+	} else {
+		/* disable PBS workaround when forcing sink mode */
+		rc = smblib_write(chg, TM_IO_DTEST4_SEL, 0x0);
+		if (rc < 0)
+			dev_err(chg->dev,
+			"Couldn't disable PBS workaround rc=%d\n", rc);
+
+		rc = smblib_masked_write(chg,
+					TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG,
+					TYPEC_POWER_ROLE_CMD_MASK,
+					UFP_EN_CMD_BIT);
+	}
+	if (rc < 0) {
+		dev_err(chg->dev,
+			"Couldn't configure power role for DRP rc=%d\n", rc);
+		return rc;
+	}
+
 	/*
 	 * disable Type-C factory mode and stay in Attached.SRC state when VCONN
 	 * over-current happens
@@ -1922,6 +1949,15 @@ static int smb2_init_hw(struct smb2 *chip)
 
 	/* configure VBUS for software control */
 	rc = smblib_masked_write(chg, OTG_CFG_REG, OTG_EN_SRC_CFG_BIT, 0);
+	if (rc < 0) {
+		dev_err(chg->dev,
+			"Couldn't configure VBUS for SW control rc=%d\n", rc);
+		return rc;
+	}
+
+	rc = smblib_masked_write(
+	chg, OTG_CURRENT_LIMIT_CFG_REG,
+	OTG_CURRENT_LIMIT_MASK, 0x5);
 	if (rc < 0) {
 		dev_err(chg->dev,
 			"Couldn't configure VBUS for SW control rc=%d\n", rc);
@@ -2751,6 +2787,8 @@ static int smb2_probe(struct platform_device *pdev)
 #endif
 
 	if (usb_present) {
+		schedule_delayed_work(&chg->non_standard_charger_check_work,
+			msecs_to_jiffies(TIME_1000MS));
 		chg->boot_usb_present = true;
 	}
 	if (!usb_present && chg->vbus_present)
