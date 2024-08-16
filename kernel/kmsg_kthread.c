@@ -3,14 +3,12 @@
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/kthread.h>
+#include <linux/delay.h>
 
 #define BUFFER_SIZE 4096 // Buffer size for reading
 
 static struct task_struct *kmsg_to_log_thread;
 static char *log_file_path = "/cache/log.txt";
-
-module_param(log_file_path, charp, 0644);
-MODULE_PARM_DESC(log_file_path, "Path to the log file");
 
 static int kmsg_to_log_thread_fn(void *data)
 {
@@ -71,15 +69,21 @@ static int kmsg_to_log_thread_fn(void *data)
 	return 0;
 }
 
-static int __init kmsg_to_log_init(void)
+struct delayed_work my_work;
+
+void real_init(struct work_struct *work)
 {
 	kmsg_to_log_thread =
-		kthread_run(kmsg_to_log_thread_fn, NULL, "kmsg_to_log");
+                kthread_run(kmsg_to_log_thread_fn, NULL, "kmsg_to_log");
 	if (IS_ERR(kmsg_to_log_thread)) {
 		pr_err("Failed to create kernel thread\n");
-		return PTR_ERR(kmsg_to_log_thread);
 	}
+}
 
+static int __init kmsg_to_log_init(void)
+{
+	INIT_DELAYED_WORK(&my_work, real_init);
+	schedule_delayed_work(&my_work, msecs_to_jiffies(30000));
 	return 0;
 }
 
