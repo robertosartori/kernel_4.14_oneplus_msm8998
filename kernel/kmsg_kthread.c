@@ -36,7 +36,7 @@ static int kmsg_to_log_thread_fn(void *data)
 
 	// Open the log file for writing, creating the file if it doesn't exist
 	dest_file =
-		filp_open(log_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+		filp_open(log_file_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
 	if (IS_ERR(dest_file)) {
 		pr_err("Failed to create %s\n", log_file_path);
 		filp_close(src_file, NULL);
