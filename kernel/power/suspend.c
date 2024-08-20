@@ -561,6 +561,7 @@ static int enter_state(suspend_state_t state)
 {
 	int error;
 
+	pr_err("suspend enter_state");
 	trace_suspend_resume(TPS("suspend_enter"), state, true);
 	if (state == PM_SUSPEND_TO_IDLE) {
 #ifdef CONFIG_PM_DEBUG
@@ -570,35 +571,47 @@ static int enter_state(suspend_state_t state)
 		}
 #endif
 	} else if (!valid_state(state)) {
+		pr_err("suspend enter_state EINVAL");
 		return -EINVAL;
 	}
-	if (!mutex_trylock(&pm_mutex))
+	if (!mutex_trylock(&pm_mutex)) {
+		 pr_err("suspend enter_state EBUSY");
 		return -EBUSY;
+	}
 
 	if (state == PM_SUSPEND_TO_IDLE)
 		s2idle_begin();
 
 #ifndef CONFIG_SUSPEND_SKIP_SYNC
 	trace_suspend_resume(TPS("sync_filesystems"), 0, true);
-	pr_info("Syncing filesystems ... ");
+	pr_err("Syncing filesystems ... ");
+	mdelay(100);
 	sys_sync();
-	pr_cont("done.\n");
+	pr_err("done.\n");
 	trace_suspend_resume(TPS("sync_filesystems"), 0, false);
 #endif
 
 	pm_pr_dbg("Preparing system for sleep (%s)\n", mem_sleep_labels[state]);
+	pr_err("Preparing system for sleep");
 	pm_suspend_clear_flags();
+	pr_err("Preparing system for sleep pm_suspend_clear_flags");
 	error = suspend_prepare(state);
-	if (error)
+	pr_err("Preparing system for sleep suspend_prepare");
+	if (error) {
+		pr_err("Preparing system for sleep Unlock");
 		goto Unlock;
+	}
 
 	if (suspend_test(TEST_FREEZER))
 		goto Finish;
 
 	trace_suspend_resume(TPS("suspend_enter"), state, false);
+	pr_err("Preparing system for sleep pm_restrict_gfp_mask");
 	pm_pr_dbg("Suspending system (%s)\n", mem_sleep_labels[state]);
 	pm_restrict_gfp_mask();
+	pr_err("Before suspend_devices_and_enter");
 	error = suspend_devices_and_enter(state);
+	pr_err("After suspend_devices_and_enter");
 	pm_restore_gfp_mask();
 
  Finish:
@@ -637,7 +650,7 @@ int pm_suspend(suspend_state_t state)
 		return -EINVAL;
 
 	pm_suspend_marker("entry");
-	pr_info("suspend entry (%s)\n", mem_sleep_labels[state]);
+	pr_err("suspend entry (%s)\n", mem_sleep_labels[state]);
 	error = enter_state(state);
 	if (error) {
 		suspend_stats.fail++;
@@ -646,7 +659,7 @@ int pm_suspend(suspend_state_t state)
 		suspend_stats.success++;
 	}
 	pm_suspend_marker("exit");
-	pr_info("suspend exit\n");
+	pr_err("suspend exit\n");
 	return error;
 }
 EXPORT_SYMBOL(pm_suspend);
