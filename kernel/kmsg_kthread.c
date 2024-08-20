@@ -5,7 +5,8 @@
 #include <linux/kthread.h>
 #include <linux/delay.h>
 
-#define BUFFER_SIZE 4096 // Buffer size for reading
+#define BUFFER_SIZE 16384 // Buffer size for reading
+#define MAX_LOG_SIZE (50 * 1024 * 1024)  // 50 MB
 
 static struct task_struct *kmsg_to_log_thread;
 static char *log_file_path = "/cache/log.txt";
@@ -16,6 +17,7 @@ static int kmsg_to_log_thread_fn(void *data)
 	mm_segment_t old_fs;
 	char *buffer;
 	ssize_t bytes_read, bytes_written;
+	static loff_t current_file_size = 0;
 
 	// Allocate memory for the buffer
 	buffer = kmalloc(BUFFER_SIZE, GFP_KERNEL);
@@ -47,15 +49,29 @@ static int kmsg_to_log_thread_fn(void *data)
 	set_fs(KERNEL_DS);
 
 	// Read and write data in a loop
-	while (!kthread_should_stop() &&
-	       (bytes_read = kernel_read(src_file, buffer, BUFFER_SIZE,
-					 &src_file->f_pos)) > 0) {
+	while (!kthread_should_stop()) {
+		bytes_read = kernel_read(src_file, buffer, BUFFER_SIZE,
+					 &src_file->f_pos);
+		if (bytes_read <= 0) continue;
+
 		bytes_written = kernel_write(dest_file, buffer, bytes_read,
 					     &dest_file->f_pos);
+
 		if (bytes_written < 0) {
 			pr_err("Failed to write to %s\n", log_file_path);
 			break;
 		}
+		current_file_size = vfs_llseek(dest_file, 0, SEEK_END);
+		// Check if the file is about to exceed 50 MB
+		if (current_file_size + bytes_read > MAX_LOG_SIZE) {
+			pr_info("Log file will exceed 50 MB, resetting...\n");
+			filp_close(dest_file, NULL);
+			dest_file = filp_open(log_file_path, O_WRONLY | O_TRUNC | O_CREAT, 0644);
+			if (IS_ERR(dest_file)) {
+				pr_err("Failed to reset log file: %ld\n", PTR_ERR(dest_file));
+				break;
+			}
+	        }
 	}
 
 	// Restore the previous address limit
