@@ -76,84 +76,6 @@ static void s2idle_begin(void)
 	s2idle_state = S2IDLE_STATE_NONE;
 }
 
-static void s2idle_enter(void)
-{
-	trace_suspend_resume(TPS("machine_suspend"), PM_SUSPEND_TO_IDLE, true);
-
-	raw_spin_lock_irq(&s2idle_lock);
-	if (pm_wakeup_pending())
-		goto out;
-
-	s2idle_state = S2IDLE_STATE_ENTER;
-	raw_spin_unlock_irq(&s2idle_lock);
-
-	get_online_cpus();
-	cpuidle_resume();
-
-	/* Push all the CPUs into the idle loop. */
-	wake_up_all_idle_cpus();
-	/* Make the current CPU wait so it can enter the idle loop too. */
-	wait_event(s2idle_wait_head,
-		   s2idle_state == S2IDLE_STATE_WAKE);
-
-	cpuidle_pause();
-	put_online_cpus();
-
-	raw_spin_lock_irq(&s2idle_lock);
-
- out:
-	s2idle_state = S2IDLE_STATE_NONE;
-	raw_spin_unlock_irq(&s2idle_lock);
-
-	trace_suspend_resume(TPS("machine_suspend"), PM_SUSPEND_TO_IDLE, false);
-}
-
-static void s2idle_loop(void)
-{
-	pm_pr_dbg("suspend-to-idle\n");
-
-	for (;;) {
-		int error;
-
-		dpm_noirq_begin();
-
-		/*
-		 * Suspend-to-idle equals
-		 * frozen processes + suspended devices + idle processors.
-		 * Thus s2idle_enter() should be called right after
-		 * all devices have been suspended.
-		 *
-		 * Wakeups during the noirq suspend of devices may be spurious,
-		 * so prevent them from terminating the loop right away.
-		 */
-		error = dpm_noirq_suspend_devices(PMSG_SUSPEND);
-		if (!error)
-			s2idle_enter();
-		else if (error == -EBUSY && pm_wakeup_pending())
-			error = 0;
-
-		if (!error && s2idle_ops && s2idle_ops->wake)
-			s2idle_ops->wake();
-
-		dpm_noirq_resume_devices(PMSG_RESUME);
-
-		dpm_noirq_end();
-
-		if (error)
-			break;
-
-		if (s2idle_ops && s2idle_ops->sync)
-			s2idle_ops->sync();
-
-		if (pm_wakeup_pending())
-			break;
-
-		pm_wakeup_clear(false);
-	}
-
-	pm_pr_dbg("resume from suspend-to-idle\n");
-}
-
 void s2idle_wake(void)
 {
 	unsigned long flags;
@@ -247,24 +169,6 @@ EXPORT_SYMBOL_GPL(suspend_valid_only_mem);
 static bool sleep_state_supported(suspend_state_t state)
 {
 	return state == PM_SUSPEND_TO_IDLE || (suspend_ops && suspend_ops->enter);
-}
-
-static int platform_suspend_prepare(suspend_state_t state)
-{
-	return state != PM_SUSPEND_TO_IDLE && suspend_ops->prepare ?
-		suspend_ops->prepare() : 0;
-}
-
-static int platform_suspend_prepare_late(suspend_state_t state)
-{
-	return state == PM_SUSPEND_TO_IDLE && s2idle_ops && s2idle_ops->prepare ?
-		s2idle_ops->prepare() : 0;
-}
-
-static int platform_suspend_prepare_noirq(suspend_state_t state)
-{
-	return state != PM_SUSPEND_TO_IDLE && suspend_ops->prepare_late ?
-		suspend_ops->prepare_late() : 0;
 }
 
 static void platform_resume_noirq(suspend_state_t state)
@@ -393,46 +297,7 @@ void __weak arch_suspend_enable_irqs(void)
 static int suspend_enter(suspend_state_t state, bool *wakeup)
 {
 	char suspend_abort[MAX_SUSPEND_ABORT_LEN];
-	int error, last_dev;
-
-	error = platform_suspend_prepare(state);
-	if (error)
-		goto Platform_finish;
-
-	error = dpm_suspend_late(PMSG_SUSPEND);
-	if (error) {
-		last_dev = suspend_stats.last_failed_dev + REC_FAILED_NUM - 1;
-		last_dev %= REC_FAILED_NUM;
-		pr_err("late suspend of devices failed\n");
-		log_suspend_abort_reason("%s device failed to power down",
-			suspend_stats.failed_devs[last_dev]);
-		goto Platform_finish;
-	}
-	error = platform_suspend_prepare_late(state);
-	if (error)
-		goto Devices_early_resume;
-
-	if (state == PM_SUSPEND_TO_IDLE && pm_test_level != TEST_PLATFORM) {
-		s2idle_loop();
-		goto Platform_early_resume;
-	}
-
-	error = dpm_suspend_noirq(PMSG_SUSPEND);
-	if (error) {
-		last_dev = suspend_stats.last_failed_dev + REC_FAILED_NUM - 1;
-		last_dev %= REC_FAILED_NUM;
-		pr_err("noirq suspend of devices failed\n");
-		log_suspend_abort_reason("noirq suspend of %s device failed",
-			suspend_stats.failed_devs[last_dev]);
-		goto Platform_early_resume;
-	}
-	error = platform_suspend_prepare_noirq(state);
-	if (error)
-		goto Platform_wake;
-
-	if (suspend_test(TEST_PLATFORM))
-		goto Platform_wake;
-
+	int error;
 	error = disable_nonboot_cpus();
 	if (error || suspend_test(TEST_CPUS)) {
 		log_suspend_abort_reason("Disabling non-boot cpus failed");
@@ -465,20 +330,6 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 
  Enable_cpus:
 	enable_nonboot_cpus();
-
- Platform_wake:
-	platform_resume_noirq(state);
-	dpm_resume_noirq(PMSG_RESUME);
-
- Platform_early_resume:
-	platform_resume_early(state);
-
- Devices_early_resume:
-	dpm_resume_early(PMSG_RESUME);
-
- Platform_finish:
-	platform_resume_finish(state);
-	return error;
 }
 
 /**
@@ -500,19 +351,6 @@ int suspend_devices_and_enter(suspend_state_t state)
 		goto Close;
 
 	suspend_console();
-	suspend_test_start();
-	error = dpm_suspend_start(PMSG_SUSPEND);
-	if (error) {
-		last_dev = suspend_stats.last_failed_dev + REC_FAILED_NUM - 1;
-		last_dev %= REC_FAILED_NUM;
-		pr_err("Some devices failed to suspend, or early wake event detected\n");
-		log_suspend_abort_reason("%s device failed to suspend, or early wake event detected",
-			suspend_stats.failed_devs[last_dev]);
-		goto Recover_platform;
-	}
-	suspend_test_finish("suspend devices");
-	if (suspend_test(TEST_DEVICES))
-		goto Recover_platform;
 
 	do {
 		error = suspend_enter(state, &wakeup);
