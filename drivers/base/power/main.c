@@ -1063,6 +1063,7 @@ void dpm_complete(pm_message_t state)
 	mutex_lock(&dpm_list_mtx);
 	while (!list_empty(&dpm_prepared_list)) {
 		struct device *dev = to_device(dpm_prepared_list.prev);
+		pr_err("resuming: %s", dev_name(dev));
 		get_device(dev);
 		dev->power.is_prepared = false;
 		list_move(&dev->power.entry, &list);
@@ -1802,6 +1803,7 @@ int dpm_prepare(pm_message_t state)
 	mutex_lock(&dpm_list_mtx);
 	while (!list_empty(&dpm_list)) {
 		struct device *dev = to_device(dpm_list.next);
+		pr_err("suspending: %s", dev_name(dev));
 		get_device(dev);
 		mutex_unlock(&dpm_list_mtx);
 

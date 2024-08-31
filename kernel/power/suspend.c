@@ -563,7 +563,6 @@ static int enter_state(suspend_state_t state)
 
 	pr_err("suspend enter_state");
 	trace_suspend_resume(TPS("suspend_enter"), state, true);
-	pr_err("suspend enter_state1");
 	if (state == PM_SUSPEND_TO_IDLE) {
 #ifdef CONFIG_PM_DEBUG
 		if (pm_test_level != TEST_NONE && pm_test_level <= TEST_CPUS) {
@@ -575,13 +574,11 @@ static int enter_state(suspend_state_t state)
 		pr_err("suspend enter_state EINVAL");
 		return -EINVAL;
 	}
-	pr_err("suspend enter_state: before mutex");
 	if (!mutex_trylock(&pm_mutex)) {
 		 pr_err("suspend enter_state EBUSY");
 		return -EBUSY;
 	}
 
-	pr_err("suspend enter_state: after mutex");
 	if (state == PM_SUSPEND_TO_IDLE)
 		s2idle_begin();
 
