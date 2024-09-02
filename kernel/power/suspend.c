@@ -574,11 +574,13 @@ static int enter_state(suspend_state_t state)
 		pr_err("suspend enter_state EINVAL");
 		return -EINVAL;
 	}
+	pr_err("before mutex_trylock");
 	if (!mutex_trylock(&pm_mutex)) {
 		 pr_err("suspend enter_state EBUSY");
 		return -EBUSY;
 	}
 
+	pr_err("after mutex_trylock");
 	if (state == PM_SUSPEND_TO_IDLE)
 		s2idle_begin();
 
