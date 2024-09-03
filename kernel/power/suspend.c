@@ -171,24 +171,6 @@ static bool sleep_state_supported(suspend_state_t state)
 	return state == PM_SUSPEND_TO_IDLE || (suspend_ops && suspend_ops->enter);
 }
 
-static void platform_resume_noirq(suspend_state_t state)
-{
-	if (state != PM_SUSPEND_TO_IDLE && suspend_ops->wake)
-		suspend_ops->wake();
-}
-
-static void platform_resume_early(suspend_state_t state)
-{
-	if (state == PM_SUSPEND_TO_IDLE && s2idle_ops && s2idle_ops->restore)
-		s2idle_ops->restore();
-}
-
-static void platform_resume_finish(suspend_state_t state)
-{
-	if (state != PM_SUSPEND_TO_IDLE && suspend_ops->finish)
-		suspend_ops->finish();
-}
-
 static int platform_suspend_begin(suspend_state_t state)
 {
 	if (state == PM_SUSPEND_TO_IDLE && s2idle_ops && s2idle_ops->begin)
@@ -205,12 +187,6 @@ static void platform_resume_end(suspend_state_t state)
 		s2idle_ops->end();
 	else if (suspend_ops && suspend_ops->end)
 		suspend_ops->end();
-}
-
-static void platform_recover(suspend_state_t state)
-{
-	if (state != PM_SUSPEND_TO_IDLE && suspend_ops->recover)
-		suspend_ops->recover();
 }
 
 static bool platform_suspend_again(suspend_state_t state)
@@ -330,6 +306,7 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 
  Enable_cpus:
 	enable_nonboot_cpus();
+	return error;
 }
 
 /**
@@ -338,7 +315,7 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
  */
 int suspend_devices_and_enter(suspend_state_t state)
 {
-	int error, last_dev;
+	int error;
 	bool wakeup = false;
 
 	if (!sleep_state_supported(state))
@@ -356,7 +333,6 @@ int suspend_devices_and_enter(suspend_state_t state)
 		error = suspend_enter(state, &wakeup);
 	} while (!error && !wakeup && platform_suspend_again(state));
 
- Resume_devices:
 	suspend_test_start();
 	dpm_resume_end(PMSG_RESUME);
 	suspend_test_finish("resume devices");
@@ -368,10 +344,6 @@ int suspend_devices_and_enter(suspend_state_t state)
 	platform_resume_end(state);
 	pm_suspend_target_state = PM_SUSPEND_ON;
 	return error;
-
- Recover_platform:
-	platform_recover(state);
-	goto Resume_devices;
 }
 
 /**
