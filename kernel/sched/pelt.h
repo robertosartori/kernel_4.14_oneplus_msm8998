@@ -107,7 +107,7 @@ static inline void update_rq_clock_pelt(struct rq *rq, s64 delta)
 	 * computation
 	 */
 	delta = cap_scale(delta, arch_scale_cpu_capacity(NULL, cpu_of(rq)));
-	delta = cap_scale(delta, arch_scale_freq_capacity(cpu_of(rq)));
+	delta = cap_scale(delta, arch_scale_freq_capacity(NULL, cpu_of(rq)));
 
 	rq->clock_pelt += delta;
 }
