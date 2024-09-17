@@ -348,12 +348,6 @@ const struct sched_class fair_sched_class;
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
 
-/* cpu runqueue to which this cfs_rq is attached */
-static inline struct rq *rq_of(struct cfs_rq *cfs_rq)
-{
-	return cfs_rq->rq;
-}
-
 /* An entity is a task if it doesn't "own" a runqueue */
 #define entity_is_task(se)	(!se->my_q)
 
@@ -9587,10 +9581,10 @@ static void update_blocked_averages(int cpu)
 	struct rq *rq = cpu_rq(cpu);
 	struct cfs_rq *cfs_rq;
 	struct rq_flags rf;
+	unsigned long thermal_pressure;
 
 	rq_lock_irqsave(rq, &rf);
 	update_rq_clock(rq);
-	unsigned long thermal_pressure;
 
 	/*
 	 * Iterates the task_group tree in a bottom up fashion, see
@@ -11041,13 +11035,13 @@ static int should_we_balance(struct lb_env *env)
 	 * to optimize wakeup latency.
 	 */
 	if (env->idle == CPU_NEWLY_IDLE) {
-#if SCHED_FEAT_TTWU_QUEUE
-		if (env->dst_rq->nr_running > 0 || !llist_empty(&env->dst_rq->wake_list))
-			return 0;
-#else
-		if (env->dst_rq->nr_running > 0)
-			return 0;
-#endif
+		if (sched_feat(TTWU_QUEUE)) {
+			if (env->dst_rq->nr_running > 0 || !llist_empty(&env->dst_rq->wake_list))
+				return 0;
+		} else {
+			if (env->dst_rq->nr_running > 0)
+				return 0;
+		}
 		return 1;
 	}
 
