@@ -303,23 +303,31 @@ exit:
 	return ret;
 }
 
-static const struct of_device_id of_sched_energy_dt[] = {
-	{
-		.compatible = "sched-energy",
-	},
-	{ }
-};
-
 static struct platform_driver energy_driver = {
 	.driver = {
 		.name = "sched-energy",
-		.of_match_table = of_sched_energy_dt,
 	},
 	.probe = sched_energy_probe,
 };
 
+static struct platform_device energy_device = {
+	.name = "sched-energy",
+};
+
 static int __init sched_energy_init(void)
 {
-	return platform_driver_register(&energy_driver);
+	int ret;
+
+	ret = platform_device_register(&energy_device);
+	if (ret)
+		pr_err("%s device_register failed:%d\n", __func__, ret);
+
+	ret = platform_driver_register(&energy_driver);
+	if (ret) {
+		pr_err("%s driver_register failed:%d\n", __func__, ret);
+		platform_device_unregister(&energy_device);
+	}
+
+	return ret;
 }
 subsys_initcall(sched_energy_init);
