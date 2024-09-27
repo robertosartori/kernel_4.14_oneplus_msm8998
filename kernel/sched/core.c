@@ -842,7 +842,7 @@ static inline unsigned int uclamp_bucket_base_value(unsigned int clamp_value)
 	return UCLAMP_BUCKET_DELTA * uclamp_bucket_id(clamp_value);
 }
 
-static inline enum uclamp_id uclamp_none(enum uclamp_id clamp_id)
+static inline unsigned long uclamp_none(enum uclamp_id clamp_id)
 {
 	if (clamp_id == UCLAMP_MIN)
 		return 0;
@@ -857,9 +857,9 @@ static inline void uclamp_se_set(struct uclamp_se *uc_se,
 	uc_se->user_defined = user_defined;
 }
 
-static inline unsigned int
+static inline unsigned long
 uclamp_idle_value(struct rq *rq, enum uclamp_id clamp_id,
-		  unsigned int clamp_value)
+		  unsigned long clamp_value)
 {
 	/*
 	 * Avoid blocked utilization pushing up the frequency when we go
@@ -875,7 +875,7 @@ uclamp_idle_value(struct rq *rq, enum uclamp_id clamp_id,
 }
 
 static inline void uclamp_idle_reset(struct rq *rq, enum uclamp_id clamp_id,
-				     unsigned int clamp_value)
+				     unsigned long clamp_value)
 {
 	/* Reset max-clamp retention only on idle exit */
 	if (!(rq->uclamp_flags & UCLAMP_FLAG_IDLE))
@@ -885,8 +885,8 @@ static inline void uclamp_idle_reset(struct rq *rq, enum uclamp_id clamp_id,
 }
 
 static inline
-enum uclamp_id uclamp_rq_max_value(struct rq *rq, enum uclamp_id clamp_id,
-				   unsigned int clamp_value)
+unsigned long uclamp_rq_max_value(struct rq *rq, enum uclamp_id clamp_id,
+				   unsigned long clamp_value)
 {
 	struct uclamp_bucket *bucket = rq->uclamp[clamp_id].bucket;
 	int bucket_id = UCLAMP_BUCKETS - 1;
