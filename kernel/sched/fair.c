@@ -6128,6 +6128,8 @@ static unsigned long group_max_util(struct energy_env *eenv, int cpu_idx)
 {
 	unsigned long max_util = 0;
 	unsigned long util;
+	unsigned long cpu_cap;
+	struct task_struct *tsk;
 	int cpu;
 
 	for_each_cpu(cpu, sched_group_span(eenv->sg_cap)) {
@@ -6140,6 +6142,19 @@ static unsigned long group_max_util(struct energy_env *eenv, int cpu_idx)
 		 */
 		if (unlikely(cpu == eenv->cpu[cpu_idx].cpu_id))
 			util += eenv->util_delta_boosted;
+
+		cpu_cap = arch_scale_cpu_capacity(NULL, cpu);
+
+		/*
+		 * Performance domain frequency: utilization clamping
+		 * must be considered since it affects the selection
+		 * of the performance domain frequency.
+		 * NOTE: in case RT tasks are running, by default the
+		 * FREQUENCY_UTIL's utilization can be max OPP.
+		 */
+		tsk = unlikely(cpu == eenv->cpu[cpu_idx].cpu_id) ? eenv->p : NULL;
+		util = schedutil_cpu_util(cpu, util, cpu_cap,
+					      FREQUENCY_UTIL, tsk);
 
 		max_util = max(max_util, util);
 	}
@@ -6173,6 +6188,15 @@ long group_norm_util(struct energy_env *eenv, int cpu_idx)
 		 */
 		if (unlikely(cpu == eenv->cpu[cpu_idx].cpu_id))
 			util += eenv->util_delta;
+
+		/*
+		 * Busy time computation: utilization clamping is not
+		 * required since the ratio (sum_util / cpu_capacity)
+		 * is already enough to scale the EM reported power
+		 * consumption at the (eventually clamped) cpu_capacity.
+		 */
+		util += schedutil_cpu_util(cpu, util, capacity,
+					       ENERGY_UTIL, NULL);
 
 		util_sum += __cpu_norm_util(util, capacity);
 	}
