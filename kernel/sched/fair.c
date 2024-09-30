@@ -6835,6 +6835,12 @@ schedtune_task_margin(struct task_struct *task)
 	if (boost == 0)
 		return 0;
 
+#ifdef CONFIG_UCLAMP_TASK
+	/* If schedtune was turned on by UCLAMP, do not add margin */
+	if (boost == uclamp_boosted(task))
+		return 0;
+#endif
+
 	util = task_util_est(task);
 	margin = schedtune_margin(util, boost, SCHED_CAPACITY_SCALE);
 
