@@ -184,7 +184,7 @@ int __weak arch_asym_cpu_priority(int cpu)
  *
  * (default: ~20%)
  */
-#define fits_capacity(cap, max)	((cap) * 1280 < (max) * 1024)
+#define fits_capacity(cap, max, margin)	((cap) * (margin ?: 1280) < (max) * 1024)
 
 #ifdef CONFIG_CFS_BANDWIDTH
 /*
@@ -3872,19 +3872,32 @@ done:
 	WRITE_ONCE(p->se.avg.util_est, ue);
 }
 
-static inline int util_fits_cpu(unsigned long util,
+static inline int util_fits_cpu(struct task_struct *p,
+				unsigned long util,
 				unsigned long uclamp_min,
 				unsigned long uclamp_max,
 				int cpu)
 {
 	unsigned long capacity_orig, capacity_orig_thermal;
 	unsigned long capacity = capacity_of(cpu);
+	unsigned long margin = sched_capacity_margin_up[cpu];
 	bool fits, uclamp_max_fits;
+
+	if (p) {
+		/*
+		* Derive upmigration/downmigrate margin wrt the src/dest
+		* CPU.
+		*/
+		if (capacity_orig_of(task_cpu(p)) > capacity_orig_of(cpu))
+			margin = sched_capacity_margin_down[cpu];
+		else
+			margin = sched_capacity_margin_up[task_cpu(p)];
+	}
 
 	/*
 	 * Check if the real util fits without any uclamp boost/cap applied.
 	 */
-	fits = fits_capacity(util, capacity);
+	fits = fits_capacity(util, capacity, margin);
 
 	if (!uclamp_is_used())
 		return fits;
@@ -7604,7 +7617,7 @@ static inline int select_idle_sibling_cstate_aware(struct task_struct *p, int pr
 				/* if the task fits without changing OPP and we
 				 * intended to use this CPU, just proceed
 				 */
-				if (i == target && util_fits_cpu(new_usage, util_min, util_max, i))
+				if (i == target && util_fits_cpu(p, new_usage, util_min, util_max, i))
 					return target;
 
 				/* otherwise select CPU with shallowest idle state
@@ -7645,7 +7658,7 @@ static inline int task_fits_cpu(struct task_struct *p,
 	unsigned long uclamp_min = uclamp_eff_value(p, UCLAMP_MIN);
 	unsigned long uclamp_max = uclamp_eff_value(p, UCLAMP_MAX);
 	unsigned long util = task_util_est(p);
-	return util_fits_cpu(util, uclamp_min, uclamp_max, cpu);
+	return util_fits_cpu(p, util, uclamp_min, uclamp_max, cpu);
 }
 
 static inline bool task_fits_max(struct task_struct *p, int cpu)
@@ -7914,7 +7927,7 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 					util_max = max(rq_util_max, p_util_max);
 				}
 			}
-			if (!util_fits_cpu(new_util, util_min, util_max, i))
+			if (!util_fits_cpu(p, new_util, util_min, util_max, i))
 				continue;
 
 			/*
@@ -8320,7 +8333,7 @@ bool cpu_overutilized(int cpu)
 	unsigned long rq_util_min = uclamp_rq_get(cpu_rq(cpu), UCLAMP_MIN);
 	unsigned long rq_util_max = uclamp_rq_get(cpu_rq(cpu), UCLAMP_MAX);
 
-	return !util_fits_cpu(cpu_util(cpu), rq_util_min, rq_util_max, cpu);
+	return !util_fits_cpu(NULL, cpu_util(cpu), rq_util_min, rq_util_max, cpu);
 }
 
 DEFINE_PER_CPU(struct energy_env, eenv_cache);
