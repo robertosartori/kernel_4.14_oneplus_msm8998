@@ -7687,6 +7687,15 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 				new_util_cuml = cpu_util_cum(i, 0) + min_util;
 
 			/*
+			 * Skip CPUs that cannot satisfy the capacity request.
+			 * IOW, placing the task there would make the CPU
+			 * overutilized. Take uclamp into account to see how
+			 * much capacity we can get out of the CPU; this is
+			 * aligned with schedutil_cpu_util().
+			 */
+			new_util = uclamp_rq_util_with(cpu_rq(i), new_util, p);
+
+			/*
 			 * Ensure minimum capacity to grant the required boost.
 			 * The target CPU can be already at a capacity level higher
 			 * than the one required to boost the task.
