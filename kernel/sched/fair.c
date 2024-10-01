@@ -7068,17 +7068,10 @@ boosted_task_util(struct task_struct *task)
 {
 	unsigned long util = task_util_est(task);
 	long margin = schedtune_task_margin(task);
-#ifdef CONFIG_UCLAMP_TASK
-	unsigned long util_min = uclamp_eff_value(task, UCLAMP_MIN);
-	unsigned long util_max = uclamp_eff_value(task, UCLAMP_MAX);
-#endif
 
 	trace_sched_boost_task(task, util, margin);
-#ifdef CONFIG_UCLAMP_TASK
-	return clamp(util + margin, util_min, util_max);
-#else
+
 	return util + margin;
-#endif
 }
 
 static unsigned long cpu_util_without(int cpu, struct task_struct *p);
