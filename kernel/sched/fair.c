@@ -7590,6 +7590,7 @@ static inline int select_idle_sibling_cstate_aware(struct task_struct *p, int pr
 				int idle_idx;
 				unsigned long new_usage;
 				unsigned long capacity_orig;
+				unsigned long util_min, util_max;
 
 				if (!idle_cpu(i))
 					goto next;
@@ -7604,12 +7605,14 @@ static inline int select_idle_sibling_cstate_aware(struct task_struct *p, int pr
 				if (new_usage > capacity_orig)
 					goto next;
 
+				util_min = uclamp_eff_value(p, UCLAMP_MIN);
+				util_max = uclamp_eff_value(p, UCLAMP_MAX);
+
 				/* if the task fits without changing OPP and we
 				 * intended to use this CPU, just proceed
 				 */
-				if (i == target && new_usage <= capacity_curr_of(target)) {
+				if (i == target && util_fits_cpu(new_usage, util_min, util_max, i))
 					return target;
-				}
 
 				/* otherwise select CPU with shallowest idle state
 				 * to reduce wakeup latency.
