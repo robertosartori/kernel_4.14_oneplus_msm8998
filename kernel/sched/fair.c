@@ -7773,6 +7773,8 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 	unsigned long best_active_cuml_util = ULONG_MAX;
 	unsigned long best_idle_cuml_util = ULONG_MAX;
 	unsigned long best_idle_util = ULONG_MAX;
+	unsigned long p_util_min = uclamp_is_used() ? uclamp_eff_value(p, UCLAMP_MIN) : 0;
+	unsigned long p_util_max = uclamp_is_used() ? uclamp_eff_value(p, UCLAMP_MAX) : 1024;
 	int best_idle_cstate = INT_MAX;
 	struct sched_domain *sd;
 	struct sched_group *sg;
@@ -7840,6 +7842,8 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 			unsigned long capacity_curr = capacity_curr_of(i);
 			unsigned long capacity_orig = capacity_orig_of(i);
 			unsigned long wake_util, new_util, new_util_cuml;
+			unsigned long util_min, util_max;
+			unsigned long rq_util_min, rq_util_max;
 			long spare_cap;
 			int idle_idx = INT_MAX;
 
@@ -7887,15 +7891,6 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 				new_util_cuml = cpu_util_cum(i, 0) + min_util;
 
 			/*
-			 * Skip CPUs that cannot satisfy the capacity request.
-			 * IOW, placing the task there would make the CPU
-			 * overutilized. Take uclamp into account to see how
-			 * much capacity we can get out of the CPU; this is
-			 * aligned with schedutil_cpu_util().
-			 */
-			new_util = uclamp_rq_util_with(cpu_rq(i), new_util, p);
-
-			/*
 			 * Ensure minimum capacity to grant the required boost.
 			 * The target CPU can be already at a capacity level higher
 			 * than the one required to boost the task.
@@ -7903,6 +7898,35 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 			new_util = max(min_util, new_util);
 			if ((i < mid_cap_orig_cpu && !task_fits_max(p, i)) ||
 			    new_util > capacity_orig)
+				continue;
+
+			/*
+			 * Skip CPUs that cannot satisfy the capacity request.
+			 * IOW, placing the task there would make the CPU
+			 * overutilized. Take uclamp into account to see how
+			 * much capacity we can get out of the CPU; this is
+			 * aligned with schedutil_cpu_util().
+			 */
+			if (uclamp_is_used()) {
+				if (uclamp_rq_is_idle(cpu_rq(cpu))) {
+					util_min = p_util_min;
+					util_max = p_util_max;
+				} else {
+					/*
+					 * Open code uclamp_rq_util_with() except for
+					 * the clamp() part. Ie: apply max aggregation
+					 * only. util_fits_cpu() logic requires to
+					 * operate on non clamped util but must use the
+					 * max-aggregated uclamp_{min, max}.
+					 */
+					rq_util_min = uclamp_rq_get(cpu_rq(cpu), UCLAMP_MIN);
+					rq_util_max = uclamp_rq_get(cpu_rq(cpu), UCLAMP_MAX);
+
+					util_min = max(rq_util_min, p_util_min);
+					util_max = max(rq_util_max, p_util_max);
+				}
+			}
+			if (!util_fits_cpu(new_util, util_min, util_max, i))
 				continue;
 
 			/*
