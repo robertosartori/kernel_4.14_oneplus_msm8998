@@ -258,15 +258,7 @@ extern void __tick_nohz_task_switch(void);
 #else
 static inline int housekeeping_any_cpu(void)
 {
-	cpumask_t available;
-	int cpu;
-
-	cpumask_andnot(&available, cpu_online_mask, cpu_isolated_mask);
-	cpu = cpumask_any(&available);
-	if (cpu >= nr_cpu_ids)
-		cpu = smp_processor_id();
-
-	return cpu;
+	return smp_processor_id();
 }
 static inline bool tick_nohz_full_enabled(void) { return false; }
 static inline bool tick_nohz_full_cpu(int cpu) { return false; }
@@ -304,7 +296,7 @@ static inline bool is_housekeeping_cpu(int cpu)
 	if (tick_nohz_full_enabled())
 		return cpumask_test_cpu(cpu, housekeeping_mask);
 #endif
-	return !cpu_isolated(cpu);
+	return true;
 }
 
 static inline void housekeeping_affine(struct task_struct *t)
