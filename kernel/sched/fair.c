@@ -3774,9 +3774,6 @@ static inline void util_est_dequeue(struct cfs_rq *cfs_rq,
 	enqueued -= min_t(unsigned int, enqueued,
 			     _task_util_est(p));
 	WRITE_ONCE(cfs_rq->avg.util_est.enqueued, enqueued);
-
-	/* Update plots for CPU's estimated utilization */
-	trace_sched_util_est_cpu(cpu_of(rq_of(cfs_rq)), cfs_rq);
 }
 
 /*
@@ -9803,7 +9800,7 @@ static inline bool cfs_rq_is_decayed(struct cfs_rq *cfs_rq)
 
 static bool __update_blocked_fair(struct rq *rq, bool *done)
 {
-	struct cfs_rq *cfs_rq, *pos;
+	struct cfs_rq *cfs_rq;
 	bool decayed = false;
 	int cpu = cpu_of(rq);
 
