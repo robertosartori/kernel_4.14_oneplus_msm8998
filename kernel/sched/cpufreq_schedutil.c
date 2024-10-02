@@ -478,6 +478,7 @@ static void sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time,
 	 * utilization is smaller then the current IO boost level.
 	 */
 	boost_util = sg_cpu->iowait_boost;
+	boost_util = uclamp_rq_util_with(cpu_rq(sg_cpu->cpu), boost_util, NULL);
 	boost_max = sg_cpu->iowait_boost_max;
 	if (*util * boost_max < *max * boost_util) {
 		*util = boost_util;
