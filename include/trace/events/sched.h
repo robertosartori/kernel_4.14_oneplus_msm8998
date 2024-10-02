@@ -326,7 +326,7 @@ TRACE_EVENT(sched_load_balance_nohz_kick,
 		__field(unsigned long,	misfit_task_load	)
 		__field(int,		cpu_overutil		)
 		__field(int,		kick_cpu		)
-		__field(unsigned long,	nohz_flags		)
+		__field(atomic_t *,	nohz_flags		)
 	),
 
 	TP_fast_assign(
@@ -335,7 +335,7 @@ TRACE_EVENT(sched_load_balance_nohz_kick,
 		__entry->misfit_task_load	= cpu_rq(cpu)->misfit_task_load;
 		__entry->cpu_overutil		= cpu_overutilized(cpu);
 		__entry->kick_cpu		= kick_cpu;
-		__entry->nohz_flags		= *nohz_flags(kick_cpu);
+		__entry->nohz_flags		= nohz_flags(kick_cpu);
 	),
 
 	TP_printk("cpu=%d nr_run=%u misfit_task_load=%lu overutilized=%d kick_cpu=%d nohz_flags=0x%lx",

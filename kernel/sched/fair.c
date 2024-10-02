@@ -12104,7 +12104,7 @@ void nohz_balance_enter_idle(int cpu)
 		 * When the paused CPU exits idle and enters again,
 		 * exempt the paused CPU from nohz_balance_exit_idle.
 		 */
-		nohz_balance_exit_idle(cpu);
+		nohz_balance_exit_idle(rq);
 		return;
 	}
 
