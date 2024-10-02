@@ -6950,7 +6950,6 @@ out:
 int sched_unisolate_cpu_unlocked(int cpu)
 {
 	int ret_code = 0;
-	struct rq *rq = cpu_rq(cpu);
 	u64 start_time = 0;
 
 	if (trace_sched_isolate_enabled())
@@ -6964,14 +6963,6 @@ int sched_unisolate_cpu_unlocked(int cpu)
 	if (--cpu_isolation_vote[cpu])
 		goto out;
 
-	if (cpu_online(cpu)) {
-		unsigned long flags;
-
-		raw_spin_lock_irqsave(&rq->lock, flags);
-		rq->age_stamp = sched_clock_cpu(cpu);
-		raw_spin_unlock_irqrestore(&rq->lock, flags);
-	}
-
 	set_cpu_isolated(cpu, false);
 	update_max_interval();
 	sched_update_group_capacities(cpu);
@@ -6980,7 +6971,7 @@ int sched_unisolate_cpu_unlocked(int cpu)
 		stop_cpus(cpumask_of(cpu), do_unisolation_work_cpu_stop, 0);
 
 		/* Kick CPU to immediately do load balancing */
-		if (!test_and_set_bit(NOHZ_BALANCE_KICK, nohz_flags(cpu)))
+		if (!atomic_fetch_or(NOHZ_BALANCE_KICK, nohz_flags(cpu)))
 			smp_send_reschedule(cpu);
 	}
 
