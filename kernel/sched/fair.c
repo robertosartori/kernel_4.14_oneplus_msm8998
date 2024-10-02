@@ -9740,9 +9740,6 @@ static void update_blocked_averages(int cpu)
 	update_dl_rq_load_avg(rq_clock_pelt(rq), rq, 0);
 	update_thermal_load_avg(rq_clock_thermal(rq), rq, thermal_pressure);
 	update_irq_load_avg(rq, 0);
-#ifdef CONFIG_NO_HZ_COMMON
-	rq->last_blocked_load_update_tick = jiffies;
-#endif
 	rq_unlock_irqrestore(rq, &rf);
 }
 
@@ -9805,9 +9802,6 @@ static inline void update_blocked_averages(int cpu)
 	update_rt_rq_load_avg(rq_clock_pelt(rq), rq, 0);
 	update_dl_rq_load_avg(rq_clock_pelt(rq), rq, 0);
 	update_irq_load_avg(rq, 0);
-#ifdef CONFIG_NO_HZ_COMMON
-	rq->last_blocked_load_update_tick = jiffies;
-#endif
 	rq_unlock_irqrestore(rq, &rf);
 }
 
@@ -10406,15 +10400,6 @@ static inline enum fbq_type fbq_classify_rq(struct rq *rq)
 }
 #endif /* CONFIG_NUMA_BALANCING */
 
-#ifdef CONFIG_NO_HZ_COMMON
-static struct {
-	cpumask_var_t idle_cpus_mask;
-	atomic_t nr_cpus;
-	unsigned long next_balance;     /* in jiffy units */
-	unsigned long next_update;     /* in jiffy units */
-} nohz ____cacheline_aligned;
-#endif
-
 #define lb_sd_parent(sd) \
 	(sd->parent && sd->parent->groups != sd->parent->groups->next)
 
@@ -10432,30 +10417,6 @@ static inline void update_sd_lb_stats(struct lb_env *env, struct sd_lb_stats *sd
 	int load_idx;
 	bool overload = false, overutilized = false, misfit_task = false;
 	bool prefer_sibling = child && child->flags & SD_PREFER_SIBLING;
-
-#ifdef CONFIG_NO_HZ_COMMON
-	if (env->idle == CPU_NEWLY_IDLE) {
-		int cpu;
-
-		/* Update the stats of NOHZ idle CPUs in the sd */
-		for_each_cpu_and(cpu, sched_domain_span(env->sd),
-				 nohz.idle_cpus_mask) {
-			struct rq *rq = cpu_rq(cpu);
-
-			/* ... Unless we've already done since the last tick */
-			if (time_after(jiffies,
-                                       rq->last_blocked_load_update_tick))
-				update_blocked_averages(cpu);
-		}
-	}
-	/*
-	 * If we've just updated all of the NOHZ idle CPUs, then we can push
-	 * back the next nohz.next_update, which will prevent an unnecessary
-	 * wakeup for the nohz stats kick
-	 */
-	if (cpumask_subset(nohz.idle_cpus_mask, sched_domain_span(env->sd)))
-		nohz.next_update = jiffies + LOAD_AVG_PERIOD;
-#endif
 
 	load_idx = get_sd_load_idx(env->sd, env->idle);
 
@@ -11852,6 +11813,12 @@ static inline int on_null_domain(struct rq *rq)
  *   needed, they will kick the idle load balancer, which then does idle
  *   load balancing for all the idle CPUs.
  */
+static struct {
+	cpumask_var_t idle_cpus_mask;
+	atomic_t nr_cpus;
+	unsigned long next_balance;     /* in jiffy units */
+	unsigned long next_update;     /* in jiffy units */
+} nohz ____cacheline_aligned;
 
 static inline int find_new_ilb(void)
 {
@@ -12367,12 +12334,10 @@ static __latent_entropy void run_rebalance_domains(struct softirq_action *h)
 	 */
 	nohz_idle_balance(this_rq, idle);
 	update_blocked_averages(this_rq->cpu);
-#ifdef CONFIG_NO_HZ_COMMON
 	if (!test_bit(NOHZ_STATS_KICK, nohz_flags(this_rq->cpu)))
 		rebalance_domains(this_rq, idle);
+#ifdef CONFIG_NO_HZ_COMMON
 	clear_bit(NOHZ_STATS_KICK, nohz_flags(this_rq->cpu));
-#else
-	rebalance_domains(this_rq, idle);
 #endif
 }
 
