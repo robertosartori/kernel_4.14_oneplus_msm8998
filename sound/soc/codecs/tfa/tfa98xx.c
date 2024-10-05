@@ -120,7 +120,6 @@ static int tfa98xx_get_rivision_ctl(struct snd_kcontrol *kcontrol,
 			     struct snd_ctl_elem_value *ucontrol);
 static int tfa98xx_set_rivision_ctl(struct snd_kcontrol *kcontrol,
 			     struct snd_ctl_elem_value *ucontrol);
-static struct wakeup_source *tfa98xx_wakelock;
 
 int testLogOn = 0;
 EXPORT_SYMBOL_GPL(testLogOn);
@@ -2949,7 +2948,6 @@ static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
 	}
 
 	if (mute) {
-		__pm_relax(tfa98xx_wakelock);
 		/* stop DSP only when both playback and capture streams
 		 * are deactivated
 		 */
@@ -2967,7 +2965,6 @@ static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
 		tfa98xx->dsp_init = TFA98XX_DSP_INIT_STOPPED;
 		mutex_unlock(&tfa98xx->dsp_lock);
 	} else {
-		__pm_stay_awake(tfa98xx_wakelock);
 		if (stream == SNDRV_PCM_STREAM_PLAYBACK)
 			tfa98xx->pstream = 1;
 		else
@@ -3069,8 +3066,6 @@ static int tfa98xx_probe(struct snd_soc_codec *codec)
 tfa98xx->startInit = false;
 
     g_tfa98xx = tfa98xx;
-
-	tfa98xx_wakelock = wakeup_source_register("tfa98xx_wakelock");
 	return ret;
 }
 
@@ -3088,7 +3083,6 @@ static int tfa98xx_remove(struct snd_soc_codec *codec)
 	if (tfa98xx->tfa98xx_wq)
 		destroy_workqueue(tfa98xx->tfa98xx_wq);
 
-	wakeup_source_destroy(tfa98xx_wakelock);
 	return 0;
 }
 
