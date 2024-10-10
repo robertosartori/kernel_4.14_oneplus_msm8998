@@ -93,24 +93,30 @@ struct gf_key_map maps[] = {
 #endif
 };
 
+static DEFINE_SPINLOCK(gf_irq_lock);
+
 static void gf_enable_irq(struct gf_dev *gf_dev)
 {
+	spin_lock(&gf_irq_lock);
 	if (gf_dev->irq_enabled) {
 		pr_warn("IRQ has been enabled.\n");
 	} else {
 		enable_irq(gf_dev->irq);
 		gf_dev->irq_enabled = 1;
 	}
+	spin_unlock(&gf_irq_lock);
 }
 
 static void gf_disable_irq(struct gf_dev *gf_dev)
 {
+	spin_lock(&gf_irq_lock);
 	if (gf_dev->irq_enabled) {
 		gf_dev->irq_enabled = 0;
 		disable_irq(gf_dev->irq);
 	} else {
 		pr_warn("IRQ has been disabled.\n");
 	}
+	spin_unlock(&gf_irq_lock);
 }
 
 #ifdef AP_CONTROL_CLK
