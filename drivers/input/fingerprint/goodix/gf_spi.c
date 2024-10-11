@@ -40,6 +40,7 @@
 #include <linux/fb.h>
 #include <linux/pm_qos.h>
 #include <linux/cpufreq.h>
+#include <linux/suspend.h>
 #ifdef OEM_DEBUG_SUPPORT
 #include <linux/oneplus/boot_mode.h>
 #endif
@@ -57,7 +58,7 @@
 #define VER_MINOR   2
 #define PATCH_LEVEL 1
 
-#define WAKELOCK_HOLD_TIME 500 /* in ms */
+#define WAKELOCK_HOLD_TIME 1000 /* in ms */
 
 #define GF_SPIDEV_NAME     "goodix,fingerprint"
 /*device name after register in charater*/
@@ -502,6 +503,7 @@ static irqreturn_t gf_irq(int irq, void *handle)
 	char temp = GF_NET_EVENT_IRQ;
 
 	__pm_wakeup_event(&fp_wakelock, msecs_to_jiffies(WAKELOCK_HOLD_TIME));
+	pm_system_wakeup();
 	sendnlmsg(&temp);
 #elif defined GF_FASYNC
 	struct gf_dev *gf_dev = &gf;
