@@ -7635,7 +7635,7 @@ static inline int task_fits_cpu(struct task_struct *p,
 {
 	unsigned long uclamp_min = uclamp_eff_value(p, UCLAMP_MIN);
 	unsigned long uclamp_max = uclamp_eff_value(p, UCLAMP_MAX);
-	unsigned long util = task_util_est(p);
+	unsigned long util = boosted_task_util(p);
 	return util_fits_cpu(p, util, uclamp_min, uclamp_max, cpu);
 }
 
