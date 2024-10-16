@@ -7875,8 +7875,6 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 			 * than the one required to boost the task.
 			 */
 			new_util = max(min_util, new_util);
-			if (new_util > capacity_orig)
-				continue;
 
 			/*
 			 * Skip CPUs that cannot satisfy the capacity request.
