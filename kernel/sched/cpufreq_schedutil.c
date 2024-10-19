@@ -18,6 +18,7 @@
 #include <trace/events/power.h>
 #include <linux/sched/sysctl.h>
 #include "sched.h"
+#include "tune.h"
 
 #include <linux/sched/cpufreq.h>
 

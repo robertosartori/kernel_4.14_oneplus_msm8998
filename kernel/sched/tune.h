@@ -43,6 +43,6 @@ unsigned long boosted_cpu_util(int cpu, unsigned long other_util);
 #define schedtune_enqueue_task(task, cpu) do { } while (0)
 #define schedtune_dequeue_task(task, cpu) do { } while (0)
 
-#define boosted_cpu_util(cpu, other_util) cpu_util_cfs(cpu_rq(cpu))
+#define boosted_cpu_util(cpu, other_util) (cpu_util_cfs(cpu_rq(cpu)) + other_util)
 
 #endif /* CONFIG_SCHED_TUNE */
