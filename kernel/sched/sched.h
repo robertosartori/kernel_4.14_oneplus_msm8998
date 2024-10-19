@@ -2307,8 +2307,6 @@ cpu_util_freq(int cpu, struct sched_walt_cpu_load *walt_load)
 
 #endif /* CONFIG_SCHED_WALT */
 
-extern unsigned long
-boosted_cpu_util(int cpu, unsigned long other_util);
 extern unsigned int capacity_margin_freq;
 
 static inline unsigned long
