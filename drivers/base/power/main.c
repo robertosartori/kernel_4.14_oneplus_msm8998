@@ -517,7 +517,7 @@ void device_pm_add(struct device *dev)
 	if (device_pm_not_required(dev))
 		return;
 
-	if (!is_device_in_suspend_allowed_list(dev_name(dev)))
+	if (is_device_in_suspend_allowed_list(dev_name(dev)))
 		return;
 
 	pr_debug("PM: Adding info for %s:%s\n",
@@ -588,7 +588,7 @@ void device_pm_move_after(struct device *deva, struct device *devb)
  */
 void device_pm_move_last(struct device *dev)
 {
-	if (!is_device_in_suspend_allowed_list(dev_name(dev)))
+	if (is_device_in_suspend_allowed_list(dev_name(dev)))
 		return;
 
 	pr_debug("PM: Moving %s:%s to end of list\n",
