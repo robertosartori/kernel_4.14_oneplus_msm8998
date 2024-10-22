@@ -3644,6 +3644,8 @@ static int check_return_code(struct bpf_verifier_env *env)
 		break;
 	case BPF_PROG_TYPE_CGROUP_SOCK:
 	case BPF_PROG_TYPE_SOCK_OPS:
+	case BPF_PROG_TYPE_CGROUP_DEVICE:
+	case BPF_PROG_TYPE_CGROUP_SYSCTL:
 		break;
 	default:
 		return 0;
