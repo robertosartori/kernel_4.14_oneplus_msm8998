@@ -61,7 +61,7 @@ static inline int task_trylock_lmk(struct task_struct *p)
  */
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 0, 0)
 #define LMK_TAG_TASK_DIE(x) set_tsk_thread_flag(x, TIF_MEMDIE)
-#elseif LINUX_VERSION_CODE <= KERNEL_VERSION(4, 5, 0)
+#elif LINUX_VERSION_CODE <= KERNEL_VERSION(4, 5, 0)
 #define LMK_TAG_TASK_DIE(x) mark_oom_victim(x)
 #else
 #define LMK_TAG_TASK_DIE(x)			\
