@@ -633,6 +633,32 @@ static const struct attribute_group attribute_group = {
 	.attrs = attributes,
 };
 
+static void set_fingerprint_hal_nice(int nice)
+{
+	struct task_struct *p;
+
+	read_lock(&tasklist_lock);
+
+	for_each_process(p) {
+		if (!memcmp(p->comm, "fingerprint@2.1", sizeof("fingerprint@2.1"))) {
+			set_user_nice(p, nice);
+			break;
+		}
+	}
+	read_unlock(&tasklist_lock);
+}
+
+static void blank_fingerprint_hal_nice(struct work_struct *work)
+{
+	struct gf_dev *gf_dev = &gf;
+
+	if (gf_dev->fb_black)
+		set_fingerprint_hal_nice(MIN_NICE);
+	else
+		set_fingerprint_hal_nice(0);
+}
+DECLARE_WORK(fp_hal_work, blank_fingerprint_hal_nice);
+
 static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 		unsigned long val, void *data)
 {
@@ -660,6 +686,7 @@ static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 					kill_fasync(&gf_dev->async, SIGIO, POLL_IN);
 				}
 #endif
+				queue_work(system_highpri_wq, &fp_hal_work);
 			}
 			break;
 		case FB_BLANK_UNBLANK:
@@ -673,6 +700,7 @@ static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 					kill_fasync(&gf_dev->async, SIGIO, POLL_IN);
 				}
 #endif
+				queue_work(system_highpri_wq, &fp_hal_work);
 			}
 			break;
 		default:
