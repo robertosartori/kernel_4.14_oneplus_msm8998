@@ -332,7 +332,7 @@ bool is_device_in_suspend_denied_list(const char *name) {
 			return true;
 		}
 	}
-	return true;
+	return false;
 }
 
 /**
