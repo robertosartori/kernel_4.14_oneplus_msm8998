@@ -119,7 +119,7 @@ void device_pm_unlock(void)
 	mutex_unlock(&dpm_list_mtx);
 }
 
-const char *suspend_allow_list[] = {
+const char *suspend_deny_list[] = {
 "Fixed MDIO bus.0",
 "fixed-0",
 "tun",
@@ -497,10 +497,10 @@ const char *suspend_allow_list[] = {
 "soc0",
 };
 
-bool is_device_in_suspend_allowed_list(const char *name) {
+bool is_device_in_suspend_denied_list(const char *name) {
 	int i;
-	for (i = 0; i < ARRAY_SIZE(suspend_allow_list); i++) {
-		if (strcmp(name, suspend_allow_list[i]) == 0) {
+	for (i = 0; i < ARRAY_SIZE(suspend_deny_list); i++) {
+		if (strcmp(name, suspend_deny_list[i]) == 0) {
 			return true;
 		}
 	}
@@ -517,7 +517,7 @@ void device_pm_add(struct device *dev)
 	if (device_pm_not_required(dev))
 		return;
 
-	if (is_device_in_suspend_allowed_list(dev_name(dev)))
+	if (is_device_in_suspend_denied_list(dev_name(dev)))
 		return;
 
 	pr_debug("PM: Adding info for %s:%s\n",
@@ -588,7 +588,7 @@ void device_pm_move_after(struct device *deva, struct device *devb)
  */
 void device_pm_move_last(struct device *dev)
 {
-	if (is_device_in_suspend_allowed_list(dev_name(dev)))
+	if (is_device_in_suspend_denied_list(dev_name(dev)))
 		return;
 
 	pr_debug("PM: Moving %s:%s to end of list\n",
