@@ -707,7 +707,7 @@ struct ipa_filter_spec_type_v01 {
 	 *	is applicable only in the filter install request and response.
 	 */
 
-	uint16_t ip_type;
+	enum ipa_ip_type_enum_v01 ip_type;
 	/*	This field identifies the IP type for which this rule is
 	 *	applicable. The driver needs to identify the filter table
 	 *	(V6 or V4) and this field is essential for that
@@ -718,7 +718,7 @@ struct ipa_filter_spec_type_v01 {
 	 *	are the ones that are matched against fields in the packet.
 	 */
 
-	uint16_t filter_action;
+	enum ipa_filter_action_enum_v01 filter_action;
 	/*	This field specifies the action to be taken when a filter match
 	 *	occurs. The remote side should install this information into the
 	 *	hardware along with the filter equations.
@@ -748,7 +748,7 @@ struct ipa_filter_spec_type_v01 {
 };  /* Type */
 
 struct ipa_filter_spec_ex_type_v01 {
-	uint16_t ip_type;
+	enum ipa_ip_type_enum_v01 ip_type;
 	/*	This field identifies the IP type for which this rule is
 	 *	applicable. The driver needs to identify the filter table
 	 *	(V6 or V4) and this field is essential for that
@@ -759,7 +759,7 @@ struct ipa_filter_spec_ex_type_v01 {
 	 *	are the ones that are matched against fields in the packet.
 	 */
 
-	uint16_t filter_action;
+	enum ipa_filter_action_enum_v01 filter_action;
 	/*	This field specifies the action to be taken when a filter match
 	 *	occurs. The remote side should install this information into the
 	 *	hardware along with the filter equations.
@@ -1846,7 +1846,7 @@ struct ipa_get_stats_per_client_resp_msg_v01 {
 
 struct ipa_ul_firewall_rule_type_v01 {
 
-	uint16_t ip_type;
+	enum ipa_ip_type_enum_v01 ip_type;
 	/*
 	 * IP type for which this rule is applicable.
 	 * The driver must identify the filter table (v6 or v4), and this
