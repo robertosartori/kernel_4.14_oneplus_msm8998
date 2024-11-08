@@ -468,8 +468,8 @@ static void ipa3_copy_qmi_flt_rule_ex(
 	struct ipa_ipfltr_range_eq_16 *q6_ul_filter_nat_ptr;
 	struct ipa_ipfltr_range_eq_16_type_v01 *filter_spec_nat_ptr;
 
-	q6_ul_flt_rule_ptr->ip = flt_spec_ptr->ip_type;
-	q6_ul_flt_rule_ptr->action = flt_spec_ptr->filter_action;
+	q6_ul_flt_rule_ptr->ip = (uint16_t)flt_spec_ptr->ip_type;
+	q6_ul_flt_rule_ptr->action = (uint16_t)flt_spec_ptr->filter_action;
 	if (flt_spec_ptr->is_routing_table_index_valid == true)
 		q6_ul_flt_rule_ptr->rt_tbl_idx =
 		flt_spec_ptr->route_table_index;
