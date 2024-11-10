@@ -123,6 +123,9 @@ void device_pm_unlock(void)
 
 bool is_device_in_suspend_denied_list(const char *name) {
 	int i;
+
+	pr_info_once("suspend_deny_list size %i", ARRAY_SIZE(suspend_deny_list));
+
 	for (i = 0; i < ARRAY_SIZE(suspend_deny_list); i++) {
 		if (strcmp(name, suspend_deny_list[i]) == 0) {
 			return true;
