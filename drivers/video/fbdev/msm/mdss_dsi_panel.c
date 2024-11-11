@@ -3339,8 +3339,5 @@ int mdss_dsi_panel_init(struct device_node *node,
 			mdss_dsi_panel_apply_display_setting;
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
 
-	// Turn on the core MDP clock
-	clk_prepare_enable(ctrl_pdata->shared_data->mdp_core_clk);
-
 	return 0;
 }
