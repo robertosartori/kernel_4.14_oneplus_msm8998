@@ -39,6 +39,8 @@
 #include "../base.h"
 #include "power.h"
 
+#include "suspend_deny_list.h"
+
 typedef int (*pm_callback_t)(struct device *);
 
 /*
@@ -119,6 +121,19 @@ void device_pm_unlock(void)
 	mutex_unlock(&dpm_list_mtx);
 }
 
+bool is_device_in_suspend_denied_list(const char *name) {
+	int i;
+
+	pr_info_once("suspend_deny_list size %i", ARRAY_SIZE(suspend_deny_list));
+
+	for (i = 0; i < ARRAY_SIZE(suspend_deny_list); i++) {
+		if (strcmp(name, suspend_deny_list[i]) == 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
 /**
  * device_pm_add - Add a device to the PM core's list of active devices.
  * @dev: Device to add to the list.
@@ -127,6 +142,9 @@ void device_pm_add(struct device *dev)
 {
 	/* Skip PM setup/initialization. */
 	if (device_pm_not_required(dev))
+		return;
+
+	if (is_device_in_suspend_denied_list(dev_name(dev)))
 		return;
 
 	pr_debug("PM: Adding info for %s:%s\n",
@@ -196,6 +214,9 @@ void device_pm_move_after(struct device *deva, struct device *devb)
  */
 void device_pm_move_last(struct device *dev)
 {
+	if (is_device_in_suspend_denied_list(dev_name(dev)))
+		return;
+
 	pr_debug("PM: Moving %s:%s to end of list\n",
 		 dev->bus ? dev->bus->name : "No Bus", dev_name(dev));
 	list_move_tail(&dev->power.entry, &dpm_list);

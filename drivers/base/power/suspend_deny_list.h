@@ -1,0 +1,42 @@
+#ifndef SUSPEND_DENY_LIST_H
+#define SUSPEND_DENY_LIST_H
+
+static const char *suspend_deny_list[] = {
+	"lo",
+	"regulatory.0",
+	"rfkill",
+	"100000.qcom,gcc",
+	"c8c0000.qcom,mmsscc",
+	"5065000.qcom,early_gpucc",
+	"179c8000.cprh-ctrl",
+	"regulator.70",
+	"179c4000.cprh-ctrl",
+	"regulator.71",
+	"5061000.cpr4-ctrl",
+	"regulator.72",
+	"c8ce020.qcom,gdsc",
+	"regulator.73",
+	"c179000.i2c",
+	"i2c-5",
+	"5-0020",
+	"c17a000.i2c",
+	"i2c-6",
+	"6-0028",
+	"c1b5000.i2c",
+	"i2c-7",
+	"7-0008",
+	"7-0055",
+	"7-0026",
+	"c1b7000.i2c",
+	"i2c-9",
+	"9-0036",
+	"5065000.qcom,gpucc",
+	"179c0000.qcom,cpu-clock-8998",
+	"179c0000.qcom,cpu-clock-8998:qcom,limits-dcvs@179ce800",
+	"179c0000.qcom,cpu-clock-8998:qcom,limits-dcvs@179cc800",
+	"5066094.qcom,gdsc",
+	"regulator.74",
+	"soc:qcom,msm-cpufreq",
+};
+
+#endif // SUSPEND_DENY_LIST_H
