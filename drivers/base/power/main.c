@@ -128,10 +128,10 @@ bool is_device_in_suspend_denied_list(const char *name) {
 
 	for (i = 0; i < ARRAY_SIZE(suspend_deny_list); i++) {
 		if (strcmp(name, suspend_deny_list[i]) == 0) {
-			return false;
+			return true;
 		}
 	}
-	return true;
+	return false;
 }
 
 /**
